@@ -1,0 +1,109 @@
+.availability-page {
+  max-width: 1400px;
+}
+
+.availability-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.availability-section h2 {
+  margin: 0 0 1.5rem 0;
+  color: #2c3e50;
+}
+
+.availability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.availability-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.availability-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.availability-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.3rem;
+}
+
+.status-available {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-occupied {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-reserved {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.screen-info {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 1rem 0;
+}
+
+.status-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.status-btn {
+  padding: 0.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.status-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-btn.available {
+  background: #27ae60;
+  color: white;
+}
+
+.status-btn.available:hover:not(:disabled) {
+  background: #229954;
+}
+
+.status-btn.occupied {
+  background: #e74c3c;
+  color: white;
+}
+
+.status-btn.occupied:hover:not(:disabled) {
+  background: #c0392b;
+}
+
+.status-btn.reserved {
+  background: #f39c12;
+  color: white;
+}
+
+.status-btn.reserved:hover:not(:disabled) {
+  background: #e67e22;
+}
