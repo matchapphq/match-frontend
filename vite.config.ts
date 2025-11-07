@@ -10,6 +10,7 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: 4173,
-    strictPort: true
-  }
+    strictPort: true,
+    allowedHosts: ['0.0.0.0', 'localhost', '127.0.0.1', process.env.VITE_ALLOWED_HOST_TEST!],
+  }, 
 });
