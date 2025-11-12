@@ -344,8 +344,8 @@ export function initializeSeedData(db: InMemoryDatabase) {
     
     // Venue 4 has basketball matches
     { id: 'vm-13', venue: 'venue-4', match: 'match-2', seats: 45, price: 40 },
-    { id: 'vm-14', venue: 'venue-4', match: 'match-4', seats: 50, price: 35 },
-    { id: 'vm-15', venue: 'venue-4', match: 'match-6', seats: 55, price: 45 },
+    { id: 'vm-14', venue: 'venue-4', match: 'match-4', seats: 0, price: 35 },
+    { id: 'vm-15', venue: 'venue-4', match: 'match-6', seats: 1, price: 45 },
     { id: 'vm-16', venue: 'venue-4', match: 'match-8', seats: 40, price: 50 },
   ];
 
