@@ -52,10 +52,10 @@ export function VenueOwnerDashboard({ onNavigate }: VenueOwnerDashboardProps) {
   };
 
   const stats = [
-    { label: 'My Venues', value: venuesCount, icon: MapPin, color: 'blue' },
-    { label: 'Upcoming Matches', value: upcomingMatches, icon: Calendar, color: 'green' },
-    { label: 'Total Reservations', value: reservations.length, icon: Users, color: 'purple' },
-    { label: 'Pending Approval', value: reservations.filter(r => r.status === 'pending').length, icon: TrendingUp, color: 'yellow' },
+    { label: 'Mes lieux', value: venuesCount, icon: MapPin, color: 'blue' },
+    { label: 'Matchs à venir', value: upcomingMatches, icon: Calendar, color: 'green' },
+    { label: 'Réservations totales', value: reservations.length, icon: Users, color: 'purple' },
+    { label: 'En attente de validation', value: reservations.filter(r => r.status === 'pending').length, icon: TrendingUp, color: 'yellow' },
   ];
 
   if (loading) {
@@ -70,10 +70,10 @@ export function VenueOwnerDashboard({ onNavigate }: VenueOwnerDashboardProps) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Dashboard
+          Tableau de bord
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Welcome back! Here's what's happening with your venues.
+          Bon retour ! Voici l'actualité de vos lieux.
         </p>
       </div>
 
@@ -101,49 +101,60 @@ export function VenueOwnerDashboard({ onNavigate }: VenueOwnerDashboardProps) {
         <Card>
           <CardHeader>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Recent Reservations
+              Réservations récentes
             </h2>
           </CardHeader>
           <CardBody>
             {reservations.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                No reservations yet
+                Pas encore de réservations
               </p>
             ) : (
               <div className="space-y-4">
-                {reservations.map((reservation) => (
-                  <div
-                    key={reservation.id}
-                    className="flex items-start justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {reservation.customer_name}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {reservation.venue_match?.match?.home_team?.name} vs{' '}
-                        {reservation.venue_match?.match?.away_team?.name}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-500">
-                        Party of {reservation.party_size} • {reservation.venue_match?.venue?.name}
-                      </p>
-                    </div>
-                    <span
-                      className={`
-                        px-2 py-1 text-xs font-medium rounded-full
-                        ${
-                          reservation.status === 'confirmed'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : reservation.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                        }
-                      `}
+                {reservations.map((reservation) => {
+                  const statusLabel =
+                    reservation.status === 'confirmed'
+                      ? 'Confirmée'
+                      : reservation.status === 'pending'
+                      ? 'En attente'
+                      : reservation.status === 'cancelled' || reservation.status === 'canceled'
+                      ? 'Annulée'
+                      : reservation.status;
+
+                  return (
+                    <div
+                      key={reservation.id}
+                      className="flex items-start justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
                     >
-                      {reservation.status}
-                    </span>
-                  </div>
-                ))}
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {reservation.customer_name}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {reservation.venue_match?.match?.home_team?.name} vs{' '}
+                          {reservation.venue_match?.match?.away_team?.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                          {`Groupe de ${reservation.party_size} personnes • ${reservation.venue_match?.venue?.name}`}
+                        </p>
+                      </div>
+                      <span
+                        className={`
+                          px-2 py-1 text-xs font-medium rounded-full
+                          ${
+                            reservation.status === 'confirmed'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : reservation.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                          }
+                        `}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardBody>
@@ -152,7 +163,7 @@ export function VenueOwnerDashboard({ onNavigate }: VenueOwnerDashboardProps) {
         <Card>
           <CardHeader>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Quick Actions
+              Actions rapides
             </h2>
           </CardHeader>
           <CardBody>
@@ -163,10 +174,10 @@ export function VenueOwnerDashboard({ onNavigate }: VenueOwnerDashboardProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      Add New Match
+                      Ajouter un match
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Select matches to broadcast at your venue
+                      Sélectionnez des matchs à diffuser dans votre lieu
                     </p>
                   </div>
                   <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -179,10 +190,10 @@ export function VenueOwnerDashboard({ onNavigate }: VenueOwnerDashboardProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      Manage Reservations
+                      Gérer les réservations
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Review and approve pending bookings
+                      Examiner et approuver les réservations en attente
                     </p>
                   </div>
                   <Users className="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -195,10 +206,10 @@ export function VenueOwnerDashboard({ onNavigate }: VenueOwnerDashboardProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      View Analytics
+                      Consulter les statistiques
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      See performance metrics and insights
+                      Voir les indicateurs de performance et les analyses
                     </p>
                   </div>
                   <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
