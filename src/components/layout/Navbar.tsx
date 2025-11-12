@@ -16,6 +16,8 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
+  const [eggActive, setEggActive] = useState(false);
+  const hoverTimerRef = useRef<number | null>(null);
 
   const isVenueOwner = profile?.role === 'venue_owner';
 
@@ -30,6 +32,25 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
         { name: 'Parcourir les lieux', id: 'browse' },
         { name: 'Mes réservations', id: 'bookings' },
       ];
+
+    function PitchOverlaySVG() {
+    return (
+      <svg
+        viewBox="0 0 24 240"
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden="true"
+      >
+        <rect x="0" y="1.5" width="24" height="20" className="fill-green-500 rounded-[2px]" rx="2" />
+        <g className="stroke-white" fill="none" strokeWidth="1">
+          <rect x="2" y="4.5" width="20" height="14" rx="1.5" />
+          <line x1="12" y1="4.5" x2="12" y2="18" />
+          <circle cx="12" cy="11.5" r="2.8" />
+          <rect x="2" y="8" width="3" height="7" />
+          <rect x="18.9" y="8" width="3" height="7" />
+        </g>
+      </svg>
+    );
+  }
 
   useLayoutEffect(() => {
     const el = navRef.current;
@@ -52,10 +73,48 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
             <div className="flex items-center">
               <button
                 onClick={() => onNavigate(isVenueOwner ? 'dashboard' : 'browse')}
-                className="flex items-center space-x-2 group"
+                className="flex items-center space-x-2 group relative"
                 aria-label="Accueil"
+                onMouseEnter={() => {
+                  if (eggActive || hoverTimerRef.current) return;
+                  hoverTimerRef.current = window.setTimeout(() => {
+                    setEggActive(true);
+                    hoverTimerRef.current = null;
+                  }, 30000);
+                }}
+                onMouseLeave={() => {
+                  if (hoverTimerRef.current) {
+                    clearTimeout(hoverTimerRef.current);
+                    hoverTimerRef.current = null;
+                  }
+                }}
+                onFocus={() => {
+                  if (eggActive || hoverTimerRef.current) return;
+                  hoverTimerRef.current = window.setTimeout(() => {
+                    setEggActive(true);
+                    hoverTimerRef.current = null;
+                  }, 30000);
+                }}
+                onBlur={() => {
+                  if (hoverTimerRef.current) {
+                    clearTimeout(hoverTimerRef.current);
+                    hoverTimerRef.current = null;
+                  }
+                }}
               >
-                <Calendar className="w-8 h-8 text-blue-600 group-hover:scale-110 transition-transform" />
+                <span className="relative inline-flex">
+                  {!eggActive && (
+                  <Calendar className="w-8 h-8 text-blue-600 group-hover:scale-110 transition-transform" />
+                  )}
+                  {eggActive && (
+                    <>
+                      <Calendar className="w-8 h-8 text-blue-600/0 group-hover:scale-110 transition-transform" />
+                      <PitchOverlaySVG />
+                      <span className="absolute inset-0 rounded-md ring-2 ring-green-500/50 animate-[ping_1.4s_ease-out_infinite] pointer-events-none" />
+                    </>
+                  )}
+                </span>
+
                 <span className="text-xl font-bold text-gray-900 dark:text-white">
                   Match
                 </span>
