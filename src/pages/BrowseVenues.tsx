@@ -60,16 +60,16 @@ export function BrowseVenues({ onSelectVenue }: BrowseVenuesProps) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Browse Venues
+          Parcourir les lieux
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Find the perfect venue to watch your favorite matches
+          Trouvez le lieu idéal pour regarder vos matchs préférés
         </p>
 
         <div className="relative max-w-xl">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <Input
-            placeholder="Search by name, city, or country..."
+            placeholder="Rechercher par nom, ville ou pays…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12"
@@ -82,12 +82,12 @@ export function BrowseVenues({ onSelectVenue }: BrowseVenuesProps) {
           <CardBody className="text-center py-12">
             <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No venues found
+              Aucun lieu trouvé
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
               {searchQuery
-                ? 'Try adjusting your search criteria'
-                : 'Check back soon for venues in your area'}
+                ? 'Essayez d’ajuster vos critères de recherche'
+                : 'Revenez bientôt pour découvrir des lieux près de chez vous'}
             </p>
           </CardBody>
         </Card>
@@ -129,7 +129,7 @@ export function BrowseVenues({ onSelectVenue }: BrowseVenuesProps) {
 
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                     <Users className="w-4 h-4 mr-2" />
-                    <span>Capacity: {venue.capacity}</span>
+                    <span>Capacité&nbsp;: {venue.capacity}</span>
                   </div>
                 </div>
 
@@ -139,7 +139,7 @@ export function BrowseVenues({ onSelectVenue }: BrowseVenuesProps) {
                   onClick={() => onSelectVenue(venue.id)}
                 >
                   <Calendar className="w-4 h-4 mr-2" />
-                  View Matches
+                  Voir les diffusions
                 </Button>
               </CardBody>
             </Card>
