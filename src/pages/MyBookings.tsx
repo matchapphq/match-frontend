@@ -37,7 +37,7 @@ export function MyBookings() {
   };
 
   const handleCancel = async (reservationId: string) => {
-    if (!confirm('Are you sure you want to cancel this reservation?')) return;
+    if (!confirm('Êtes-vous sûr de vouloir annuler cette réservation ?')) return;
 
     try {
       await reservationService.cancelReservation(reservationId);
@@ -105,10 +105,10 @@ export function MyBookings() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          My Bookings
+          Mes réservations
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          View and manage your reservations
+          Consultez et gérez vos réservations
         </p>
       </div>
 
@@ -117,10 +117,10 @@ export function MyBookings() {
           <CardBody className="text-center py-12">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No bookings yet
+              Aucune réservation pour le moment
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Start exploring venues and book your first match
+              Commencez à explorer les lieux et réservez votre premier match
             </p>
           </CardBody>
         </Card>
@@ -184,13 +184,13 @@ export function MyBookings() {
 
                       <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                         <Users className="w-4 h-4 mr-2" />
-                        Party of {reservation.party_size}
+                        Groupe de {reservation.party_size} personnes
                       </div>
 
                       {reservation.special_requests && (
                         <div className="mt-2 p-2 rounded bg-gray-50 dark:bg-gray-700/50">
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            <span className="font-medium">Special requests:</span>{' '}
+                            <span className="font-medium">Demandes spéciales :</span>{' '}
                             {reservation.special_requests}
                           </p>
                         </div>
@@ -204,7 +204,7 @@ export function MyBookings() {
                       size="sm"
                       onClick={() => handleCancel(reservation.id)}
                     >
-                      Cancel Booking
+                      Annuler la réservation
                     </Button>
                   ) : null}
                 </div>
