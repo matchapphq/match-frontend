@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { Calendar, User, LogOut, Moon, Sun, Menu, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,6 +15,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
   const { theme, toggleTheme } = useTheme();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
 
   const isVenueOwner = profile?.role === 'venue_owner';
 
@@ -30,9 +31,22 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
         { name: 'My Bookings', id: 'bookings' },
       ];
 
+  useLayoutEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+
+    const setVar = () =>
+      document.documentElement.style.setProperty('--nav-h', `${el.offsetHeight}px`);
+
+    setVar();
+    const ro = new ResizeObserver(setVar);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <>
-      <nav className="bg-white dark:bg-gray-900 shadow-lg sticky top-0 z-40">
+      <nav ref={navRef} className="bg-white dark:bg-gray-900 shadow-lg sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
