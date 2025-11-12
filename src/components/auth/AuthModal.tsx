@@ -35,7 +35,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signin' }: AuthModal
       onClose();
       resetForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signin' }: AuthModal
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={mode === 'signin' ? 'Sign In' : 'Create Account'}
+      title={mode === 'signin' ? 'Connexion' : 'Créer un compte'}
       size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -71,17 +71,17 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signin' }: AuthModal
         {mode === 'signup' && (
           <>
             <Input
-              label="Full Name"
+              label="Nom complet"
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="John Doe"
+              placeholder="Jean Dupont"
               required
             />
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                I am a
+                Je suis&nbsp;:
               </label>
               <div className="flex gap-4">
                 <label className="flex items-center cursor-pointer">
@@ -92,7 +92,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signin' }: AuthModal
                     onChange={(e) => setRole(e.target.value as 'customer')}
                     className="mr-2"
                   />
-                  <span className="text-gray-700 dark:text-gray-200">Customer</span>
+                  <span className="text-gray-700 dark:text-gray-200">Client</span>
                 </label>
                 <label className="flex items-center cursor-pointer">
                   <input
@@ -102,7 +102,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signin' }: AuthModal
                     onChange={(e) => setRole(e.target.value as 'venue_owner')}
                     className="mr-2"
                   />
-                  <span className="text-gray-700 dark:text-gray-200">Venue Owner</span>
+                  <span className="text-gray-700 dark:text-gray-200">Propriétaire de lieu</span>
                 </label>
               </div>
             </div>
@@ -110,16 +110,16 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signin' }: AuthModal
         )}
 
         <Input
-          label="Email"
+          label="Adresse e-mail"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          placeholder="vous@exemple.com"
           required
         />
 
         <Input
-          label="Password"
+          label="Mot de passe"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -128,7 +128,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signin' }: AuthModal
         />
 
         <Button type="submit" className="w-full" loading={loading}>
-          {mode === 'signin' ? 'Sign In' : 'Create Account'}
+          {mode === 'signin' ? 'Se connecter' : 'Créer un compte'}
         </Button>
 
         <div className="text-center">
@@ -138,8 +138,8 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signin' }: AuthModal
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
             {mode === 'signin'
-              ? "Don't have an account? Sign up"
-              : 'Already have an account? Sign in'}
+              ? "Pas encore de compte ? Créez-en un"
+              : 'Vous avez déjà un compte ? Connectez-vous'}
           </button>
         </div>
       </form>
