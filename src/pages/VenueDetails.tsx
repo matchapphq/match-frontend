@@ -75,7 +75,7 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[calc(100dvh-var(--nav-h,0px))]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -83,7 +83,8 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
 
   if (!venue) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+           style={{ minHeight: 'calc(100dvh - var(--nav-h, 0px))' }}>
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
@@ -98,13 +99,14 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-hidden"
+         style={{ height: 'calc(100dvh - var(--nav-h, 0px))' }}>
       <Button variant="ghost" onClick={onBack} className="mb-6">
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Venues
       </Button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start min-w-0">
         <div className="lg:col-span-1">
           <Card>
             {venue.image_url && (
@@ -162,13 +164,13 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
           </Card>
         </div>
 
-        <div className="lg:col-span-2">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+        <div className="lg:col-span-2 flex flex-col pr-2 overflow-hidden min-w-0">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 shrink-0">
             Upcoming Matches
           </h2>
 
           {!venue.venue_matches || venue.venue_matches.length === 0 ? (
-            <Card>
+            <Card className="shrink-0">
               <CardBody className="text-center py-12">
                 <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 dark:text-gray-400">
@@ -177,11 +179,11 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
               </CardBody>
             </Card>
           ) : (
-            <div className="space-y-4">
+           <div className="space-y-4 overflow-y-scroll overflow-x-hidden max-h-[70vh] min-h-0 pb-8 pl-3 pr-3 [scrollbar-gutter:stable] scrollbar-hide">
               {venue.venue_matches.map((vm) => (
                 <Card key={vm.id} hover>
                   <CardBody>
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 min-w-0">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <Badge variant="info">{vm.match.sport.name}</Badge>
