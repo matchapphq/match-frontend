@@ -21,14 +21,14 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
 
   const navigation = isVenueOwner
     ? [
-        { name: 'Dashboard', id: 'dashboard' },
-        { name: 'My Venues', id: 'my-venues' },
-        { name: 'Reservations', id: 'reservations' },
-        { name: 'Customers', id: 'customers' },
+        { name: 'Tableau de bord', id: 'dashboard' },
+        { name: 'Mes établissements', id: 'my-venues' },
+        { name: 'Réservations', id: 'reservations' },
+        { name: 'Clients', id: 'customers' },
       ]
     : [
-        { name: 'Browse Venues', id: 'browse' },
-        { name: 'My Bookings', id: 'bookings' },
+        { name: 'Parcourir les lieux', id: 'browse' },
+        { name: 'Mes réservations', id: 'bookings' },
       ];
 
   useLayoutEffect(() => {
@@ -53,6 +53,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
               <button
                 onClick={() => onNavigate(isVenueOwner ? 'dashboard' : 'browse')}
                 className="flex items-center space-x-2 group"
+                aria-label="Accueil"
               >
                 <Calendar className="w-8 h-8 text-blue-600 group-hover:scale-110 transition-transform" />
                 <span className="text-xl font-bold text-gray-900 dark:text-white">
@@ -86,6 +87,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                 size="sm"
                 onClick={toggleTheme}
                 className="rounded-full p-2"
+                aria-label={theme === 'light' ? 'Activer le mode sombre' : 'Activer le mode clair'}
               >
                 {theme === 'light' ? (
                   <Moon className="w-5 h-5" />
@@ -99,15 +101,16 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                   <button
                     onClick={() => onNavigate('profile')}
                     className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    aria-label="Aller au profil"
                   >
                     <User className="w-5 h-5" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {profile?.full_name || 'Profile'}
+                      {profile?.full_name || 'Profil'}
                     </span>
                   </button>
                   <Button variant="ghost" size="sm" onClick={signOut}>
                     <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
+                    Se déconnecter
                   </Button>
                 </div>
               ) : (
@@ -116,13 +119,14 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                   onClick={() => setShowAuthModal(true)}
                   className="hidden md:flex"
                 >
-                  Sign In
+                  Se connecter
                 </Button>
               )}
 
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Ouvrir le menu"
               >
                 {mobileMenuOpen ? (
                   <X className="w-6 h-6" />
@@ -163,7 +167,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                     }}
                     className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                   >
-                    Profile
+                    Profil
                   </button>
                   <button
                     onClick={() => {
@@ -172,7 +176,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                     }}
                     className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                   >
-                    Sign Out
+                    Se déconnecter
                   </button>
                 </>
               ) : (
@@ -183,7 +187,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                   }}
                   className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
-                  Sign In
+                  Se connecter
                 </button>
               )}
             </div>
