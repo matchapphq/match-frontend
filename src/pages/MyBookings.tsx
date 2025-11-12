@@ -4,14 +4,21 @@ import { Card, CardBody } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
+import { AuthModal } from '../components/auth/AuthModal';
 import { reservationService, ReservationWithDetails } from '../services/reservationService';
 
 export function MyBookings() {
   const { user } = useAuth();
   const [reservations, setReservations] = useState<ReservationWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setAuthOpen(false);
     loadReservations();
   }, [user]);
 
@@ -56,6 +63,35 @@ export function MyBookings() {
     }
   };
 
+  if (!user) {
+    return (
+    <>
+        <div
+          className="fixed inset-x-0 bottom-0 overflow-hidden"
+          style={{ top: 'var(--nav-h, 0px)' }}
+        >
+        <div className="flex flex-col items-center justify-center h-screen overflow-hidden text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Accès réservé
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
+            Vous devez vous identifier pour consulter vos réservations.
+          </p>
+          <Button variant="primary" onClick={() => setAuthOpen(true)}>
+            Se connecter
+          </Button>
+        </div>
+      </div>
+
+      <AuthModal
+        isOpen={authOpen}
+        onClose={() => setAuthOpen(false)}
+        defaultMode="signin"
+      />
+    </>
+);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -65,6 +101,7 @@ export function MyBookings() {
   }
 
   return (
+    
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">

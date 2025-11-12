@@ -71,7 +71,7 @@ function AppContent() {
           />
         )}
 
-        {currentPage === 'bookings' && user && (
+        {currentPage === 'bookings' && (
           <MyBookings />
         )}
 
