@@ -79,32 +79,34 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signin' }: AuthModal
               required
             />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                Je suis&nbsp;:
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="radio"
-                    value="customer"
-                    checked={role === 'customer'}
-                    onChange={(e) => setRole(e.target.value as 'customer')}
-                    className="mr-2"
-                  />
-                  <span className="text-gray-700 dark:text-gray-200">Client</span>
-                </label>
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="radio"
-                    value="venue_owner"
-                    checked={role === 'venue_owner'}
-                    onChange={(e) => setRole(e.target.value as 'venue_owner')}
-                    className="mr-2"
-                  />
-                  <span className="text-gray-700 dark:text-gray-200">Propriétaire de lieu</span>
-                </label>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRole('customer')}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${
+                  role === 'customer'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 text-gray-700 dark:text-gray-200'
+                }`}
+              >
+                <span className="text-3xl mb-2">🍻</span>
+                <span className="font-small text-center">Je viens vivre les matchs</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRole('venue_owner')}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${
+                  role === 'venue_owner'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 text-gray-700 dark:text-gray-200'
+                }`}
+              >
+                <span className="text-3xl mb-2">📺</span>
+                <span className="font-small text-center">
+                  Je diffuse dans mon établissement
+                </span>
+              </button>
             </div>
           </>
         )}
