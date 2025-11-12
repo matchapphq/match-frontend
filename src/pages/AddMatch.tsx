@@ -139,7 +139,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
     
     if (!formData.sport_id || !formData.league_id || !formData.home_team_id || 
         !formData.away_team_id || !formData.match_date || !formData.match_time) {
-      alert('Please fill in all required fields');
+      alert('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
@@ -168,16 +168,16 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
         venue_name: ''
       });
       await loadMatches();
-      alert('Match added successfully!');
+      alert('Match ajouté avec succès !');
     } catch (error) {
       console.error('Error adding match:', error);
-      alert('Failed to add match');
+      alert('Échec de l\'ajout du match');
     }
   };
 
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                      'July', 'August', 'September', 'October', 'November', 'December'];
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+  const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 
   if (loading) {
     return (
@@ -192,17 +192,17 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Match Calendar
+            Calendrier des matchs
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            View and add matches to the system
+            Voir et ajouter des matchs au système
           </p>
         </div>
         <button
           onClick={() => onNavigate('dashboard')}
           className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
         >
-          Back to Dashboard
+          Retour au tableau de bord
         </button>
       </div>
 
@@ -276,7 +276,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
                         ))}
                         {dayMatches.length > 2 && (
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            +{dayMatches.length - 2} more
+                            +{dayMatches.length - 2} de plus
                           </div>
                         )}
                       </div>
@@ -295,7 +295,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Add New Match
+                    Ajouter un match
                   </h2>
                   <button
                     onClick={() => setShowAddForm(false)}
@@ -317,7 +317,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       required
                     >
-                      <option value="">Select Sport</option>
+                      <option value="">Choisir un sport</option>
                       {sports.map(sport => (
                         <option key={sport.id} value={sport.id}>{sport.name}</option>
                       ))}
@@ -328,7 +328,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          League *
+                          Ligue *
                         </label>
                         <select
                           value={formData.league_id}
@@ -336,7 +336,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           required
                         >
-                          <option value="">Select League</option>
+                          <option value="">Choisir une ligue</option>
                           {leagues.map(league => (
                             <option key={league.id} value={league.id}>{league.name}</option>
                           ))}
@@ -345,7 +345,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Home Team *
+                          Équipe à domicile *
                         </label>
                         <select
                           value={formData.home_team_id}
@@ -353,7 +353,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           required
                         >
-                          <option value="">Select Home Team</option>
+                          <option value="">Choisir l'équipe à domicile</option>
                           {teams.map(team => (
                             <option key={team.id} value={team.id}>{team.name}</option>
                           ))}
@@ -362,7 +362,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Away Team *
+                          Équipe à l'extérieur *
                         </label>
                         <select
                           value={formData.away_team_id}
@@ -370,7 +370,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           required
                         >
-                          <option value="">Select Away Team</option>
+                          <option value="">Choisir l'équipe à l'extérieur</option>
                           {teams.filter(t => t.id !== formData.home_team_id).map(team => (
                             <option key={team.id} value={team.id}>{team.name}</option>
                           ))}
@@ -381,7 +381,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Match Date *
+                      Date du match *
                     </label>
                     <input
                       type="date"
@@ -394,7 +394,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Match Time *
+                      Heure du match *
                     </label>
                     <input
                       type="time"
@@ -407,13 +407,13 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Venue Name
+                      Nom du lieu
                     </label>
                     <input
                       type="text"
                       value={formData.venue_name}
                       onChange={(e) => setFormData(prev => ({ ...prev, venue_name: e.target.value }))}
-                      placeholder="e.g., Old Trafford"
+                      placeholder="ex. : Old Trafford"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
@@ -423,7 +423,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    Add Match
+                    Ajouter le match
                   </button>
                 </form>
               </CardBody>
@@ -432,7 +432,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
             <Card>
               <CardHeader>
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Quick Actions
+                  Actions rapides
                 </h2>
               </CardHeader>
               <CardBody>
@@ -444,17 +444,17 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
                   className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus className="w-5 h-5" />
-                  Add New Match
+                  Ajouter un match
                 </button>
 
                 <div className="mt-6">
                   <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    Selected Date Matches
+                    Matchs pour la date sélectionnée
                   </h3>
                   <div className="space-y-2">
                     {getMatchesForDate(selectedDate).length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                        No matches on {selectedDate.toLocaleDateString()}
+                        Aucun match le {selectedDate.toLocaleDateString('fr-FR')}
                       </p>
                     ) : (
                       getMatchesForDate(selectedDate).map(match => (
@@ -478,7 +478,7 @@ export function AddMatch({ onNavigate }: AddMatchProps) {
                           )}
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {new Date(match.match_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(match.match_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
                       ))
