@@ -95,7 +95,7 @@ export function MyVenues() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this venue?')) return;
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce lieu ?')) return;
 
     try {
       await venueService.deleteVenue(id);
@@ -117,16 +117,16 @@ export function MyVenues() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            My Venues
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Manage your sports viewing venues
-          </p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Mes lieux
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+            Gérez vos lieux de visionnage sportifs
+            </p>
         </div>
         <Button onClick={() => handleOpenModal()}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Venue
+          Ajouter un lieu
         </Button>
       </div>
 
@@ -135,14 +135,14 @@ export function MyVenues() {
           <CardBody className="text-center py-12">
             <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No venues yet
+              Aucun lieu pour le moment
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Get started by creating your first venue
+              Commencez en créant votre premier lieu
             </p>
             <Button onClick={() => handleOpenModal()}>
               <Plus className="w-4 h-4 mr-2" />
-              Add Your First Venue
+              Ajouter votre premier lieu
             </Button>
           </CardBody>
         </Card>
@@ -190,7 +190,7 @@ export function MyVenues() {
 
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                     <Users className="w-4 h-4 mr-2" />
-                    <span>Capacity: {venue.capacity}</span>
+                    <span>Capacité: {venue.capacity}</span>
                   </div>
                 </div>
 
@@ -221,7 +221,7 @@ export function MyVenues() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Venue Name"
+            label="Nom du lieu"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
@@ -240,20 +240,20 @@ export function MyVenues() {
           </div>
 
           <Input
-            label="Address"
+            label="Adresse"
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           />
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="City"
+              label="Ville"
               value={formData.city}
               onChange={(e) => setFormData({ ...formData, city: e.target.value })}
             />
 
             <Input
-              label="Country"
+              label="Pays"
               value={formData.country}
               onChange={(e) => setFormData({ ...formData, country: e.target.value })}
             />
@@ -261,7 +261,7 @@ export function MyVenues() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Phone"
+              label="Téléphone"
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -276,7 +276,7 @@ export function MyVenues() {
           </div>
 
           <Input
-            label="Capacity"
+            label="Capacité"
             type="number"
             value={formData.capacity}
             onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 0 })}
@@ -286,14 +286,14 @@ export function MyVenues() {
 
           <div className="flex space-x-3 pt-4">
             <Button type="submit" className="flex-1">
-              {editingVenue ? 'Save Changes' : 'Create Venue'}
+              {editingVenue ? 'Enregistrer les modifications' : 'Créer un lieu'}
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => setShowModal(false)}
             >
-              Cancel
+              Annuler
             </Button>
           </div>
         </form>
