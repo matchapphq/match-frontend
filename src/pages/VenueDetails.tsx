@@ -61,10 +61,10 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
 
       setShowBookingModal(false);
       setSelectedMatch(null);
-      alert('Booking request submitted successfully!');
+      alert('Demande de réservation envoyée avec succès !');
     } catch (error) {
       console.error('Error creating booking:', error);
-      alert('Failed to create booking. Please try again.');
+      alert('Échec de la création de la réservation. Veuillez réessayer.');
     }
   };
 
@@ -83,15 +83,17 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
 
   if (!venue) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-           style={{ minHeight: 'calc(100dvh - var(--nav-h, 0px))' }}>
+      <div
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        style={{ minHeight: 'calc(100dvh - var(--nav-h, 0px))' }}
+      >
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+          Retour
         </Button>
         <Card className="mt-4">
           <CardBody className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">Venue not found</p>
+            <p className="text-gray-600 dark:text-gray-400">Lieu introuvable</p>
           </CardBody>
         </Card>
       </div>
@@ -99,11 +101,13 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-hidden"
-         style={{ height: 'calc(100dvh - var(--nav-h, 0px))' }}>
+    <div
+      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-hidden"
+      style={{ height: 'calc(100dvh - var(--nav-h, 0px))' }}
+    >
       <Button variant="ghost" onClick={onBack} className="mb-6">
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Venues
+        Retour aux lieux
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start min-w-0">
@@ -143,19 +147,19 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
 
                 <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                   <Users className="w-4 h-4 mr-2" />
-                  <span>Capacity: {venue.capacity}</span>
+                  <span>Capacité&nbsp;: {venue.capacity}</span>
                 </div>
 
                 {venue.phone && (
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                    <span className="font-medium mr-2">Phone:</span>
+                    <span className="font-medium mr-2">Téléphone&nbsp;:</span>
                     <span>{venue.phone}</span>
                   </div>
                 )}
 
                 {venue.email && (
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                    <span className="font-medium mr-2">Email:</span>
+                    <span className="font-medium mr-2">E-mail&nbsp;:</span>
                     <span>{venue.email}</span>
                   </div>
                 )}
@@ -166,7 +170,7 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
 
         <div className="lg:col-span-2 flex flex-col pr-2 overflow-hidden min-w-0">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 shrink-0">
-            Upcoming Matches
+            {venue.venue_matches?.length === 1 ? 'Prochaine diffusion' : 'Diffusions à venir'}
           </h2>
 
           {!venue.venue_matches || venue.venue_matches.length === 0 ? (
@@ -174,14 +178,14 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
               <CardBody className="text-center py-12">
                 <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 dark:text-gray-400">
-                  No upcoming matches scheduled
+                  Aucun match à venir
                 </p>
               </CardBody>
             </Card>
           ) : (
-           <div className="space-y-4 overflow-y-scroll overflow-x-hidden max-h-[70vh] min-h-0 pb-8 pl-3 pr-3 [scrollbar-gutter:stable] scrollbar-hide">
+            <div className="space-y-4 overflow-y-scroll overflow-x-hidden max-h-[70vh] min-h-0 pb-8 pl-3 pr-3 [scrollbar-gutter:stable] scrollbar-hide">
               {venue.venue_matches.map((vm) => (
-                <Card key={vm.id} hover>
+                <Card key={vm.id} hover className="transition-shadow duration-300">
                   <CardBody>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 min-w-0">
                       <div className="flex-1">
@@ -199,7 +203,7 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
                                 className="w-6 h-6"
                               />
                             )}
-                            <span className="font-medium text-gray-900 dark:text-white">
+                            <span className="font-medium text-gray-900 dark:text-white break-words">
                               {vm.match.home_team.name}
                             </span>
                           </div>
@@ -212,7 +216,7 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
                                 className="w-6 h-6"
                               />
                             )}
-                            <span className="font-medium text-gray-900 dark:text-white">
+                            <span className="font-medium text-gray-900 dark:text-white break-words">
                               {vm.match.away_team.name}
                             </span>
                           </div>
@@ -220,18 +224,32 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
 
                         <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                           <Clock className="w-4 h-4 mr-2" />
-                          {new Date(vm.match.match_date).toLocaleString()}
+                          {new Date(vm.match.match_date)
+                            .toLocaleString('fr-FR', {
+                              weekday: 'long',
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                            .replace(/^./, (c) => c.toUpperCase())}
                         </div>
 
                         <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mt-1">
                           <Users className="w-4 h-4 mr-2" />
-                          {vm.available_seats} seats available
+                          {vm.available_seats} {vm.available_seats === 1 ? 'place disponible' : 'places disponibles'}
                         </div>
                       </div>
 
-                      <Button onClick={() => openBookingModal(vm.id)}>
-                        Book Now
-                      </Button>
+                      {vm.available_seats > 0 ? (
+                        <Button onClick={() => openBookingModal(vm.id)}>
+                          Réserver
+                        </Button>
+                      ) : (
+                        <Button variant="secondary" disabled>Complet</Button>
+                      )}
+
                     </div>
                   </CardBody>
                 </Card>
@@ -244,11 +262,11 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
       <Modal
         isOpen={showBookingModal}
         onClose={() => setShowBookingModal(false)}
-        title="Book Your Spot"
+        title="Réserver votre place"
       >
         <form onSubmit={handleBooking} className="space-y-4">
           <Input
-            label="Your Name"
+            label="Nom complet"
             value={bookingForm.customerName}
             onChange={(e) =>
               setBookingForm({ ...bookingForm, customerName: e.target.value })
@@ -257,7 +275,7 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
           />
 
           <Input
-            label="Email"
+            label="E-mail"
             type="email"
             value={bookingForm.customerEmail}
             onChange={(e) =>
@@ -267,7 +285,7 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
           />
 
           <Input
-            label="Phone"
+            label="Téléphone"
             type="tel"
             value={bookingForm.customerPhone}
             onChange={(e) =>
@@ -276,19 +294,22 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
           />
 
           <Input
-            label="Party Size"
+            label="Nombre de personnes"
             type="number"
             min="1"
             value={bookingForm.partySize}
             onChange={(e) =>
-              setBookingForm({ ...bookingForm, partySize: parseInt(e.target.value) || 1 })
+              setBookingForm({
+                ...bookingForm,
+                partySize: parseInt(e.target.value) || 1,
+              })
             }
             required
           />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-              Special Requests
+              Demandes particulières
             </label>
             <textarea
               value={bookingForm.specialRequests}
@@ -302,14 +323,14 @@ export function VenueDetails({ venueId, onBack }: VenueDetailsProps) {
 
           <div className="flex space-x-3 pt-4">
             <Button type="submit" className="flex-1">
-              Confirm Booking
+              Confirmer la réservation
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => setShowBookingModal(false)}
             >
-              Cancel
+              Annuler
             </Button>
           </div>
         </form>
