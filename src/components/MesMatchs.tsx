@@ -4,7 +4,7 @@ import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
 
 interface MesMatchsProps {
-  onNavigate?: (page: PageType, matchId?: number) => void;
+  onNavigate?: (page: PageType, matchId?: string) => void;
   defaultFilter?: 'tous' | 'à venir' | 'terminé';
 }
 
@@ -23,20 +23,20 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
     }
   };
 
-  const handleMatchClick = (matchId: number) => {
+  const handleMatchClick = (matchId: string) => {
     if (onNavigate) {
       onNavigate('match-detail', matchId);
     }
   };
 
-  const handleEditMatch = (e: React.MouseEvent, matchId: number) => {
+  const handleEditMatch = (e: React.MouseEvent, matchId: string) => {
     e.stopPropagation();
     if (onNavigate) {
       onNavigate('modifier-match', matchId);
     }
   };
 
-  const handleBoostClick = (e: React.MouseEvent, matchId: number) => {
+  const handleBoostClick = (e: React.MouseEvent, matchId: string) => {
     e.stopPropagation();
     if (onNavigate) {
       onNavigate('booster');

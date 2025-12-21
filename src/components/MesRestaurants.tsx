@@ -3,7 +3,7 @@ import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
 
 interface MesRestaurantsProps {
-  onNavigate?: (page: PageType, matchId?: number, restaurantId?: number) => void;
+  onNavigate?: (page: PageType, matchId?: string, restaurantId?: string) => void;
 }
 
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
@@ -21,7 +21,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
     }
   };
 
-  const handleEditRestaurant = (e: React.MouseEvent, id: number) => {
+  const handleEditRestaurant = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (onNavigate) {
       onNavigate('modifier-restaurant', undefined, id);

@@ -1,6 +1,9 @@
 import { Dashboard } from './components/Dashboard';
 import { Header } from './components/Header';
 import { useState } from 'react';
+import { Login } from './components/Login';
+import { Register } from './components/Register';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ClientsDetail } from './components/details/ClientsDetail';
 import { MatchesDiffusesDetail } from './components/details/MatchesDiffusesDetail';
 import { MatchesAVenirDetail } from './components/details/MatchesAVenirDetail';
@@ -25,6 +28,7 @@ import { CompteNotifications } from './components/compte/CompteNotifications';
 import { CompteSecurite } from './components/compte/CompteSecurite';
 import { CompteAide } from './components/compte/CompteAide';
 import { AppProvider } from './context/AppContext';
+import { BillingHistory } from './components/BillingHistory';
 
 export type PageType = 
   | 'dashboard'
@@ -45,6 +49,7 @@ export type PageType =
   | 'restaurant-detail'
   | 'ajouter-restaurant'
   | 'facturation'
+  | 'billing-history'
   | 'match-detail'
   | 'compte-infos'
   | 'compte-parametres'
@@ -52,14 +57,29 @@ export type PageType =
   | 'compte-securite'
   | 'compte-aide';
 
-export default function App() {
+type AuthPage = 'login' | 'register';
+
+function AuthenticatedApp() {
+  const { user, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
-  const [defaultMatchFilter, setDefaultMatchFilter] = useState<string>('');
+  const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('tous');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
+  const [selectedMatchId, setSelectedMatchId] = useState<string>('');
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderPage = () => {
     switch (currentPage) {
@@ -76,7 +96,7 @@ export default function App() {
       case 'programmer-match':
         return <ProgrammerMatch onBack={() => setCurrentPage('dashboard')} />;
       case 'modifier-match':
-        return <ModifierMatch onBack={() => setCurrentPage('dashboard')} />;
+        return <ModifierMatch matchId={selectedMatchId} onBack={() => setCurrentPage('mes-matchs')} />;
       case 'mes-avis':
         return <MesAvis onBack={() => setCurrentPage('dashboard')} />;
       case 'liste-matchs':
@@ -96,9 +116,11 @@ export default function App() {
       case 'restaurant-detail':
         return <RestaurantDetail onBack={() => setCurrentPage('mes-restaurants')} />;
       case 'ajouter-restaurant':
-        return <AjouterRestaurant onBack={() => setCurrentPage('mes-restaurants')} />;
+        return <AjouterRestaurant onBack={() => setCurrentPage('mes-restaurants')} onNavigate={setCurrentPage} />;
       case 'facturation':
         return <Facturation onBack={() => setCurrentPage('dashboard')} />;
+      case 'billing-history':
+        return <BillingHistory onBack={() => setCurrentPage('compte')} />;
       case 'match-detail':
         return <MatchDetail onBack={() => setCurrentPage('mes-matchs')} />;
       case 'compte-infos':
@@ -124,4 +146,57 @@ export default function App() {
       </div>
     </AppProvider>
   );
+}
+
+export default function App() {
+  const [authPage, setAuthPage] = useState<AuthPage>('login');
+
+  return (
+    <AuthProvider>
+      <AppContent 
+        authPage={authPage} 
+        onAuthPageChange={setAuthPage} 
+      />
+    </AuthProvider>
+  );
+}
+
+function AppContent({ 
+  authPage, 
+  onAuthPageChange 
+}: { 
+  authPage: AuthPage; 
+  onAuthPageChange: (page: AuthPage) => void;
+}) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    if (authPage === 'register') {
+      return (
+        <Register 
+          onSuccess={() => {}} 
+          onLoginClick={() => onAuthPageChange('login')} 
+        />
+      );
+    }
+    return (
+      <Login 
+        onSuccess={() => {}} 
+        onRegisterClick={() => onAuthPageChange('register')} 
+      />
+    );
+  }
+
+  return <AuthenticatedApp />;
 }

@@ -5,7 +5,7 @@ import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
 
 interface DashboardProps {
-  onNavigate: (page: PageType, matchId?: number, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
+  onNavigate: (page: PageType, matchId?: string, restaurantId?: string, filter?: 'tous' | 'à venir' | 'terminé') => void;
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
@@ -70,12 +70,12 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     return Math.round((reservees / total) * 100);
   };
 
-  const handleEditMatch = (e: React.MouseEvent, matchId: number) => {
+  const handleEditMatch = (e: React.MouseEvent, matchId: string) => {
     e.stopPropagation();
     onNavigate('modifier-match', matchId);
   };
 
-  const handleMatchClick = (matchId: number) => {
+  const handleMatchClick = (matchId: string) => {
     onNavigate('match-detail', matchId);
   };
 
