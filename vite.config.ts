@@ -57,7 +57,7 @@
       minify: 'esbuild',
     },
     server: {
-      port: 3000,
+      port: 5173,
       host: true, // Listen on all addresses (0.0.0.0)
       strictPort: true,
       open: true,
