@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, ArrowRight, TrendingUp, Users, Calendar, Zap, Star, Check } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, TrendingUp, Users, Calendar, Zap, Star, Check, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { useHealthCheck } from '../hooks/useHealthCheck';
 import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => boolean;
+  onLogin: (email: string, password: string) => Promise<boolean>;
   onSwitchToRegister: () => void;
 }
 
@@ -16,19 +17,25 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Health check for backend connectivity
+  const { data: isBackendOnline, isLoading: isCheckingHealth } = useHealthCheck();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = onLogin(email, password);
+    try {
+      const success = await onLogin(email, password);
       if (!success) {
         setError('Email ou mot de passe incorrect');
       }
+    } catch (err) {
+      setError('Erreur de connexion. Veuillez réessayer.');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const stats = [
@@ -262,6 +269,32 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
                 Mot de passe: <span className="font-mono bg-white/80 px-2 py-1 rounded">demo123</span>
               </p>
             </div>
+          </div>
+
+          {/* Backend Status Indicator */}
+          <div className="flex items-center justify-center gap-2 text-sm">
+            {isCheckingHealth ? (
+              <>
+                <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                <span className="text-gray-500">Vérification du serveur...</span>
+              </>
+            ) : isBackendOnline ? (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                  <Wifi className="w-4 h-4 text-green-600" />
+                </div>
+                <span className="text-green-600">Serveur connecté</span>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                  <WifiOff className="w-4 h-4 text-orange-500" />
+                </div>
+                <span className="text-orange-500">Mode hors-ligne (données locales)</span>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -1,20 +1,23 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import api from '../lib/api';
+import type { ApiUser, RegisterRequest, LoginRequest } from '../lib/types';
 
 export interface User {
   id: string;
   email: string;
-  password: string;
   nom: string;
   prenom: string;
   telephone?: string;
-  hasCompletedOnboarding: boolean; // Nouveau : indique si l'utilisateur a finalisé son inscription
-  onboardingStep: 'restaurant' | 'facturation' | 'complete'; // Étape actuelle de l'onboarding
+  hasCompletedOnboarding: boolean;
+  onboardingStep: 'restaurant' | 'facturation' | 'complete';
 }
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (email: string, password: string) => boolean;
-  register: (data: RegisterData) => boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (data: RegisterData) => Promise<boolean>;
   logout: () => void;
   currentUser: User | null;
   completeOnboarding: () => void;
@@ -31,73 +34,143 @@ export interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Données de démonstration - utilisateur test avec onboarding complété
-const mockUser: User = {
-  id: 'user-demo',
-  email: 'demo@match.com',
-  password: 'demo123',
-  nom: 'Demo',
-  prenom: 'Restaurateur',
-  telephone: '01 23 45 67 89',
-  hasCompletedOnboarding: true,
-  onboardingStep: 'complete'
+// Auth API functions
+const authApi = {
+  register: async (data: RegisterRequest) => {
+    const response = await api.post('/auth/register', data);
+    return response.data;
+  },
+  login: async (data: LoginRequest) => {
+    const response = await api.post('/auth/login', data);
+    return response.data;
+  },
+  logout: async () => {
+    await api.post('/auth/logout');
+  },
+  getMe: async () => {
+    const response = await api.get('/users/me');
+    return response.data;
+  },
 };
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [registeredUsers, setRegisteredUsers] = useState<User[]>([mockUser]);
-
-  const login = (email: string, password: string): boolean => {
-    // Vérification dans la liste des utilisateurs enregistrés
-    const user = registeredUsers.find(u => u.email === email && u.password === password);
-    
-    if (user) {
-      setIsAuthenticated(true);
-      setCurrentUser(user);
-      return true;
-    }
-    return false;
+// Convert API user to frontend User format
+function mapApiUserToUser(apiUser: ApiUser, hasCompletedOnboarding = true): User {
+  return {
+    id: apiUser.id,
+    email: apiUser.email,
+    nom: apiUser.last_name || '',
+    prenom: apiUser.first_name || '',
+    telephone: apiUser.phone,
+    hasCompletedOnboarding,
+    onboardingStep: hasCompletedOnboarding ? 'complete' : 'restaurant',
   };
+}
 
-  const register = (data: RegisterData): boolean => {
-    try {
-      // Vérifier si l'email existe déjà
-      const existingUser = registeredUsers.find(u => u.email === data.email);
-      if (existingUser) {
-        return false;
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [onboardingState, setOnboardingState] = useState<{
+    hasCompleted: boolean;
+    step: 'restaurant' | 'facturation' | 'complete';
+  }>({ hasCompleted: true, step: 'complete' });
+
+  // Check if user is already logged in on mount
+  const { data: authData, isLoading } = useQuery({
+    queryKey: ['auth-user'],
+    queryFn: authApi.getMe,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Update currentUser when auth data is fetched
+  useEffect(() => {
+    if (authData?.user) {
+      // Backend returns user as array from getMe, handle both cases
+      const apiUser = Array.isArray(authData.user) ? authData.user[0] : authData.user;
+      if (apiUser) {
+        const user = mapApiUserToUser(apiUser, onboardingState.hasCompleted);
+        user.hasCompletedOnboarding = onboardingState.hasCompleted;
+        user.onboardingStep = onboardingState.step;
+        setCurrentUser(user);
+        setIsAuthenticated(true);
       }
+    }
+  }, [authData]);
 
-      // Créer le nouvel utilisateur avec un ID unique et onboarding non complété
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        email: data.email,
-        password: data.password,
-        nom: data.nom,
-        prenom: data.prenom,
-        telephone: data.telephone,
-        hasCompletedOnboarding: false,
-        onboardingStep: 'restaurant' // Première étape : ajouter un restaurant
-      };
-
-      // Ajouter à la liste des utilisateurs
-      setRegisteredUsers([...registeredUsers, newUser]);
-
-      // Connexion automatique après inscription
+  // Login mutation
+  const loginMutation = useMutation({
+    mutationFn: authApi.login,
+    onSuccess: (data) => {
+      const user = mapApiUserToUser(data.user, onboardingState.hasCompleted);
+      user.hasCompletedOnboarding = onboardingState.hasCompleted;
+      user.onboardingStep = onboardingState.step;
+      setCurrentUser(user);
       setIsAuthenticated(true);
-      setCurrentUser(newUser);
-      
+      queryClient.setQueryData(['auth-user'], data);
+    },
+  });
+
+  // Register mutation
+  const registerMutation = useMutation({
+    mutationFn: authApi.register,
+    onSuccess: (data) => {
+      const user = mapApiUserToUser(data.user, false);
+      user.hasCompletedOnboarding = false;
+      user.onboardingStep = 'restaurant';
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      setOnboardingState({ hasCompleted: false, step: 'restaurant' });
+      queryClient.setQueryData(['auth-user'], data);
+    },
+  });
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: authApi.logout,
+    onSuccess: () => {
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      queryClient.clear();
+    },
+  });
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      await loginMutation.mutateAsync({ email, password });
       return true;
     } catch (error) {
+      console.error('Login error:', error);
       return false;
     }
+  };
+
+  const register = async (data: RegisterData): Promise<boolean> => {
+    try {
+      await registerMutation.mutateAsync({
+        email: data.email,
+        password: data.password,
+        first_name: data.prenom,
+        last_name: data.nom,
+        phone: data.telephone,
+        role: 'venue_owner',
+      });
+      return true;
+    } catch (error) {
+      console.error('Register error:', error);
+      return false;
+    }
+  };
+
+  const logout = () => {
+    logoutMutation.mutate();
   };
 
   const completeOnboarding = () => {
     if (currentUser) {
       const updatedUser = { ...currentUser, hasCompletedOnboarding: true, onboardingStep: 'complete' as const };
       setCurrentUser(updatedUser);
-      setRegisteredUsers(registeredUsers.map(u => u.id === currentUser.id ? updatedUser : u));
+      setOnboardingState({ hasCompleted: true, step: 'complete' });
     }
   };
 
@@ -109,18 +182,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasCompletedOnboarding: step === 'complete'
       };
       setCurrentUser(updatedUser);
-      setRegisteredUsers(registeredUsers.map(u => u.id === currentUser.id ? updatedUser : u));
+      setOnboardingState({ hasCompleted: step === 'complete', step });
     }
-  };
-
-  const logout = () => {
-    setIsAuthenticated(false);
-    setCurrentUser(null);
   };
 
   return (
     <AuthContext.Provider value={{ 
       isAuthenticated, 
+      isLoading,
       login, 
       register, 
       logout, 

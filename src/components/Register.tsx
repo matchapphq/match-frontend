@@ -6,7 +6,7 @@ import { Label } from './ui/label';
 import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 
 interface RegisterProps {
-  onRegister: (data: RegisterData) => boolean;
+  onRegister: (data: RegisterData) => Promise<boolean>;
   onSwitchToLogin: () => void;
 }
 
@@ -36,7 +36,7 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -51,13 +51,16 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      const success = onRegister(formData);
+    try {
+      const success = await onRegister(formData);
       if (!success) {
         setError('Cet email est déjà utilisé');
       }
+    } catch (err) {
+      setError('Erreur lors de la création du compte. Veuillez réessayer.');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
