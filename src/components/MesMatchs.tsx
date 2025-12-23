@@ -2,9 +2,10 @@ import { Calendar, Eye, Plus, Zap, Edit, TrendingUp, Users, ArrowUpDown, ArrowUp
 import { useState } from 'react';
 import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 interface MesMatchsProps {
-  onNavigate?: (page: PageType, matchId?: string) => void;
+  onNavigate?: (page: PageType, matchId?: number) => void;
   defaultFilter?: 'tous' | 'à venir' | 'terminé';
 }
 
@@ -12,10 +13,14 @@ type SortField = 'match' | 'date' | 'heure' | 'statut' | 'places' | null;
 type SortOrder = 'asc' | 'desc' | null;
 
 export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps) {
-  const { matchs } = useAppContext();
+  const { getUserMatchs } = useAppContext();
+  const { currentUser } = useAuth();
   const [filtre, setFiltre] = useState<'tous' | 'à venir' | 'terminé'>(defaultFilter);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
+
+  // Filtrer les matchs pour l'utilisateur connecté
+  const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
 
   const handleProgrammerMatch = () => {
     if (onNavigate) {
@@ -23,20 +28,20 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
     }
   };
 
-  const handleMatchClick = (matchId: string) => {
+  const handleMatchClick = (matchId: number) => {
     if (onNavigate) {
       onNavigate('match-detail', matchId);
     }
   };
 
-  const handleEditMatch = (e: React.MouseEvent, matchId: string) => {
+  const handleEditMatch = (e: React.MouseEvent, matchId: number) => {
     e.stopPropagation();
     if (onNavigate) {
       onNavigate('modifier-match', matchId);
     }
   };
 
-  const handleBoostClick = (e: React.MouseEvent, matchId: string) => {
+  const handleBoostClick = (e: React.MouseEvent, matchId: number) => {
     e.stopPropagation();
     if (onNavigate) {
       onNavigate('booster');

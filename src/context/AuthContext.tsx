@@ -1,87 +1,133 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { authService } from '../services';
-import type { User, LoginRequest, RegisterRequest } from '../services/types';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+export interface User {
+  id: string;
+  email: string;
+  password: string;
+  nom: string;
+  prenom: string;
+  telephone?: string;
+  hasCompletedOnboarding: boolean; // Nouveau : indique si l'utilisateur a finalisé son inscription
+  onboardingStep: 'restaurant' | 'facturation' | 'complete'; // Étape actuelle de l'onboarding
+}
 
 interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
   isAuthenticated: boolean;
-  login: (credentials: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  login: (email: string, password: string) => boolean;
+  register: (data: RegisterData) => boolean;
+  logout: () => void;
+  currentUser: User | null;
+  completeOnboarding: () => void;
+  updateOnboardingStep: (step: 'restaurant' | 'facturation' | 'complete') => void;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  nom: string;
+  prenom: string;
+  telephone: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Données de démonstration - utilisateur test avec onboarding complété
+const mockUser: User = {
+  id: 'user-demo',
+  email: 'demo@match.com',
+  password: 'demo123',
+  nom: 'Demo',
+  prenom: 'Restaurateur',
+  telephone: '01 23 45 67 89',
+  hasCompletedOnboarding: true,
+  onboardingStep: 'complete'
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [registeredUsers, setRegisteredUsers] = useState<User[]>([mockUser]);
 
-  const refreshUser = useCallback(async () => {
+  const login = (email: string, password: string): boolean => {
+    // Vérification dans la liste des utilisateurs enregistrés
+    const user = registeredUsers.find(u => u.email === email && u.password === password);
+    
+    if (user) {
+      setIsAuthenticated(true);
+      setCurrentUser(user);
+      return true;
+    }
+    return false;
+  };
+
+  const register = (data: RegisterData): boolean => {
     try {
-      if (authService.isAuthenticated()) {
-        const userData = await authService.getMe();
-        setUser(userData);
-      } else {
-        setUser(null);
+      // Vérifier si l'email existe déjà
+      const existingUser = registeredUsers.find(u => u.email === data.email);
+      if (existingUser) {
+        return false;
       }
+
+      // Créer le nouvel utilisateur avec un ID unique et onboarding non complété
+      const newUser: User = {
+        id: `user-${Date.now()}`,
+        email: data.email,
+        password: data.password,
+        nom: data.nom,
+        prenom: data.prenom,
+        telephone: data.telephone,
+        hasCompletedOnboarding: false,
+        onboardingStep: 'restaurant' // Première étape : ajouter un restaurant
+      };
+
+      // Ajouter à la liste des utilisateurs
+      setRegisteredUsers([...registeredUsers, newUser]);
+
+      // Connexion automatique après inscription
+      setIsAuthenticated(true);
+      setCurrentUser(newUser);
+      
+      return true;
     } catch (error) {
-      console.error('Failed to refresh user:', error);
-      setUser(null);
+      return false;
     }
-  }, []);
-
-  useEffect(() => {
-    const initAuth = async () => {
-      setIsLoading(true);
-      await refreshUser();
-      setIsLoading(false);
-    };
-
-    initAuth();
-
-    // Listen for logout events from API client
-    const handleLogout = () => {
-      setUser(null);
-    };
-
-    window.addEventListener('auth:logout', handleLogout);
-    return () => window.removeEventListener('auth:logout', handleLogout);
-  }, [refreshUser]);
-
-  const login = async (credentials: LoginRequest) => {
-    const response = await authService.login(credentials);
-    setUser(response.user);
   };
 
-  const register = async (data: RegisterRequest) => {
-    const response = await authService.register(data);
-    setUser(response.user);
+  const completeOnboarding = () => {
+    if (currentUser) {
+      const updatedUser = { ...currentUser, hasCompletedOnboarding: true, onboardingStep: 'complete' as const };
+      setCurrentUser(updatedUser);
+      setRegisteredUsers(registeredUsers.map(u => u.id === currentUser.id ? updatedUser : u));
+    }
   };
 
-  const logout = async () => {
-    try {
-      await authService.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
+  const updateOnboardingStep = (step: 'restaurant' | 'facturation' | 'complete') => {
+    if (currentUser) {
+      const updatedUser = { 
+        ...currentUser, 
+        onboardingStep: step,
+        hasCompletedOnboarding: step === 'complete'
+      };
+      setCurrentUser(updatedUser);
+      setRegisteredUsers(registeredUsers.map(u => u.id === currentUser.id ? updatedUser : u));
     }
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        register,
-        logout,
-        refreshUser,
-      }}
-    >
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      login, 
+      register, 
+      logout, 
+      currentUser,
+      completeOnboarding,
+      updateOnboardingStep
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 
 interface ModifierMatchProps {
-  matchId: string | null;
+  matchId: number | null;
   onBack: () => void;
 }
 
@@ -12,7 +12,7 @@ export function ModifierMatch({ matchId, onBack }: ModifierMatchProps) {
   const match = matchs.find(m => m.id === matchId);
 
   const [formData, setFormData] = useState({
-    restaurantId: match?.restaurantId || '1',
+    restaurantId: match?.restaurantId || 1,
     equipe1: match?.equipe1 || '',
     equipe2: match?.equipe2 || '',
     date: match?.date || '',
@@ -118,7 +118,7 @@ export function ModifierMatch({ matchId, onBack }: ModifierMatchProps) {
             </label>
             <select 
               value={formData.restaurantId}
-              onChange={(e) => setFormData({ ...formData, restaurantId: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, restaurantId: Number(e.target.value) })}
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
             >
               {restaurants.map((resto) => (

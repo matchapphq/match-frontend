@@ -3,13 +3,19 @@ import { SideMenu } from './SideMenu';
 import { Users, Tv, Calendar, Eye, TrendingUp } from 'lucide-react';
 import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 interface DashboardProps {
-  onNavigate: (page: PageType, matchId?: string, restaurantId?: string, filter?: 'tous' | 'à venir' | 'terminé') => void;
+  onNavigate: (page: PageType, matchId?: number, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { matchs, clients, boostsDisponibles } = useAppContext();
+  const { getUserMatchs, getUserClients, boostsDisponibles } = useAppContext();
+  const { currentUser } = useAuth();
+
+  // Filtrer les données pour l'utilisateur connecté
+  const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
+  const clients = currentUser ? getUserClients(currentUser.id) : [];
 
   const matchsAVenir = matchs.filter(m => m.statut === 'à venir');
   const matchsTermines = matchs.filter(m => m.statut === 'terminé');
@@ -70,12 +76,12 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     return Math.round((reservees / total) * 100);
   };
 
-  const handleEditMatch = (e: React.MouseEvent, matchId: string) => {
+  const handleEditMatch = (e: React.MouseEvent, matchId: number) => {
     e.stopPropagation();
     onNavigate('modifier-match', matchId);
   };
 
-  const handleMatchClick = (matchId: string) => {
+  const handleMatchClick = (matchId: number) => {
     onNavigate('match-detail', matchId);
   };
 
@@ -96,7 +102,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       <div className="flex-1">
         <div className="mb-10">
           <h1 className="text-gray-900 mb-3 italic text-[#5a03cf] text-6xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] bg-clip-text text-transparent" style={{ fontStyle: 'italic', fontWeight: '800' }}>
-            Bonjour Jean 👋
+            Bonjour {currentUser?.prenom} 👋
           </h1>
           <p className="text-gray-600 text-xl mb-2">Bienvenue sur votre espace restaurateur Match</p>
           <p className="text-gray-500 text-lg">

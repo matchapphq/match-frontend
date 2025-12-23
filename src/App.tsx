@@ -1,9 +1,6 @@
 import { Dashboard } from './components/Dashboard';
 import { Header } from './components/Header';
 import { useState } from 'react';
-import { Login } from './components/Login';
-import { Register } from './components/Register';
-import { AuthProvider, useAuth } from './context/AuthContext';
 import { ClientsDetail } from './components/details/ClientsDetail';
 import { MatchesDiffusesDetail } from './components/details/MatchesDiffusesDetail';
 import { MatchesAVenirDetail } from './components/details/MatchesAVenirDetail';
@@ -28,7 +25,10 @@ import { CompteNotifications } from './components/compte/CompteNotifications';
 import { CompteSecurite } from './components/compte/CompteSecurite';
 import { CompteAide } from './components/compte/CompteAide';
 import { AppProvider } from './context/AppContext';
-import { BillingHistory } from './components/BillingHistory';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Login } from './components/Login';
+import { Register } from './components/Register';
+import { OnboardingWelcome } from './components/OnboardingWelcome';
 
 export type PageType = 
   | 'dashboard'
@@ -49,7 +49,6 @@ export type PageType =
   | 'restaurant-detail'
   | 'ajouter-restaurant'
   | 'facturation'
-  | 'billing-history'
   | 'match-detail'
   | 'compte-infos'
   | 'compte-parametres'
@@ -57,29 +56,89 @@ export type PageType =
   | 'compte-securite'
   | 'compte-aide';
 
-type AuthPage = 'login' | 'register';
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </AuthProvider>
+  );
+}
 
-function AuthenticatedApp() {
-  const { user, isLoading } = useAuth();
+function AppContent() {
+  const { isAuthenticated, login, register, currentUser } = useAuth();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
-  const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('tous');
+  const [defaultMatchFilter, setDefaultMatchFilter] = useState<string>('');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
-  const [selectedMatchId, setSelectedMatchId] = useState<string>('');
+  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+
+  // Gestion de l'inscription avec redirection vers "ajouter-restaurant"
+  const handleRegister = (data: any) => {
+    const success = register(data);
+    if (success) {
+      // L'utilisateur sera redirigé vers l'écran d'onboarding automatiquement
+      setCurrentPage('ajouter-restaurant');
+    }
+    return success;
+  };
+
+  // Si l'utilisateur n'est pas authentifié, afficher la page de connexion ou d'inscription
+  if (!isAuthenticated) {
+    if (authView === 'register') {
+      return (
+        <Register
+          onRegister={handleRegister}
+          onSwitchToLogin={() => setAuthView('login')}
+        />
+      );
+    }
+    return (
+      <Login
+        onLogin={login}
+        onSwitchToRegister={() => setAuthView('register')}
+      />
+    );
+  }
+
+  // Si l'utilisateur est authentifié mais n'a pas complété son onboarding
+  if (currentUser && !currentUser.hasCompletedOnboarding) {
+    // Afficher l'écran d'onboarding approprié selon l'étape
+    if (currentPage === 'ajouter-restaurant') {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <AjouterRestaurant 
+            onBack={() => setCurrentPage('dashboard')} 
+            onNavigate={setCurrentPage}
+            isOnboarding={true}
+          />
+        </div>
+      );
+    } else if (currentPage === 'facturation') {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <Facturation 
+            onBack={() => setCurrentPage('ajouter-restaurant')} 
+            onNavigate={setCurrentPage}
+            isOnboarding={true}
+          />
+        </div>
+      );
+    } else {
+      // Écran de bienvenue avec bouton pour continuer
+      return (
+        <OnboardingWelcome 
+          onContinue={setCurrentPage}
+          currentStep={currentUser.onboardingStep}
+          userName={currentUser.prenom}
+        />
+      );
+    }
+  }
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page);
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
 
   const renderPage = () => {
     switch (currentPage) {
@@ -96,7 +155,7 @@ function AuthenticatedApp() {
       case 'programmer-match':
         return <ProgrammerMatch onBack={() => setCurrentPage('dashboard')} />;
       case 'modifier-match':
-        return <ModifierMatch matchId={selectedMatchId} onBack={() => setCurrentPage('mes-matchs')} />;
+        return <ModifierMatch onBack={() => setCurrentPage('dashboard')} />;
       case 'mes-avis':
         return <MesAvis onBack={() => setCurrentPage('dashboard')} />;
       case 'liste-matchs':
@@ -118,9 +177,7 @@ function AuthenticatedApp() {
       case 'ajouter-restaurant':
         return <AjouterRestaurant onBack={() => setCurrentPage('mes-restaurants')} onNavigate={setCurrentPage} />;
       case 'facturation':
-        return <Facturation onBack={() => setCurrentPage('dashboard')} />;
-      case 'billing-history':
-        return <BillingHistory onBack={() => setCurrentPage('compte')} />;
+        return <Facturation onBack={() => setCurrentPage('ajouter-restaurant')} onNavigate={setCurrentPage} />;
       case 'match-detail':
         return <MatchDetail onBack={() => setCurrentPage('mes-matchs')} />;
       case 'compte-infos':
@@ -139,64 +196,9 @@ function AuthenticatedApp() {
   };
 
   return (
-    <AppProvider>
-      <div className="min-h-screen bg-gray-50">
-        <Header onNavigate={setCurrentPage} currentPage={currentPage} />
-        {renderPage()}
-      </div>
-    </AppProvider>
+    <div className="min-h-screen bg-gray-50">
+      <Header onNavigate={setCurrentPage} currentPage={currentPage} />
+      {renderPage()}
+    </div>
   );
-}
-
-export default function App() {
-  const [authPage, setAuthPage] = useState<AuthPage>('login');
-
-  return (
-    <AuthProvider>
-      <AppContent 
-        authPage={authPage} 
-        onAuthPageChange={setAuthPage} 
-      />
-    </AuthProvider>
-  );
-}
-
-function AppContent({ 
-  authPage, 
-  onAuthPageChange 
-}: { 
-  authPage: AuthPage; 
-  onAuthPageChange: (page: AuthPage) => void;
-}) {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    if (authPage === 'register') {
-      return (
-        <Register 
-          onSuccess={() => {}} 
-          onLoginClick={() => onAuthPageChange('login')} 
-        />
-      );
-    }
-    return (
-      <Login 
-        onSuccess={() => {}} 
-        onRegisterClick={() => onAuthPageChange('register')} 
-      />
-    );
-  }
-
-  return <AuthenticatedApp />;
 }

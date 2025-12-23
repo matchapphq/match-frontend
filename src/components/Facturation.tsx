@@ -1,11 +1,16 @@
 import { ArrowLeft, CreditCard, Building, MapPin, Lock } from 'lucide-react';
 import { useState } from 'react';
+import { PageType } from '../App';
+import { useAuth } from '../context/AuthContext';
 
 interface FacturationProps {
   onBack: () => void;
+  onNavigate: (page: PageType) => void;
+  isOnboarding?: boolean;
 }
 
-export function Facturation({ onBack }: FacturationProps) {
+export function Facturation({ onBack, onNavigate, isOnboarding = false }: FacturationProps) {
+  const { completeOnboarding } = useAuth();
   const [formData, setFormData] = useState({
     nomRestaurant: '',
     adresse: '',
@@ -18,8 +23,17 @@ export function Facturation({ onBack }: FacturationProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Paiement validé ! Votre restaurant sera bientôt équipé.');
-    // Redirection vers dashboard
+    
+    // Si c'est le parcours d'onboarding, on finalise l'inscription
+    if (isOnboarding) {
+      completeOnboarding();
+      setTimeout(() => {
+        onNavigate('dashboard');
+      }, 1000);
+    } else {
+      alert('Paiement validé !');
+      onNavigate('mes-restaurants');
+    }
   };
 
   return (

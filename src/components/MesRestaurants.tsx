@@ -1,13 +1,18 @@
 import { Plus, MapPin, Star, Users, Edit } from 'lucide-react';
 import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 interface MesRestaurantsProps {
-  onNavigate?: (page: PageType, matchId?: string, restaurantId?: string) => void;
+  onNavigate?: (page: PageType, matchId?: number, restaurantId?: number) => void;
 }
 
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
-  const { restaurants } = useAppContext();
+  const { getUserRestaurants } = useAppContext();
+  const { currentUser } = useAuth();
+
+  // Filtrer les restaurants pour l'utilisateur connecté
+  const restaurants = currentUser ? getUserRestaurants(currentUser.id) : [];
 
   const handleAddRestaurant = () => {
     if (onNavigate) {
@@ -21,7 +26,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
     }
   };
 
-  const handleEditRestaurant = (e: React.MouseEvent, id: string) => {
+  const handleEditRestaurant = (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
     if (onNavigate) {
       onNavigate('modifier-restaurant', undefined, id);

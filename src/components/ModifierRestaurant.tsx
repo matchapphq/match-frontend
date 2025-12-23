@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 
 interface ModifierRestaurantProps {
-  restaurantId: string | null;
+  restaurantId: number | null;
   onBack: () => void;
 }
 
