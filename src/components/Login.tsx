@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, TrendingUp, Users, Calendar, Zap, Star, Check, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
