@@ -141,7 +141,7 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
 
         {/* Footer */}
         <div className="relative z-10 text-sm text-white/60 text-center">
-          © 2024 Match - Tous droits réservés
+          © 2025 Match - Tous droits réservés
         </div>
       </div>
 
