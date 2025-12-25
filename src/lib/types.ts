@@ -131,8 +131,8 @@ export interface Review {
 export interface RegisterRequest {
   email: string;
   password: string;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   phone?: string;
   role: 'venue_owner';
 }

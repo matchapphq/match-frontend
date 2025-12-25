@@ -150,8 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await registerMutation.mutateAsync({
         email: data.email,
         password: data.password,
-        first_name: data.prenom,
-        last_name: data.nom,
+        firstName: data.prenom,
+        lastName: data.nom,
         phone: data.telephone,
         role: 'venue_owner',
       });
