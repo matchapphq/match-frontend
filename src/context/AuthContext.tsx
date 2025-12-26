@@ -76,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }>({ hasCompleted: true, step: 'complete' });
 
   // Check if user is already logged in on mount
+  // If 401 occurs, interceptor will try refresh ONCE automatically
   const { data: authData, isLoading } = useQuery({
     queryKey: ['auth-user'],
     queryFn: authApi.getMe,
