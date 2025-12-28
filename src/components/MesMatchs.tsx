@@ -9,13 +9,14 @@ interface MesMatchsProps {
   defaultFilter?: 'tous' | 'à venir' | 'terminé';
 }
 
-type SortField = 'match' | 'date' | 'heure' | 'statut' | 'places' | null;
+type SortField = 'match' | 'date' | 'heure' | 'statut' | 'places' | 'bar' | null;
 type SortOrder = 'asc' | 'desc' | null;
 
 export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps) {
   const { getUserMatchs } = useAppContext();
   const { currentUser } = useAuth();
   const [filtre, setFiltre] = useState<'tous' | 'à venir' | 'terminé'>(defaultFilter);
+  const [barFilter, setBarFilter] = useState<string>('tous');
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
 
@@ -48,6 +49,9 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
     }
   };
 
+  // Get unique bar names for filter
+  const uniqueBars = [...new Set(matchs.map(m => m.restaurant).filter(Boolean))];
+
   // Calculs dynamiques
   const totalMatchs = matchs.length;
   const moyenneRemplissage = matchs.length > 0
@@ -57,12 +61,12 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
   const stats = [
     { label: 'Total matchs', value: totalMatchs.toString(), icon: Calendar, gradient: 'from-[#5a03cf] to-[#7a23ef]' },
     { label: 'Moyenne de remplissage', value: `${moyenneRemplissage}%`, icon: TrendingUp, gradient: 'from-[#9cff02] to-[#7cdf00]' },
-    { label: "Nombre d'impressions", value: `12.4K`, icon: Eye, gradient: 'from-[#5a03cf] to-[#7a23ef]' },
+    { label: "Nombre d'impressions", value: '—', icon: Eye, gradient: 'from-[#5a03cf] to-[#7a23ef]' },
   ];
 
-  const matchsFiltres = filtre === 'tous' 
-    ? matchs 
-    : matchs.filter(m => m.statut === filtre);
+  const matchsFiltres = matchs
+    .filter(m => filtre === 'tous' || m.statut === filtre)
+    .filter(m => barFilter === 'tous' || m.restaurant === barFilter);
 
   const handleSort = (field: SortField) => {
     let newOrder: SortOrder = 'asc';
@@ -105,6 +109,10 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
       case 'places':
         aVal = a.reservees / a.total;
         bVal = b.reservees / b.total;
+        break;
+      case 'bar':
+        aVal = a.restaurant || '';
+        bVal = b.restaurant || '';
         break;
       default:
         return 0;
@@ -210,6 +218,22 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
           <Eye className="w-4 h-4" />
           Terminés
         </button>
+
+        {/* Bar filter */}
+        {uniqueBars.length > 0 && (
+          <select
+            value={barFilter}
+            onChange={(e) => setBarFilter(e.target.value)}
+            className="px-4 py-2.5 rounded-full border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#5a03cf]"
+          >
+            <option value="tous">Tous les bars</option>
+            {uniqueBars.map((bar) => (
+              <option key={bar} value={bar}>
+                {bar}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -259,11 +283,21 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
                 </th>
                 <th className="px-6 py-4 text-left">
                   <button
+                    onClick={() => handleSort('bar')}
+                    className="flex items-center gap-2 text-gray-700 hover:text-[#5a03cf] transition-colors"
+                    style={{ fontWeight: '600' }}
+                  >
+                    Bar
+                    <SortIcon field="bar" />
+                  </button>
+                </th>
+                <th className="px-6 py-4 text-left">
+                  <button
                     onClick={() => handleSort('places')}
                     className="flex items-center gap-2 text-gray-700 hover:text-[#5a03cf] transition-colors"
                     style={{ fontWeight: '600' }}
                   >
-                    Nombre de places disponibles
+                    Places disponibles
                     <SortIcon field="places" />
                   </button>
                 </th>
@@ -313,6 +347,11 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
                         }`}
                       >
                         {match.statut}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-gray-700" style={{ fontWeight: '500' }}>
+                        {match.restaurant || '—'}
                       </span>
                     </td>
                     <td className="px-6 py-4">

@@ -11,8 +11,9 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   const { getUserRestaurants } = useAppContext();
   const { currentUser } = useAuth();
 
-  // Filtrer les restaurants pour l'utilisateur connecté
-  const restaurants = currentUser ? getUserRestaurants(currentUser.id) : [];
+  // Filtrer les restaurants pour l'utilisateur connecté et exclure ceux déjà payés
+  const allRestaurants = currentUser ? getUserRestaurants(currentUser.id) : [];
+  const restaurants = allRestaurants.filter(r => !r.isPaid);
 
   const handleAddRestaurant = () => {
     if (onNavigate) {

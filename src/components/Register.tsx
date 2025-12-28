@@ -8,6 +8,7 @@ import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png'
 interface RegisterProps {
   onRegister: (data: RegisterData) => Promise<boolean>;
   onSwitchToLogin: () => void;
+  onBackToLanding?: () => void;
 }
 
 export interface RegisterData {
@@ -18,7 +19,7 @@ export interface RegisterData {
   telephone: string;
 }
 
-export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
+export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: RegisterProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -89,13 +90,23 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
           Retour à la connexion
         </button>
 
-        {/* Logo */}
+        {/* Logo - Cliquable pour retour landing */}
         <div className="text-center mb-8">
-          <img 
-            src={logoMatch} 
-            alt="Match" 
-            className="h-16 mx-auto"
-          />
+          {onBackToLanding ? (
+            <button onClick={onBackToLanding} className="hover:opacity-80 transition-opacity">
+              <img 
+                src={logoMatch} 
+                alt="Match" 
+                className="h-16 mx-auto"
+              />
+            </button>
+          ) : (
+            <img 
+              src={logoMatch} 
+              alt="Match" 
+              className="h-16 mx-auto"
+            />
+          )}
         </div>
 
         {/* En-tête */}

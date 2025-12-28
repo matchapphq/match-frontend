@@ -9,9 +9,10 @@ import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png'
 interface LoginProps {
   onLogin: (email: string, password: string) => Promise<boolean>;
   onSwitchToRegister: () => void;
+  onBackToLanding?: () => void;
 }
 
-export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
+export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -88,13 +89,23 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
         </div>
 
         <div className="relative z-10 flex-1 flex flex-col justify-center space-y-12">
-          {/* Logo */}
+          {/* Logo - Cliquable pour retour landing */}
           <div className="mb-8">
-            <img 
-              src={logoMatch} 
-              alt="Match" 
-              className="h-16"
-            />
+            {onBackToLanding ? (
+              <button onClick={onBackToLanding} className="hover:opacity-80 transition-opacity">
+                <img 
+                  src={logoMatch} 
+                  alt="Match" 
+                  className="h-16"
+                />
+              </button>
+            ) : (
+              <img 
+                  src={logoMatch} 
+                  alt="Match" 
+                  className="h-16"
+                />
+            )}
           </div>
 
           {/* Titre accrocheur - Plus en avant */}
@@ -159,12 +170,22 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
 
         <div className="w-full max-w-md space-y-8 relative z-10">
           {/* Logo mobile */}
-          <div className="lg:hidden text-center mb-8">
-            <img 
-              src={logoMatch} 
-              alt="Match" 
-              className="h-16 mx-auto"
-            />
+          <div className="lg:hidden text-center mb-4">
+            {onBackToLanding ? (
+              <button onClick={onBackToLanding} className="hover:opacity-80 transition-opacity">
+                <img 
+                  src={logoMatch} 
+                  alt="Match" 
+                  className="h-12 mx-auto"
+                />
+              </button>
+            ) : (
+              <img 
+                src={logoMatch} 
+                alt="Match" 
+                className="h-12 mx-auto"
+              />
+            )}
           </div>
 
           {/* En-tête */}

@@ -1,4 +1,4 @@
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { PageType } from '../App';
 import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
@@ -74,11 +74,11 @@ export function OnboardingWelcome({ onContinue, currentStep, userName }: Onboard
             <div className="space-y-6">
               {/* Salutation personnalisée */}
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#9cff02] to-[#5a03cf] mb-4">
-                  <Sparkles className="w-8 h-8 text-white" />
+                <div className="text-6xl mb-4">
+                  👋
                 </div>
                 <h2 className="text-3xl text-[#5a03cf] mb-2">
-                  Bienvenue {userName} ! 👋
+                  Bienvenue <span className="text-[#9cff02]">{userName}</span> !
                 </h2>
                 <p className="text-gray-600 text-lg">
                   Vous êtes à quelques étapes de votre premier match

@@ -102,13 +102,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: authApi.login,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       const user = mapApiUserToUser(data.user, onboardingState.hasCompleted);
       user.hasCompletedOnboarding = onboardingState.hasCompleted;
       user.onboardingStep = onboardingState.step;
       setCurrentUser(user);
       setIsAuthenticated(true);
       queryClient.setQueryData(['auth-user'], data);
+      // Refetch /me and all user-related data to ensure everything is fresh
+      await queryClient.invalidateQueries({ queryKey: ['auth-user'] });
+      await queryClient.invalidateQueries({ queryKey: ['my-venues'] });
+      await queryClient.invalidateQueries({ queryKey: ['matches'] });
     },
   });
 

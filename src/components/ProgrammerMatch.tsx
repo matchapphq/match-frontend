@@ -1,25 +1,49 @@
 import { ArrowLeft, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 interface ProgrammerMatchProps {
   onBack: () => void;
 }
 
-export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
-  const [placesDisponibles, setPlacesDisponibles] = useState(30);
-  const maxPlaces = 50;
+// Existing matches will be fetched from API when available
+// For now, this feature is disabled until the API endpoint is ready
 
-  const restaurants = [
-    { id: 1, nom: 'Le Sport Bar' },
-    { id: 2, nom: 'Chez Michel' },
-    { id: 3, nom: 'La Brasserie du Stade' },
-  ];
+export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
+  const { getUserRestaurants } = useAppContext();
+  const { currentUser } = useAuth();
+  
+  const [placesDisponibles, setPlacesDisponibles] = useState(30);
+  const [maxPlaces, setMaxPlaces] = useState(50);
+  const [selectedRestaurant, setSelectedRestaurant] = useState('');
+    
+  // Form fields
+  const [equipe1, setEquipe1] = useState('');
+  const [equipe2, setEquipe2] = useState('');
+  const [date, setDate] = useState('');
+  const [heure, setHeure] = useState('');
+  const [competition, setCompetition] = useState('Ligue 1');
+
+  // Get user's restaurants only
+  const restaurants = currentUser ? getUserRestaurants(currentUser.id).filter(r => !r.isPaid) : [];
 
   const equipes = [
     'PSG', 'OM', 'Lyon', 'Monaco', 'Nice', 'Lille', 'Lens',
     'Real Madrid', 'Barcelona', 'Bayern', 'Dortmund', 'Liverpool',
     'Manchester City', 'Manchester United', 'Arsenal', 'Chelsea'
   ];
+
+  // Update max places when restaurant changes
+  useEffect(() => {
+    if (selectedRestaurant) {
+      const resto = restaurants.find(r => r.id === selectedRestaurant);
+      if (resto) {
+        setMaxPlaces(resto.capaciteMax);
+        setPlacesDisponibles(Math.min(placesDisponibles, resto.capaciteMax));
+      }
+    }
+  }, [selectedRestaurant]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,14 +81,22 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
             <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
               Établissement
             </label>
-            <select className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent">
-              <option value="">Sélectionnez un établissement</option>
-              {restaurants.map((resto) => (
-                <option key={resto.id} value={resto.id}>
-                  {resto.nom}
-                </option>
-              ))}
-            </select>
+            {restaurants.length === 0 ? (
+              <p className="text-gray-500 italic">Aucun établissement disponible. Veuillez d'abord ajouter un restaurant.</p>
+            ) : (
+              <select 
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
+                value={selectedRestaurant}
+                onChange={(e) => setSelectedRestaurant(e.target.value)}
+              >
+                <option value="">Sélectionnez un établissement</option>
+                {restaurants.map((resto) => (
+                  <option key={resto.id} value={resto.id}>
+                    {resto.nom} ({resto.capaciteMax} places)
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -72,7 +104,11 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
               <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
                 Équipe 1
               </label>
-              <select className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent">
+              <select 
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
+                value={equipe1}
+                onChange={(e) => setEquipe1(e.target.value)}
+                              >
                 <option value="">Sélectionnez l&apos;équipe 1</option>
                 {equipes.map((equipe) => (
                   <option key={equipe} value={equipe}>
@@ -85,7 +121,11 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
               <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
                 Équipe 2
               </label>
-              <select className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent">
+              <select 
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
+                value={equipe2}
+                onChange={(e) => setEquipe2(e.target.value)}
+                              >
                 <option value="">Sélectionnez l&apos;équipe 2</option>
                 {equipes.map((equipe) => (
                   <option key={equipe} value={equipe}>
@@ -101,14 +141,18 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
               <label className="block text-gray-700 mb-2">Date du match</label>
               <input
                 type="date"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5a03cf]"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5a03cf] disabled:bg-gray-100"
               />
             </div>
             <div>
               <label className="block text-gray-700 mb-2">Heure du match</label>
               <input
                 type="time"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5a03cf]"
+                value={heure}
+                onChange={(e) => setHeure(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5a03cf] disabled:bg-gray-100"
               />
             </div>
           </div>
@@ -140,12 +184,18 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
 
           <div>
             <label className="block text-gray-700 mb-2">Compétition</label>
-            <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5a03cf]">
+            <select 
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5a03cf] disabled:bg-gray-100"
+              value={competition}
+              onChange={(e) => setCompetition(e.target.value)}
+                          >
               <option>Ligue 1</option>
               <option>Ligue des Champions</option>
               <option>Coupe de France</option>
               <option>Premier League</option>
               <option>La Liga</option>
+              <option>NBA</option>
+              <option>Six Nations</option>
               <option>Autre</option>
             </select>
           </div>

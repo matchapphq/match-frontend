@@ -10,22 +10,21 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { getUserMatchs, getUserClients, boostsDisponibles } = useAppContext();
+  const { getUserMatchs, customerStats, boostsDisponibles } = useAppContext();
   const { currentUser } = useAuth();
 
   // Filtrer les données pour l'utilisateur connecté
   const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
-  const clients = currentUser ? getUserClients(currentUser.id) : [];
 
   const matchsAVenir = matchs.filter(m => m.statut === 'à venir');
   const matchsTermines = matchs.filter(m => m.statut === 'terminé');
 
-  // Données mockées pour les statistiques
+  // Statistiques basées sur les données réelles de l'API
   const stats = [
     {
       id: 'clients-detail' as PageType,
       title: 'Clients',
-      value: clients.length.toString(),
+      value: customerStats.customerCount.toString(),
       subtitle: '30 derniers jours',
       icon: Users,
       color: 'bg-white',
@@ -61,8 +60,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     {
       id: 'vues-detail' as PageType,
       title: 'Vues',
-      value: '1 453',
-      subtitle: 'Ce mois-ci',
+      value: '—',
+      subtitle: 'Bientôt disponible',
       icon: Eye,
       color: 'bg-white',
       textColor: 'text-[#5a03cf]',
@@ -101,12 +100,12 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       {/* Zone principale des statistiques */}
       <div className="flex-1">
         <div className="mb-10">
-          <h1 className="text-gray-900 mb-3 italic text-[#5a03cf] text-6xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] bg-clip-text text-transparent" style={{ fontStyle: 'italic', fontWeight: '800' }}>
-            Bonjour {currentUser?.prenom} 👋
+          <h1 className="text-gray-900 mb-3 italic text-6xl" style={{ fontStyle: 'italic', fontWeight: '800' }}>
+            <span className="text-[#5a03cf]">Bonjour</span> <span className="text-[#9cff02]">{currentUser?.prenom}</span> 👋
           </h1>
           <p className="text-gray-600 text-xl mb-2">Bienvenue sur votre espace restaurateur Match</p>
           <p className="text-gray-500 text-lg">
-            Vos établissements ont accueilli <span className="text-[#5a03cf]" style={{ fontWeight: '700' }}>{clients.length} clients</span> ces 30 derniers jours.
+            Vos établissements ont accueilli <span className="text-[#5a03cf]" style={{ fontWeight: '700' }}>{customerStats.customerCount} clients</span> ces 30 derniers jours.
           </p>
         </div>
 

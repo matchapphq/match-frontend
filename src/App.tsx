@@ -29,6 +29,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { OnboardingWelcome } from './components/OnboardingWelcome';
+import { LandingPage } from './components/LandingPage';
+import { ReferralPage } from './components/ReferralPage';
 
 export type PageType = 
   | 'dashboard'
@@ -71,7 +73,7 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<string>('');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
-  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+  const [authView, setAuthView] = useState<'landing' | 'login' | 'register' | 'referral'>('landing');
 
   // Gestion de l'inscription avec redirection vers "ajouter-restaurant"
   const handleRegister = async (data: any): Promise<boolean> => {
@@ -83,13 +85,30 @@ function AppContent() {
     return success;
   };
 
-  // Si l'utilisateur n'est pas authentifié, afficher la page de connexion ou d'inscription
+  // Si l'utilisateur n'est pas authentifié, afficher la landing page, connexion ou inscription
   if (!isAuthenticated) {
+    if (authView === 'referral') {
+      return (
+        <ReferralPage 
+          onBackToLanding={() => setAuthView('landing')}
+          onGoToLogin={() => setAuthView('login')}
+        />
+      );
+    }
+    if (authView === 'landing') {
+      return (
+        <LandingPage 
+          onGetStarted={() => setAuthView('login')}
+          onReferral={() => setAuthView('referral')}
+        />
+      );
+    }
     if (authView === 'register') {
       return (
         <Register
           onRegister={handleRegister}
           onSwitchToLogin={() => setAuthView('login')}
+          onBackToLanding={() => setAuthView('landing')}
         />
       );
     }
@@ -97,6 +116,7 @@ function AppContent() {
       <Login
         onLogin={login}
         onSwitchToRegister={() => setAuthView('register')}
+        onBackToLanding={() => setAuthView('landing')}
       />
     );
   }
