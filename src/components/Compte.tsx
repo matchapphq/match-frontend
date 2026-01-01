@@ -48,19 +48,25 @@ export function Compte({ onNavigate }: CompteProps) {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      {/* 5️⃣ Header de la page */}
-      <div className="mb-12">
+      {/* Header de la page */}
+      <div className="mb-8">
         <h1 className="text-5xl italic mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
           Mon compte
         </h1>
-        <p className="text-lg text-gray-700">Gérez vos informations et paramètres</p>
+        <p className="text-gray-600">Gérez vos informations et paramètres</p>
       </div>
 
-      {/* 6️⃣ Bloc utilisateur (avatar) */}
-      <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-6 mb-8">
+      {/* Bloc utilisateur (avatar) */}
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl border-2 border-transparent bg-clip-padding p-6 mb-8"
+        style={{
+          backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #9cff02 0%, #5a03cf 100%)',
+          backgroundOrigin: 'border-box',
+          backgroundClip: 'padding-box, border-box',
+        }}
+      >
         <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#5a03cf] to-[#9cff02] flex items-center justify-center shadow-md">
-            <span className="text-white text-2xl" style={{ fontWeight: '700' }}>
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#5a03cf] to-[#9cff02] flex items-center justify-center shadow-md">
+            <span className="text-white text-xl" style={{ fontWeight: '700' }}>
               {currentUser?.prenom?.[0]}{currentUser?.nom?.[0]}
             </span>
           </div>
@@ -73,20 +79,24 @@ export function Compte({ onNavigate }: CompteProps) {
         </div>
       </div>
 
-      {/* 3️⃣ Cards des sections - style liquid glass uniforme */}
-      <div className="space-y-3 mb-8">
+      {/* Cards des sections */}
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl border-2 border-transparent bg-clip-padding mb-8 divide-y divide-gray-200/50"
+        style={{
+          backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #9cff02 0%, #5a03cf 100%)',
+          backgroundOrigin: 'border-box',
+          backgroundClip: 'padding-box, border-box',
+        }}
+      >
         {menuSections.map((section, index) => (
           <button
             key={index}
             onClick={() => onNavigate && onNavigate(section.page)}
-            className="w-full bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-5 hover:border-gray-300/60 transition-all text-left"
+            className="w-full p-5 hover:bg-gray-50/50 transition-all text-left first:rounded-t-2xl last:rounded-b-2xl"
           >
-            <div>
-              <p className="text-lg mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-                {section.label}
-              </p>
-              <p className="text-gray-600 text-sm">{section.description}</p>
-            </div>
+            <p className="text-lg mb-1 italic" style={{ fontWeight: '600', color: '#5a03cf' }}>
+              {section.label}
+            </p>
+            <p className="text-gray-600 text-sm">{section.description}</p>
           </button>
         ))}
       </div>

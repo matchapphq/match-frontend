@@ -1,4 +1,4 @@
-import { Plus, MapPin, Star, Users, Edit, Building2 } from 'lucide-react';
+import { Plus, MapPin, Star, Eye, Edit2, BarChart3, Users } from 'lucide-react';
 import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -39,10 +39,6 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
     ? (restaurants.reduce((acc, r) => acc + r.note, 0) / restaurants.length).toFixed(1)
     : '0.0';
 
-  const stats = [
-    { label: 'Nombre de lieu(x)', value: totalRestaurants.toString(), icon: Building2, gradient: 'from-[#5a03cf] to-[#7a23ef]' },
-    { label: 'Note moyenne de mes établissements', value: noteMoyenne, icon: Star, gradient: 'from-[#9cff02] to-[#7cdf00]' },
-  ];
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -54,35 +50,53 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
             <h1 className="text-gray-900 italic text-5xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
               Mes lieux
             </h1>
-            <button
-              onClick={handleAddRestaurant}
-              className="px-6 py-3 bg-gradient-to-r from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-full hover:shadow-lg transition-all flex items-center gap-2 italic"
-              style={{ fontWeight: '700' }}
-            >
-              <Plus className="w-5 h-5" />
-              Ajouter un restaurant
-            </button>
+            <div className="group relative">
+              <button
+                onClick={handleAddRestaurant}
+                className="px-6 py-3 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm"
+                style={{ fontWeight: '600' }}
+              >
+                + Ajouter un restaurant
+              </button>
+              <span className="absolute right-0 top-full mt-2 px-3 py-2 bg-gray-900/90 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap backdrop-blur-sm">
+                Ajoutez un nouveau lieu et commencez à diffuser des matchs
+              </span>
+            </div>
           </div>
 
-          {/* Statistiques */}
+          {/* KPI globaux */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {stats.map((stat, index) => {
-              return (
-                <div
-                  key={index}
-                  className="relative p-[2px] rounded-2xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf]"
-                >
-                  <div className="bg-white rounded-2xl p-6 h-full flex flex-col justify-center">
-                    <p className="text-6xl italic bg-gradient-to-r from-[#9cff02] to-[#5a03cf] bg-clip-text text-transparent mb-2" style={{ fontWeight: '800' }}>
-                      {stat.value}
-                    </p>
-                    <p className="text-gray-600 text-sm" style={{ fontWeight: '500' }}>
-                      {stat.label}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+            <div 
+              className="bg-white/70 backdrop-blur-xl rounded-xl border-2 border-transparent bg-clip-padding p-6 hover:scale-[1.02] transition-all cursor-pointer"
+              style={{
+                backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #9cff02 0%, #5a03cf 100%)',
+                backgroundOrigin: 'border-box',
+                backgroundClip: 'padding-box, border-box',
+              }}
+            >
+              <p className="text-6xl italic mb-2" style={{ fontWeight: '700', color: '#9cff02' }}>
+                {totalRestaurants}
+              </p>
+              <p className="text-gray-700" style={{ fontWeight: '600' }}>
+                Nombre de lieu(x)
+              </p>
+            </div>
+
+            <div 
+              className="bg-white/70 backdrop-blur-xl rounded-xl border-2 border-transparent bg-clip-padding p-6 transition-all"
+              style={{
+                backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #9cff02 0%, #5a03cf 100%)',
+                backgroundOrigin: 'border-box',
+                backgroundClip: 'padding-box, border-box',
+              }}
+            >
+              <p className="text-6xl italic mb-2" style={{ fontWeight: '700', color: '#9cff02' }}>
+                {noteMoyenne}
+              </p>
+              <p className="text-gray-700" style={{ fontWeight: '600' }}>
+                Note moyenne de mes établissements
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -128,7 +142,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
                 onClick={(e) => handleEditRestaurant(e, restaurant.id)}
                 className="absolute top-6 right-6 bg-white/90 backdrop-blur-sm p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#9cff02] hover:text-[#5a03cf]"
               >
-                <Edit className="w-5 h-5" />
+                <Edit2 className="w-5 h-5" />
               </button>
             </div>
           </div>

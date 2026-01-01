@@ -86,7 +86,7 @@ export default function App() {
 function AppContent() {
   const { isAuthenticated, login, register, currentUser } = useAuth();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
-  const [defaultMatchFilter, setDefaultMatchFilter] = useState<string>('');
+  const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('à venir');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
   const [authView, setAuthView] = useState<'landing' | 'login' | 'register' | 'referral'>('landing');
   
