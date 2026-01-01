@@ -29,7 +29,7 @@ export function ReferralPage({ onBackToLanding, onGoToLogin }: ReferralPageProps
     {
       icon: Gift,
       titre: '1 mois offert',
-      description: 'Pour chaque parrainage réussi, bénéficiez d\'un mois d\'abonnement gratuit'
+      description: "Pour chaque parrainage réussi, bénéficiez d'un mois d'abonnement gratuit"
     },
     {
       icon: Gift,
@@ -52,7 +52,7 @@ export function ReferralPage({ onBackToLanding, onGoToLogin }: ReferralPageProps
     {
       icon: Gift,
       titre: 'Accès prioritaire',
-      description: 'Bénéficiez d\'un accès prioritaire aux événements sportifs dans vos lieux préférés'
+      description: "Bénéficiez d'un accès prioritaire aux événements sportifs dans vos lieux préférés"
     },
     {
       icon: Gift,
@@ -98,8 +98,29 @@ export function ReferralPage({ onBackToLanding, onGoToLogin }: ReferralPageProps
       {/* Hero Section */}
       <section className="relative z-10 px-6 md:px-8 py-8 md:py-12">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Sélecteur de mode de parrainage - déplacé en haut */}
-          <div className="flex justify-center gap-4 mb-8">
+          {/* Titre principal de la page */}
+          <div className="mb-8">
+            <h1 className="text-5xl md:text-6xl text-gray-900 italic mb-6" style={{ fontWeight: '800' }}>
+              <span className="bg-gradient-to-r from-[#9cff02] to-[#5a03cf] bg-clip-text text-transparent">
+                Parrainez un lieu
+              </span>
+            </h1>
+            
+            {/* Bandeau informatif 30€ */}
+            <div className="bg-gradient-to-r from-[#9cff02] to-[#5a03cf] rounded-xl p-[2px] max-w-3xl mx-auto shadow-lg">
+              <div className="bg-white rounded-xl p-5">
+                <div className="flex items-center justify-center gap-3">
+                  <Gift className="w-8 h-8 flex-shrink-0" style={{ color: '#5a03cf' }} />
+                  <p className="text-base md:text-lg text-gray-900 text-center leading-snug">
+                    Pour chaque établissement qui rejoint Match, recevez <span style={{ fontWeight: '700', color: '#5a03cf' }}>30€ de bon d'achat</span> à utiliser sur l'application !
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sélecteur de mode de parrainage */}
+          <div className="flex justify-center gap-4 mb-10">
             <Button
               onClick={() => {
                 setReferralMode('particulier');
@@ -128,91 +149,89 @@ export function ReferralPage({ onBackToLanding, onGoToLogin }: ReferralPageProps
             </Button>
           </div>
 
-          {/* Mise en avant du gain 30€ */}
-          <div className="bg-gradient-to-r from-[#9cff02] to-[#5a03cf] rounded-2xl p-8 mb-8 max-w-3xl mx-auto shadow-2xl">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <Gift className="w-12 h-12 text-white" />
-              <h2 className="text-2xl md:text-3xl text-white italic" style={{ fontWeight: '800' }}>
-                Gagnez 30€ de bon d'achat !
+          {/* Formulaire rapide avec effet liquid glass renforcé */}
+          <div className="bg-white/70 backdrop-blur-2xl rounded-3xl shadow-2xl p-8 border border-white/40 max-w-2xl mx-auto mb-8 relative overflow-hidden">
+            {/* Effet de lumière d'arrière-plan */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#9cff02]/5 to-[#5a03cf]/5 opacity-50"></div>
+            
+            <div className="relative z-10">
+              <h2 className="text-2xl md:text-3xl mb-6 italic" style={{ fontWeight: '700' }}>
+                <span className="bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] bg-clip-text text-transparent">
+                  Formulaire de parrainage
+                </span>
               </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quickFirstName" className="text-gray-700 text-left block">
+                    Mon prénom *
+                  </Label>
+                  <Input
+                    id="quickFirstName"
+                    type="text"
+                    placeholder="Marie"
+                    className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white/90 backdrop-blur-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="quickLastName" className="text-gray-700 text-left block">
+                    Mon nom *
+                  </Label>
+                  <Input
+                    id="quickLastName"
+                    type="text"
+                    placeholder="Dupont"
+                    className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white/90 backdrop-blur-sm"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="quickEmail" className="text-gray-700 text-left block">
+                    Mon adresse email (utilisée sur Match) *
+                  </Label>
+                  <Input
+                    id="quickEmail"
+                    type="email"
+                    placeholder="marie.dupont@example.com"
+                    className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white/90 backdrop-blur-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="quickRestaurantName" className="text-gray-700 text-left block">
+                    Nom de l'établissement *
+                  </Label>
+                  <Input
+                    id="quickRestaurantName"
+                    type="text"
+                    placeholder="Le Sport Bar"
+                    className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white/90 backdrop-blur-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="quickSiret" className="text-gray-700 text-left block">
+                    Numéro de SIRET *
+                  </Label>
+                  <Input
+                    id="quickSiret"
+                    type="text"
+                    placeholder="123 456 789 00012"
+                    className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white/90 backdrop-blur-sm"
+                  />
+                </div>
+              </div>
+
+              <Button
+                className="w-full mt-6 bg-gradient-to-r from-[#9cff02] to-[#5a03cf] hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all h-12 group"
+              >
+                <span className="flex items-center justify-center gap-2" style={{ fontWeight: '700' }}>
+                  Envoyer ma recommandation
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </Button>
             </div>
-            <p className="text-lg text-white/90 text-center leading-relaxed">
-              Pour chaque bar ou restaurant que vous parrainez et qui rejoint Match, recevez <span style={{ fontWeight: '700' }}>30€ de bon d'achat</span> à utiliser directement sur l'application Match pour réserver vos matchs préférés !
-            </p>
-          </div>
-
-          {/* Formulaire rapide */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 border-2 border-[#9cff02] max-w-2xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="quickFirstName" className="text-gray-700 text-left block">
-                  Mon prénom *
-                </Label>
-                <Input
-                  id="quickFirstName"
-                  type="text"
-                  placeholder="Marie"
-                  className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="quickLastName" className="text-gray-700 text-left block">
-                  Mon nom *
-                </Label>
-                <Input
-                  id="quickLastName"
-                  type="text"
-                  placeholder="Dupont"
-                  className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white"
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="quickEmail" className="text-gray-700 text-left block">
-                  Mon adresse email (utilisée sur Match) *
-                </Label>
-                <Input
-                  id="quickEmail"
-                  type="email"
-                  placeholder="marie.dupont@example.com"
-                  className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="quickRestaurantName" className="text-gray-700 text-left block">
-                  Nom de l'établissement *
-                </Label>
-                <Input
-                  id="quickRestaurantName"
-                  type="text"
-                  placeholder="Le Sport Bar"
-                  className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="quickSiret" className="text-gray-700 text-left block">
-                  Numéro de SIRET *
-                </Label>
-                <Input
-                  id="quickSiret"
-                  type="text"
-                  placeholder="123 456 789 00012"
-                  className="h-11 border-2 border-gray-300 focus:border-[#5a03cf] focus:ring-[#5a03cf]/20 bg-white"
-                />
-              </div>
-            </div>
-
-            <Button
-              className="w-full mt-6 bg-gradient-to-r from-[#9cff02] to-[#5a03cf] hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all h-12 group"
-            >
-              <span className="flex items-center justify-center gap-2" style={{ fontWeight: '700' }}>
-                Envoyer ma recommandation
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </span>
-            </Button>
           </div>
         </div>
       </section>

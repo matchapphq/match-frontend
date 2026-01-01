@@ -1,31 +1,59 @@
 import { StatCard } from './StatCard';
-import { SideMenu } from './SideMenu';
-import { Users, Tv, Calendar, Eye, TrendingUp } from 'lucide-react';
+import { Users, Tv, Calendar, Eye, TrendingUp, Plus } from 'lucide-react';
 import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { useState } from 'react';
 
 interface DashboardProps {
-  onNavigate: (page: PageType, matchId?: string | number, restaurantId?: string | number, filter?: 'tous' | 'à venir' | 'terminé') => void;
+  onNavigate: (page: PageType, matchId?: number, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { getUserMatchs, customerStats, boostsDisponibles } = useAppContext();
+  const { getUserMatchs, getUserClients, boostsDisponibles } = useAppContext();
   const { currentUser } = useAuth();
+  const [clientFilter, setClientFilter] = useState<'tous' | 'en attente' | 'confirmé'>('tous');
+  const [periodFilter, setPeriodFilter] = useState<'7j' | '15j' | '1m' | '3m' | '6m' | '1a'>('7j');
 
   // Filtrer les données pour l'utilisateur connecté
   const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
+  const allClients = currentUser ? getUserClients(currentUser.id) : [];
+
+  // Ajouter des statuts aux clients
+  const clientsWithStatus = allClients.map((client, index) => ({
+    ...client,
+    statut: (index < 2 ? 'en attente' : 'confirmé') as 'confirmé' | 'en attente' | 'refusé',
+    email: `${client.prenom.toLowerCase()}.${client.nom.toLowerCase()}@email.fr`,
+    telephone: '06 12 34 56 78',
+    restaurant: 'Le Sport Bar'
+  }));
+
+  const clients = clientFilter === 'tous' 
+    ? clientsWithStatus 
+    : clientsWithStatus.filter(c => c.statut === clientFilter);
 
   const matchsAVenir = matchs.filter(m => m.statut === 'à venir');
   const matchsTermines = matchs.filter(m => m.statut === 'terminé');
+  const clientsEnAttente = clientsWithStatus.filter(c => c.statut === 'en attente');
 
-  // Statistiques basées sur les données réelles de l'API
+  const getPeriodLabel = () => {
+    switch(periodFilter) {
+      case '7j': return '7 derniers jours';
+      case '15j': return '15 derniers jours';
+      case '1m': return '30 derniers jours';
+      case '3m': return '3 derniers mois';
+      case '6m': return '6 derniers mois';
+      case '1a': return '1 an';
+      default: return '7 derniers jours';
+    }
+  };
+
   const stats = [
     {
       id: 'clients-detail' as PageType,
       title: 'Clients',
-      value: customerStats.customerCount.toString(),
-      subtitle: '30 derniers jours',
+      value: allClients.length.toString(),
+      subtitle: getPeriodLabel(),
       icon: Users,
       color: 'bg-white',
       textColor: 'text-[#5a03cf]',
@@ -37,7 +65,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       id: 'mes-matchs' as PageType,
       title: 'Matchs diffusés',
       value: matchsTermines.length.toString(),
-      subtitle: '30 derniers jours',
+      subtitle: getPeriodLabel(),
       icon: Tv,
       color: 'bg-gradient-to-br from-[#9cff02]/20 to-[#7cdf00]/20',
       textColor: 'text-[#5a03cf]',
@@ -60,8 +88,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     {
       id: 'vues-detail' as PageType,
       title: 'Vues',
-      value: '—',
-      subtitle: 'Bientôt disponible',
+      value: '1 453',
+      subtitle: getPeriodLabel(),
       icon: Eye,
       color: 'bg-white',
       textColor: 'text-[#5a03cf]',
@@ -75,44 +103,74 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     return Math.round((reservees / total) * 100);
   };
 
-  const handleEditMatch = (e: React.MouseEvent, matchId: string) => {
+  // Fonction pour calculer la couleur du cercle de remplissage (vert → violet)
+  const getCircleGradient = (percentage: number) => {
+    // L'anneau affiche toujours un dégradé vert → violet sur la portion remplie
+    return `conic-gradient(from 0deg, #9cff02 0%, #5a03cf ${percentage}%, transparent ${percentage}%)`;
+  };
+
+  const handleEditMatch = (e: React.MouseEvent, matchId: number) => {
     e.stopPropagation();
     onNavigate('modifier-match', matchId);
   };
 
-  const handleMatchClick = (matchId: string) => {
+  const handleMatchClick = (matchId: number) => {
     onNavigate('match-detail', matchId);
   };
 
   const handleBoostClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onNavigate('booster');
-    setTimeout(() => {
-      const boostSection = document.getElementById('boost-top');
-      if (boostSection) {
-        boostSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
   };
 
   return (
-    <div className="flex min-h-screen gap-8 p-8">
-      {/* Zone principale des statistiques */}
-      <div className="flex-1">
-        <div className="mb-10">
-          <h1 className="text-gray-900 mb-3 italic text-6xl" style={{ fontStyle: 'italic', fontWeight: '800' }}>
-            <span className="text-[#5a03cf]">Bonjour</span> <span className="text-[#9cff02]">{currentUser?.prenom}</span> 👋
-          </h1>
-          <p className="text-gray-600 text-xl mb-2">Bienvenue sur votre espace restaurateur Match</p>
-          <p className="text-gray-500 text-lg">
-            Vos établissements ont accueilli <span className="text-[#5a03cf]" style={{ fontWeight: '700' }}>{customerStats.customerCount} clients</span> ces 30 derniers jours.
-          </p>
+    <div className="min-h-screen p-8">
+      {/* En-tête avec salutation centrée */}
+      <div className="flex flex-col items-center justify-center mb-12">
+        <p className="text-gray-900 text-2xl mb-2" style={{ fontWeight: '600' }}>Bonjour</p>
+        <h1 className="text-6xl mb-6 italic bg-gradient-to-r from-[#5a03cf] to-[#9cff02] bg-clip-text text-transparent" style={{ fontWeight: '800' }}>
+          {currentUser?.prenom}
+        </h1>
+      </div>
+
+      {/* Tableau de bord avec bouton programmer et sélecteur de période */}
+      <div className="border-2 border-gray-300/60 rounded-3xl p-8 mb-12 bg-white/20 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-6">
+            <h2 className="text-5xl" style={{ fontWeight: '800', color: '#5a03cf' }}>
+              Tableau de bord
+            </h2>
+            
+            {/* Menu déroulant pour la période */}
+            <select
+              value={periodFilter}
+              onChange={(e) => setPeriodFilter(e.target.value as any)}
+              className="px-6 py-3 bg-gradient-to-r from-[#5a03cf]/5 via-white/10 to-[#9cff02]/5 backdrop-blur-2xl border-2 border-black/15 rounded-3xl text-gray-700 cursor-pointer hover:border-[#5a03cf] transition-all shadow-xl"
+              style={{ fontWeight: '600' }}
+            >
+              <option value="7j">7 derniers jours</option>
+              <option value="15j">15 derniers jours</option>
+              <option value="1m">1 mois</option>
+              <option value="3m">3 mois</option>
+              <option value="6m">6 mois</option>
+              <option value="1a">1 an</option>
+            </select>
+          </div>
+          
+          {/* Bouton Programmer un match */}
+          <button
+            onClick={() => onNavigate('programmer-match')}
+            className="px-6 py-2.5 bg-gradient-to-r from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-full hover:shadow-2xl transition-all shadow-lg flex items-center gap-2 relative group"
+            style={{ fontWeight: '800' }}
+          >
+            {/* Bordure dégradée au survol */}
+            <div className="absolute inset-0 p-[2px] rounded-full bg-gradient-to-r from-[#9cff02] to-[#5a03cf] opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
+            <Plus className="w-4 h-4" />
+            Programmer un match
+          </button>
         </div>
 
-        <h2 className="text-gray-900 mb-6 text-3xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
-          Tableau de bord
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => (
             <StatCard 
               key={index} 
@@ -127,20 +185,28 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             />
           ))}
         </div>
+      </div>
 
-        {/* Section Prochains Matchs */}
-        <div>
-          <h2 className="text-gray-900 mb-6 text-3xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
-            Vos prochains matchs
+      {/* Section Prochains Matchs */}
+      <div className="border-2 border-gray-300/60 rounded-3xl p-8 mb-12 bg-white/20 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-5xl" style={{ fontWeight: '800', color: '#5a03cf' }}>
+            Prochains matchs
           </h2>
-          <div className="space-y-3">
-            {matchsAVenir.slice(0, 5).map((match) => {
-              const percentage = getPercentage(match.reservees, match.total);
-              return (
-                <div
-                  key={match.id}
-                  className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-5 hover:shadow-lg transition-all"
-                >
+          <button
+            onClick={() => onNavigate('mes-matchs', undefined, undefined, 'à venir')}
+            className="px-6 py-2.5 bg-gradient-to-r from-[5a03cf]/5 via-white/10 to-[9cff02]/5 backdrop-blur-2xl border-2 border-black/15 rounded-3xl text-gray-700 hover:border-[#5a03cf] transition-all shadow-xl"
+            style={{ fontWeight: '600' }}
+          >
+            Voir tout
+          </button>
+        </div>
+        <div className="space-y-3">
+          {matchsAVenir.slice(0, 3).map((match) => {
+            const percentage = getPercentage(match.reservees, match.total);
+            return (
+              <div key={match.id} className="relative p-[2px] rounded-xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf]">
+                <div className="bg-white rounded-xl shadow-sm p-5 hover:shadow-lg transition-all">
                   <div className="flex items-center justify-between gap-6">
                     <button
                       onClick={() => handleMatchClick(match.id)}
@@ -157,7 +223,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                       </div>
                     </button>
                     
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <div className="text-center">
                         <p className="text-gray-600 text-sm mb-1">Places</p>
                         <p className="text-gray-900" style={{ fontWeight: '600' }}>
@@ -169,7 +235,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                         <div
                           className="absolute inset-0 rounded-full"
                           style={{
-                            background: `conic-gradient(#9cff02 ${percentage}%, transparent ${percentage}%)`,
+                            background: getCircleGradient(percentage),
                           }}
                         />
                         <div className="absolute inset-1 bg-white rounded-full" />
@@ -188,7 +254,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                         </button>
                         <button 
                           onClick={(e) => handleBoostClick(e)}
-                          className="px-5 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white rounded-full hover:shadow-lg transition-all flex items-center gap-2 italic"
+                          className="px-5 py-2.5 bg-gradient-to-r from-[#9cff02] to-[#5a03cf] text-white rounded-full hover:shadow-lg transition-all flex items-center gap-2 italic"
                         >
                           <TrendingUp className="w-4 h-4" />
                           Booster
@@ -197,15 +263,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
-
-      {/* Menu latéral à droite avec effet glassmorphism */}
-      <div className="w-80">
-        <SideMenu onNavigate={onNavigate} />
       </div>
     </div>
   );

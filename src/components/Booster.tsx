@@ -1,19 +1,28 @@
 import { ArrowLeft, TrendingUp, Zap, Users, Bell, Gift, Sparkles, ChevronDown } from 'lucide-react';
-import { STATS } from '../data/mockData';
+import { useAppContext } from '../context/AppContext';
+import { PageType } from '../App';
 
 interface BoosterProps {
   onBack: () => void;
   onNavigate?: (page: PageType) => void;
 }
 
-// Données mockées pour les matchs boostés
-const matchsBoostes = [
+// Note: Boost history data is not yet available from API
+// This will use mock data until boost API endpoints are implemented
+const mockMatchsBoostes = [
   { id: 1, equipe1: 'PSG', equipe2: 'OM', date: '15/11/2024', heure: '21:00', resultat: '+87 vues, +24 réservations' },
   { id: 2, equipe1: 'Real Madrid', equipe2: 'Barcelona', date: '10/11/2024', heure: '20:00', resultat: '+142 vues, +31 réservations' },
   { id: 3, equipe1: 'Bayern', equipe2: 'Dortmund', date: '05/11/2024', heure: '18:45', resultat: '+95 vues, +18 réservations' },
 ];
 
 export function Booster({ onBack, onNavigate }: BoosterProps) {
+  const { stats } = useAppContext();
+  
+  // Use stats from context (API data when available, mock fallback otherwise)
+  const boostsDisponibles = stats.boostsDisponibles;
+  const matchsBoosted = stats.matchsBoosted;
+  const matchsBoostes = mockMatchsBoostes; // TODO: Replace with API data when available
+
   const handleParrainer = () => {
     if (onNavigate) {
       onNavigate('parrainage');
@@ -40,70 +49,66 @@ export function Booster({ onBack, onNavigate }: BoosterProps) {
         Retour au tableau de bord
       </button>
 
+      {/* 1️⃣ En-tête "Booster mon match" - sans icône, titre plus gros */}
       <div id="boost-top" className="mb-8">
-        <div className="flex items-center gap-4 mb-2">
-          <div className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] p-3 rounded-xl">
-            <Zap className="w-8 h-8 text-[#5a03cf]" />
-          </div>
-          <div>
-            <h1 className="text-gray-900 italic text-4xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
-              Booster mon match
-            </h1>
-            <p className="text-gray-600 text-lg">Maximisez la visibilité de vos matchs</p>
-          </div>
+        <div className="mb-2">
+          <h1 className="text-5xl italic mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
+            Booster mon match
+          </h1>
+          <p className="text-lg text-gray-700">Maximisez la visibilité de vos matchs</p>
         </div>
       </div>
 
-      {/* Statistiques des boosts EN PREMIER */}
+      {/* 2️⃣ Statistiques des boosts - transformées en liquid glass */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-2xl shadow-2xl border-4 border-[#9cff02] p-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <p className="text-gray-600 mb-2 text-lg">Boosts disponibles</p>
-              <p className="text-6xl italic text-[#5a03cf]" style={{ fontWeight: '800' }}>
-                {STATS.boostsDisponibles}
+        {/* Boosts disponibles */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-md border border-gray-200/50 p-8 relative overflow-hidden">
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#9cff02]/10 to-[#5a03cf]/10 pointer-events-none"></div>
+          
+          <div className="relative z-10">
+            <div className="mb-6">
+              <p className="text-gray-700 mb-2 text-lg">Boosts disponibles</p>
+              <p className="text-6xl italic bg-gradient-to-r from-[#9cff02] to-[#5a03cf] bg-clip-text text-transparent" style={{ fontWeight: '800' }}>
+                {boostsDisponibles}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] p-5 rounded-2xl">
-              <Zap className="w-12 h-12 text-[#5a03cf]" />
-            </div>
+            <button
+              onClick={handleBoosterMatch}
+              className="w-full bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white py-4 rounded-xl hover:opacity-90 transition-all italic text-lg shadow-md"
+              style={{ fontWeight: '700' }}
+            >
+              Booster un match
+            </button>
           </div>
-          <button
-            onClick={handleBoosterMatch}
-            className="w-full bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white py-4 rounded-xl hover:shadow-lg transition-all italic text-lg"
-            style={{ fontWeight: '700' }}
-          >
-            Booster un match
-          </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl border-4 border-[#5a03cf] p-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <p className="text-gray-600 mb-2 text-lg">Matchs boostés</p>
-              <p className="text-6xl italic text-[#5a03cf]" style={{ fontWeight: '800' }}>
-                {STATS.matchsBoosted}
+        {/* Matchs boostés */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-md border border-gray-200/50 p-8 relative overflow-hidden">
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#5a03cf]/10 to-[#9cff02]/10 pointer-events-none"></div>
+          
+          <div className="relative z-10">
+            <div className="mb-6">
+              <p className="text-gray-700 mb-2 text-lg">Matchs boostés</p>
+              <p className="text-6xl italic bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] bg-clip-text text-transparent" style={{ fontWeight: '800' }}>
+                {matchsBoosted}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] p-5 rounded-2xl">
-              <TrendingUp className="w-12 h-12 text-white" />
-            </div>
+            <button
+              onClick={handleParrainer}
+              className="w-full bg-gradient-to-r from-[#9cff02] to-[#5a03cf] text-white py-4 rounded-xl hover:opacity-90 transition-all italic text-lg shadow-md"
+              style={{ fontWeight: '700' }}
+            >
+              Parrainer un restaurant
+            </button>
           </div>
-          <button
-            onClick={handleParrainer}
-            className="w-full bg-gradient-to-r from-[#9cff02] to-[#7cdf00] text-[#5a03cf] py-4 rounded-xl hover:shadow-lg transition-all italic text-lg"
-            style={{ fontWeight: '700' }}
-          >
-            Parrainer un restaurant
-          </button>
         </div>
       </div>
 
-      {/* Bouton pour voir l'historique */}
+      {/* 3️⃣ Lien "Voir l'historique des boosts" */}
       <div className="text-center mb-8">
         <button
           onClick={scrollToHistorique}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-all"
+          className="inline-flex items-center gap-2 px-6 py-3 text-gray-600 hover:text-gray-900 transition-all"
           style={{ fontWeight: '600' }}
         >
           Voir l&apos;historique des boosts
@@ -111,74 +116,80 @@ export function Booster({ onBack, onNavigate }: BoosterProps) {
         </button>
       </div>
 
-      {/* Carte de présentation du boost */}
-      <div className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white rounded-2xl p-8 mb-8 shadow-2xl">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="bg-[#9cff02] p-3 rounded-xl">
-            <Sparkles className="w-8 h-8 text-[#5a03cf]" />
-          </div>
-          <div className="flex-1">
-            <h2 className="mb-4 text-2xl" style={{ fontWeight: '700' }}>
+      {/* 5️⃣ Bloc "Comment fonctionne le boost ?" en liquid glass */}
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-8 mb-8 shadow-md border border-gray-200/50 relative overflow-hidden">
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#9cff02]/10 to-[#5a03cf]/10 pointer-events-none"></div>
+        
+        <div className="relative z-10">
+          <div className="mb-6">
+            <h2 className="mb-4 text-2xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
               Comment fonctionne le boost ?
             </h2>
-            <p className="text-white/90 mb-6 text-lg leading-relaxed">
+            <p className="text-gray-700 mb-6 text-lg leading-relaxed">
               Le boost est votre atout pour attirer plus de clients ! Voici ce qu&apos;il vous apporte :
             </p>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20">
-            <TrendingUp className="w-6 h-6 mb-3 text-[#9cff02]" />
-            <h3 className="mb-2" style={{ fontWeight: '600' }}>Priorité sur la carte</h3>
-            <p className="text-white/80 text-sm">
-              Votre restaurant apparaît en priorité sur la carte de l&apos;application pour ce match
-            </p>
+          {/* Sous-cartes glass */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50">
+              <h3 className="mb-2 text-gray-900" style={{ fontWeight: '600' }}>Priorité sur la carte</h3>
+              <p className="text-gray-600 text-sm">
+                Votre restaurant apparaît en priorité sur la carte de l&apos;application pour ce match
+              </p>
+            </div>
+
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50">
+              <h3 className="mb-2 text-gray-900" style={{ fontWeight: '600' }}>Notifications ciblées</h3>
+              <p className="text-gray-600 text-sm">
+                Envoi de notifications ultra personnalisées aux utilisateurs les plus susceptibles de venir
+              </p>
+            </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20">
-            <Bell className="w-6 h-6 mb-3 text-[#9cff02]" />
-            <h3 className="mb-2" style={{ fontWeight: '600' }}>Notifications ciblées</h3>
-            <p className="text-white/80 text-sm">
-              Envoi de notifications ultra personnalisées aux utilisateurs les plus susceptibles de venir
+          {/* Ligne "1 boost = 1 match" */}
+          <div className="bg-gradient-to-r from-[#9cff02]/10 to-[#5a03cf]/10 backdrop-blur-sm rounded-xl p-4 border border-[#9cff02]/30">
+            <p className="text-center text-lg">
+              <span className="bg-gradient-to-r from-[#9cff02] to-[#5a03cf] bg-clip-text text-transparent" style={{ fontWeight: '700' }}>1 boost = 1 match</span>
+              <span className="text-gray-700"> • Chaque boost est unique et dédié à un match spécifique</span>
             </p>
           </div>
         </div>
+      </div>
 
-        <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 mb-6">
-          <p className="text-center text-lg">
-            <span className="text-[#9cff02]" style={{ fontWeight: '700' }}>1 boost = 1 match</span>
-            <span className="text-white/80"> • Chaque boost est unique et dédié à un match spécifique</span>
-          </p>
-        </div>
-
-        <div className="bg-[#9cff02] text-[#5a03cf] rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <Gift className="w-7 h-7" />
-            <h3 className="text-xl" style={{ fontWeight: '700' }}>
+      {/* 6️⃣ Bloc "Comment obtenir des boosts ?" en liquid glass */}
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-8 mb-8 shadow-md border border-gray-200/50 relative overflow-hidden">
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#9cff02]/10 to-[#5a03cf]/10 pointer-events-none"></div>
+        
+        <div className="relative z-10">
+          <div className="mb-3">
+            <h3 className="text-2xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
               Comment obtenir des boosts ?
             </h3>
           </div>
-          <p className="text-[#5a03cf]/90 mb-4 text-lg">
+          <p className="text-gray-700 mb-6 text-lg">
             Les boosts se gagnent uniquement par le parrainage d&apos;un autre lieu de restauration.
           </p>
-          <div className="flex items-center justify-between bg-white/50 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <Users className="w-6 h-6 text-[#5a03cf]" />
+          
+          {/* Carte "Parrainez un restaurant" */}
+          <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-gray-200/50">
+            <div className="flex items-center justify-between">
               <div>
-                <p style={{ fontWeight: '700' }}>Parrainez un restaurant</p>
-                <p className="text-sm text-[#5a03cf]/80">Le parrain et le filleul gagnent chacun</p>
+                <p className="text-gray-900" style={{ fontWeight: '700' }}>Parrainez un restaurant</p>
+                <p className="text-sm text-gray-600">Le parrain et le filleul gagnent chacun</p>
               </div>
-            </div>
-            <div className="bg-[#5a03cf] text-[#9cff02] px-6 py-3 rounded-full italic text-xl" style={{ fontWeight: '700' }}>
-              +5 boosts
+              <div className="bg-gradient-to-r from-[#9cff02]/20 to-[#5a03cf]/20 px-6 py-3 rounded-full border border-[#9cff02]/40">
+                <span className="bg-gradient-to-r from-[#9cff02] to-[#5a03cf] bg-clip-text text-transparent italic text-xl" style={{ fontWeight: '800' }}>
+                  +5 boosts
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Historique des matchs boostés */}
-      <div id="historique-boosts" className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+      {/* 4️⃣ Historique des matchs boostés */}
+      <div id="historique-boosts" className="bg-white/70 backdrop-blur-xl rounded-xl shadow-md border border-gray-200/50 overflow-hidden">
         <div className="bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white p-6">
           <h2 className="text-2xl" style={{ fontWeight: '700' }}>
             Historique des boosts utilisés
@@ -187,16 +198,16 @@ export function Booster({ onBack, onNavigate }: BoosterProps) {
         </div>
 
         <div className="p-6">
-          <div className="space-y-4">
+          <div className="space-y-3">
             {matchsBoostes.map((match) => (
               <div
                 key={match.id}
-                className="bg-gradient-to-r from-[#5a03cf]/5 to-[#9cff02]/5 rounded-xl p-5 border border-[#5a03cf]/20 hover:border-[#9cff02] transition-all"
+                className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-gray-200/50 shadow-sm hover:border-[#5a03cf]/30 transition-all"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <Zap className="w-5 h-5 text-[#9cff02]" />
+                      <Zap className="w-5 h-5 text-[#5a03cf]" />
                       <p className="text-gray-900 italic text-lg" style={{ fontWeight: '600' }}>
                         {match.equipe1} vs {match.equipe2}
                       </p>
@@ -208,7 +219,7 @@ export function Booster({ onBack, onNavigate }: BoosterProps) {
                       {match.resultat}
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] px-4 py-2 rounded-full text-[#5a03cf] italic" style={{ fontWeight: '700' }}>
+                  <div className="bg-green-100/70 px-4 py-2 rounded-full text-green-700 border border-green-200" style={{ fontWeight: '700' }}>
                     Boosté ✓
                   </div>
                 </div>

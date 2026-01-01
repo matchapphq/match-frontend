@@ -1,4 +1,4 @@
-import { ArrowLeft, CreditCard, Building, MapPin, Lock } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import { useState } from 'react';
 import { PageType } from '../App';
 import { useAuth } from '../context/AuthContext';
@@ -11,233 +11,206 @@ interface FacturationProps {
 
 export function Facturation({ onBack, onNavigate, isOnboarding = false }: FacturationProps) {
   const { completeOnboarding } = useAuth();
-  const [formData, setFormData] = useState({
-    nomRestaurant: '',
-    adresse: '',
-    siret: '',
-    nomCarte: '',
-    numeroCarte: '',
-    dateExpiration: '',
-    cvv: '',
-  });
+  const [selectedFormule, setSelectedFormule] = useState<'mensuel' | 'annuel' | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleChooseFormule = (formule: 'mensuel' | 'annuel') => {
+    setSelectedFormule(formule);
     
-    // Si c'est le parcours d'onboarding, on finalise l'inscription
-    if (isOnboarding) {
-      completeOnboarding();
-      setTimeout(() => {
+    // Simuler la validation de la formule
+    setTimeout(() => {
+      if (isOnboarding) {
+        completeOnboarding();
         onNavigate('dashboard');
-      }, 1000);
-    } else {
-      alert('Paiement validé !');
-      onNavigate('mes-restaurants');
-    }
+      } else {
+        alert(`Formule ${formule} sélectionnée !`);
+        onNavigate('mes-restaurants');
+      }
+    }, 800);
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        Retour aux offres
-      </button>
-
-      <div className="mb-8 text-center">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] rounded-full mb-4">
-          <CreditCard className="w-10 h-10 text-white" />
-        </div>
-        <h1 className="text-gray-900 italic text-4xl mb-4" style={{ fontWeight: '700', color: '#5a03cf' }}>
-          Finaliser votre commande
-        </h1>
-        <p className="text-gray-600 text-lg">
-          Complétez vos informations pour équiper votre restaurant
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10 p-8 relative overflow-hidden">
+      {/* Bouton retour */}
+      <div className="max-w-5xl mx-auto mb-6">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-gray-600 hover:text-[#5a03cf] transition-colors"
+          style={{ fontWeight: '600' }}
+        >
+          <ArrowLeft className="w-5 h-5" />
+          {isOnboarding ? 'Retour' : 'Retour au compte'}
+        </button>
       </div>
 
-      {/* Récapitulatif */}
-      <div className="bg-gradient-to-r from-[#5a03cf]/10 to-[#9cff02]/10 rounded-xl p-6 mb-8 border-2 border-[#5a03cf]/20">
-        <h2 className="text-xl mb-4" style={{ fontWeight: '700', color: '#5a03cf' }}>
-          Récapitulatif de votre commande
-        </h2>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-gray-700">Offre sélectionnée</span>
-          <span className="text-gray-900" style={{ fontWeight: '600' }}>Abonnement annuel</span>
+      <div className="max-w-5xl mx-auto">
+        {/* 1️⃣ Header explicatif */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl italic mb-3" style={{ fontWeight: '700', color: '#5a03cf' }}>
+            Choisissez la formule adaptée à votre établissement
+          </h1>
+          <p className="text-lg text-gray-600 mb-2">
+            Chaque établissement dispose de son propre abonnement.
+          </p>
+          <p className="text-sm text-gray-500">
+            Vous pourrez ajouter d'autres établissements plus tard.
+          </p>
         </div>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-gray-700">Prix</span>
-          <span className="text-gray-900" style={{ fontWeight: '600' }}>300€/an</span>
-        </div>
-        <div className="flex items-center justify-between pt-3 border-t border-[#5a03cf]/20">
-          <span className="text-gray-900" style={{ fontWeight: '700' }}>Total TTC</span>
-          <span className="text-[#5a03cf] text-2xl italic" style={{ fontWeight: '700' }}>300€</span>
-        </div>
-      </div>
 
-      {/* Formulaire */}
-      <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <h3 className="text-xl mb-4" style={{ fontWeight: '700', color: '#5a03cf' }}>
-              Informations du restaurant
-            </h3>
-          </div>
-
-          <div>
-            <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Building className="w-4 h-4 text-[#5a03cf]" />
-                Nom du restaurant
+        {/* 2️⃣ Choix de la formule - Cartes Mensuel / Annuel */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* 🟣 Carte Mensuel */}
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200/50 p-8">
+            <div className="mb-6">
+              <h2 className="text-2xl mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
+                Mensuel
+              </h2>
+              <div className="mb-1">
+                <span className="text-4xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
+                  30€
+                </span>
+                <span className="text-gray-600 text-lg"> / mois</span>
               </div>
-            </label>
-            <input
-              type="text"
-              value={formData.nomRestaurant}
-              onChange={(e) => setFormData({ ...formData, nomRestaurant: e.target.value })}
-              placeholder="Le Sport Bar"
-              required
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin className="w-4 h-4 text-[#5a03cf]" />
-                Adresse complète
-              </div>
-            </label>
-            <input
-              type="text"
-              value={formData.adresse}
-              onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
-              placeholder="12 Rue de la République, 75001 Paris"
-              required
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-              SIRET
-            </label>
-            <input
-              type="text"
-              value={formData.siret}
-              onChange={(e) => setFormData({ ...formData, siret: e.target.value })}
-              placeholder="123 456 789 00012"
-              required
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
-            />
-          </div>
-
-          <div className="pt-6 border-t border-gray-200">
-            <h3 className="text-xl mb-4" style={{ fontWeight: '700', color: '#5a03cf' }}>
-              Informations de paiement
-            </h3>
-          </div>
-
-          <div>
-            <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-              Nom sur la carte
-            </label>
-            <input
-              type="text"
-              value={formData.nomCarte}
-              onChange={(e) => setFormData({ ...formData, nomCarte: e.target.value })}
-              placeholder="Jean Restaurateur"
-              required
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <CreditCard className="w-4 h-4 text-[#5a03cf]" />
-                Numéro de carte
-              </div>
-            </label>
-            <input
-              type="text"
-              value={formData.numeroCarte}
-              onChange={(e) => setFormData({ ...formData, numeroCarte: e.target.value })}
-              placeholder="1234 5678 9012 3456"
-              required
-              maxLength={19}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-                Date d&apos;expiration
-              </label>
-              <input
-                type="text"
-                value={formData.dateExpiration}
-                onChange={(e) => setFormData({ ...formData, dateExpiration: e.target.value })}
-                placeholder="MM/AA"
-                required
-                maxLength={5}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
-              />
+              <p className="text-sm text-gray-500">Engagement 12 mois</p>
             </div>
 
-            <div>
-              <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Lock className="w-4 h-4 text-[#5a03cf]" />
-                  CVV
+            <div className="space-y-3 mb-8">
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-[#5a03cf]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 text-[#5a03cf]" strokeWidth={3} />
                 </div>
-              </label>
-              <input
-                type="text"
-                value={formData.cvv}
-                onChange={(e) => setFormData({ ...formData, cvv: e.target.value })}
-                placeholder="123"
-                required
-                maxLength={3}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-            <div className="flex items-start gap-3">
-              <Lock className="w-5 h-5 text-[#5a03cf] mt-0.5" />
-              <div>
-                <p className="text-gray-900 text-sm" style={{ fontWeight: '600' }}>
-                  Paiement 100% sécurisé
-                </p>
-                <p className="text-gray-600 text-sm">
-                  Vos informations de paiement sont cryptées et sécurisées
-                </p>
+                <span className="text-gray-700">Facturation mensuelle</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-[#5a03cf]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 text-[#5a03cf]" strokeWidth={3} />
+                </div>
+                <span className="text-gray-700">Tous les avantages Match</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-[#5a03cf]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 text-[#5a03cf]" strokeWidth={3} />
+                </div>
+                <span className="text-gray-700">Résiliation possible après 12 mois</span>
               </div>
             </div>
-          </div>
 
-          <div className="flex gap-4 pt-4">
+            {/* CTA secondaire (outline) */}
             <button
-              type="submit"
-              className="flex-1 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white py-4 rounded-xl hover:shadow-lg transition-all italic text-lg"
+              onClick={() => handleChooseFormule('mensuel')}
+              disabled={selectedFormule !== null}
+              className="w-full py-4 rounded-xl border-2 border-[#5a03cf]/30 text-[#5a03cf] hover:bg-[#5a03cf]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontWeight: '600' }}
             >
-              Valider le paiement - 300€
-            </button>
-            <button
-              type="button"
-              onClick={onBack}
-              className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              Annuler
+              {selectedFormule === 'mensuel' ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-[#5a03cf]/30 border-t-[#5a03cf] rounded-full animate-spin"></div>
+                  Validation...
+                </span>
+              ) : (
+                'Choisir cette formule'
+              )}
             </button>
           </div>
-        </form>
+
+          {/* 🟢 Carte Annuel (recommandée) */}
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200/50 p-8 relative">
+            {/* Badge économie discret */}
+            <div className="absolute top-4 right-4">
+              <div className="bg-white/70 backdrop-blur-sm rounded-full px-3 py-1 border border-gray-200/50">
+                <span className="text-xs" style={{ fontWeight: '600', color: '#9cff02' }}>
+                  Économie de 60€ / an
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h2 className="text-2xl mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
+                Annuel
+              </h2>
+              <div className="mb-1">
+                <span className="text-4xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
+                  25€
+                </span>
+                <span className="text-gray-600 text-lg"> / mois</span>
+              </div>
+              <p className="text-sm text-gray-500">Soit 300€ / an</p>
+            </div>
+
+            <div className="space-y-3 mb-8">
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-[#9cff02]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 text-[#5a03cf]" strokeWidth={3} />
+                </div>
+                <span className="text-gray-700">Facturation annuelle</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-[#9cff02]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 text-[#5a03cf]" strokeWidth={3} />
+                </div>
+                <span className="text-gray-700">Tous les avantages Match</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-[#9cff02]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 text-[#5a03cf]" strokeWidth={3} />
+                </div>
+                <span className="text-gray-700">Meilleur rapport qualité/prix</span>
+              </div>
+            </div>
+
+            {/* CTA principal avec dégradé Match */}
+            <button
+              onClick={() => handleChooseFormule('annuel')}
+              disabled={selectedFormule !== null}
+              className="w-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ fontWeight: '600' }}
+            >
+              {selectedFormule === 'annuel' ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Validation...
+                </span>
+              ) : (
+                'Choisir cette formule'
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* 3️⃣ Bloc information importante */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-6 mb-8">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-[#5a03cf]/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-lg" style={{ fontWeight: '700', color: '#5a03cf' }}>ℹ️</span>
+            </div>
+            <div>
+              <h3 className="text-lg mb-2" style={{ fontWeight: '600', color: '#5a03cf' }}>
+                Information importante
+              </h3>
+              <p className="text-gray-700 mb-2">
+                Un abonnement correspond à un établissement.
+              </p>
+              <p className="text-gray-600 text-sm">
+                Si vous gérez plusieurs lieux, chaque établissement dispose de son propre abonnement.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 4️⃣ Footer de validation */}
+        <div className="text-center space-y-4">
+          <p className="text-sm text-gray-500">
+            Aucun paiement ne sera effectué sans confirmation.
+          </p>
+          <p className="text-sm text-gray-600">
+            <button
+              onClick={onBack}
+              className="text-[#5a03cf] hover:underline transition-all"
+              style={{ fontWeight: '600' }}
+            >
+              Conditions d'abonnement
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

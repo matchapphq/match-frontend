@@ -1,11 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../lib/api';
-import type { Venue, Match as ApiMatch, AnalyticsOverview } from '../lib/types';
-import { useAuth } from './AuthContext';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import api, { Venue, VenueMatch, Client as ApiClient, Notification as ApiNotification } from '../services/api';
 
 export interface Restaurant {
-  id: string;
+  id: number;
   nom: string;
   adresse: string;
   telephone: string;
@@ -16,12 +13,11 @@ export interface Restaurant {
   image: string;
   horaires: string;
   tarif: string;
-  userId: string;
-  isPaid?: boolean;
+  userId: string; // Lien avec l'utilisateur propriétaire
 }
 
 export interface Match {
-  id: string;
+  id: number;
   equipe1: string;
   equipe2: string;
   date: string;
@@ -32,267 +28,403 @@ export interface Match {
   sportNom: string;
   restaurant: string;
   statut: 'à venir' | 'terminé';
-  restaurantId: string;
-  userId: string;
+  restaurantId: number;
+  userId: string; // Lien avec l'utilisateur propriétaire
 }
 
 export interface Client {
-  id: string;
+  id: number;
   nom: string;
   prenom: string;
   match: string;
   date: string;
-  userId: string;
+  userId: string; // Lien avec l'utilisateur propriétaire
+  statut?: 'confirmé' | 'en attente' | 'refusé';
+  email?: string;
+  telephone?: string;
+  restaurant?: string;
+  matchId?: number;
 }
 
-interface CustomerStats {
-  customerCount: number;
-  totalGuests: number;
-  totalReservations: number;
+export interface Notification {
+  id: number;
+  userId: string;
+  type: 'reservation' | 'avis' | 'parrainage';
+  title: string;
+  message: string;
+  date: string;
+  read: boolean;
+  reservationId?: number;
+}
+
+export interface Stats {
+  clients30Jours: number;
+  clientsTotal: number;
+  ageMoyen: number;
+  sportFavori: string;
+  moyenneClientsParMatch: number;
+  matchsDiffuses30Jours: number;
+  matchsAVenir: number;
+  matchsTotal: number;
+  vuesMois: number;
+  impressions: number;
+  boostsDisponibles: number;
+  matchsBoosted: number;
+  tauxRemplissageMoyen: number;
 }
 
 interface AppContextType {
   restaurants: Restaurant[];
   matchs: Match[];
   clients: Client[];
-  customerStats: CustomerStats;
   boostsDisponibles: number;
-  isLoading: boolean;
-  addRestaurant: (restaurant: Omit<Restaurant, 'id'>) => Promise<void>;
-  updateRestaurant: (id: string, restaurant: Partial<Restaurant>) => void;
-  deleteRestaurant: (id: string) => void;
-  addMatch: (match: Omit<Match, 'id'>) => void;
-  updateMatch: (id: string, match: Partial<Match>) => void;
-  deleteMatch: (id: string) => void;
+  notifications: Notification[];
+  stats: Stats;
+  loading: boolean;
+  error: string | null;
+  addRestaurant: (restaurant: Restaurant) => void;
+  updateRestaurant: (id: number, restaurant: Partial<Restaurant>) => void;
+  deleteRestaurant: (id: number) => void;
+  addMatch: (match: Match) => void;
+  updateMatch: (id: number, match: Partial<Match>) => void;
+  deleteMatch: (id: number) => void;
   useBoost: () => void;
   addBoosts: (count: number) => void;
   getUserRestaurants: (userId: string) => Restaurant[];
   getUserMatchs: (userId: string) => Match[];
   getUserClients: (userId: string) => Client[];
-  refetchVenues: () => void;
+  handleReservationAction: (reservationId: number, action: 'acceptée' | 'refusée') => void;
+  updateClient: (id: number, client: Partial<Client>) => void;
+  markAllAsRead: (userId: string) => void;
+  refreshData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// API functions
-const appApi = {
-  getMyVenues: async (): Promise<{ venues: Venue[] }> => {
-    const response = await api.get('/partners/venues');
-    return response.data;
-  },
-  createVenue: async (data: any): Promise<{ venue: Venue }> => {
-    const response = await api.post('/partners/venues', data);
-    return response.data;
-  },
-  getCustomerStats: async (): Promise<CustomerStats> => {
-    const response = await api.get('/partners/stats/customers');
-    return response.data;
-  },
-  getMatches: async (): Promise<{ data: ApiMatch[], count: number }> => {
-    const response = await api.get('/matches');
-    return response.data;
-  },
-  getVenueAnalytics: async (venueId: string): Promise<{ overview: AnalyticsOverview }> => {
-    const response = await api.get(`/venues/${venueId}/analytics/overview`);
-    return response.data;
-  },
-  getVenueReservations: async (venueMatchId: string): Promise<{ reservations: any[], stats: any }> => {
-    const response = await api.get(`/reservations/venue/${venueMatchId}`);
-    return response.data;
-  },
-};
-
-// Convert API Venue to frontend Restaurant format
-function mapVenueToRestaurant(venue: Venue, userId: string): Restaurant {
+// Helper to convert API Venue to Restaurant format
+function venueToRestaurant(venue: Venue, index: number): Restaurant {
   return {
-    id: venue.id,
+    id: index + 1, // Keep numeric ID for backward compatibility
     nom: venue.name,
     adresse: `${venue.street_address}, ${venue.postal_code} ${venue.city}`,
     telephone: venue.phone || '',
     email: venue.email || '',
     capaciteMax: venue.capacity || 50,
     note: venue.rating || 4.5,
-    totalAvis: venue.total_reviews || 0,
+    totalAvis: venue.review_count || 0,
     image: venue.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
-    horaires: venue.opening_hours || 'Lun-Dim: 11h00 - 02h00',
+    horaires: 'Lun-Dim: 11h00 - 02h00',
     tarif: '30€/mois',
-    userId: userId,
-    isPaid: (venue as any).is_paid || false,
+    userId: 'user-demo',
   };
 }
 
-// No more mock data - only real API data for logged-in users
+// Helper to convert API VenueMatch to Match format
+function venueMatchToMatch(vm: VenueMatch, index: number): Match {
+  const scheduledAt = vm.match?.scheduled_at ? new Date(vm.match.scheduled_at) : new Date();
+  const dateStr = scheduledAt.toLocaleDateString('fr-FR');
+  const heureStr = scheduledAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  
+  return {
+    id: index + 1,
+    equipe1: vm.match?.homeTeam || 'TBD',
+    equipe2: vm.match?.awayTeam || 'TBD',
+    date: dateStr,
+    heure: heureStr,
+    reservees: vm.reserved_seats,
+    total: vm.total_capacity,
+    sport: '⚽',
+    sportNom: vm.match?.league || 'Football',
+    restaurant: vm.venue?.name || '',
+    statut: vm.status === 'finished' ? 'terminé' : 'à venir',
+    restaurantId: 1,
+    userId: 'user-demo',
+  };
+}
+
+// Helper to convert API Client to local Client format
+function apiClientToClient(c: ApiClient, index: number): Client {
+  return {
+    id: index + 1,
+    nom: c.last_name,
+    prenom: c.first_name,
+    match: c.match_name,
+    date: new Date(c.reservation_date).toLocaleDateString('fr-FR'),
+    userId: 'user-demo',
+    statut: c.status === 'confirmed' ? 'confirmé' : c.status === 'pending' ? 'en attente' : 'refusé',
+    email: c.email,
+  };
+}
+
+// Helper to convert API Notification to local format
+function apiNotificationToNotification(n: ApiNotification, index: number): Notification {
+  return {
+    id: index + 1,
+    userId: 'user-demo',
+    type: n.type === 'reservation' ? 'reservation' : n.type === 'review' ? 'avis' : 'parrainage',
+    title: n.title,
+    message: n.message,
+    date: new Date(n.created_at).toLocaleDateString('fr-FR'),
+    read: n.read,
+    reservationId: n.metadata?.reservation_id ? parseInt(n.metadata.reservation_id) : undefined,
+  };
+}
+
+// Fallback mock data (used when API is unavailable)
+const initialRestaurants: Restaurant[] = [
+  {
+    id: 1,
+    nom: 'Le Sport Bar',
+    adresse: '12 Rue de la République, 75001 Paris',
+    telephone: '01 23 45 67 89',
+    email: 'contact@lesportbar.fr',
+    capaciteMax: 50,
+    note: 4.5,
+    totalAvis: 127,
+    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+    horaires: 'Lun-Dim: 11h00 - 02h00',
+    tarif: '30€/mois',
+    userId: 'user-demo', // Associé à l'utilisateur démo
+  },
+  {
+    id: 2,
+    nom: 'Chez Michel',
+    adresse: '45 Avenue des Champs, 69001 Lyon',
+    telephone: '04 12 34 56 78',
+    email: 'contact@chezmichel.fr',
+    capaciteMax: 35,
+    note: 4.8,
+    totalAvis: 89,
+    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=400&fit=crop',
+    horaires: 'Mar-Dim: 10h00 - 01h00',
+    tarif: '30€/mois',
+    userId: 'user-demo',
+  },
+  {
+    id: 3,
+    nom: 'La Brasserie du Stade',
+    adresse: '78 Boulevard Sport, 13001 Marseille',
+    telephone: '04 91 23 45 67',
+    email: 'contact@brasseriestade.fr',
+    capaciteMax: 60,
+    note: 4.3,
+    totalAvis: 156,
+    image: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&h=400&fit=crop',
+    horaires: 'Lun-Dim: 09h00 - 02h00',
+    tarif: '30€/mois',
+    userId: 'user-demo',
+  },
+];
+
+const initialMatchs: Match[] = [
+  { id: 1, equipe1: 'Monaco', equipe2: 'Nice', date: '10/12/2024', heure: '20:00', reservees: 22, total: 30, sport: '⚽', sportNom: 'Football', restaurant: 'Le Sport Bar', statut: 'à venir', restaurantId: 1, userId: 'user-demo' },
+  { id: 2, equipe1: 'Lakers', equipe2: 'Warriors', date: '12/12/2024', heure: '02:00', reservees: 18, total: 25, sport: '🏀', sportNom: 'Basketball', restaurant: 'Chez Michel', statut: 'à venir', restaurantId: 2, userId: 'user-demo' },
+  { id: 3, equipe1: 'PSG', equipe2: 'OM', date: '15/12/2024', heure: '21:00', reservees: 35, total: 40, sport: '⚽', sportNom: 'Football', restaurant: 'Le Sport Bar', statut: 'à venir', restaurantId: 1, userId: 'user-demo' },
+  { id: 4, equipe1: 'Real Madrid', equipe2: 'Atletico', date: '18/12/2024', heure: '19:30', reservees: 28, total: 35, sport: '⚽', sportNom: 'Football', restaurant: 'La Brasserie du Stade', statut: 'à venir', restaurantId: 3, userId: 'user-demo' },
+  { id: 5, equipe1: 'Stade Français', equipe2: 'Toulouse', date: '20/12/2024', heure: '15:00', reservees: 15, total: 28, sport: '🏉', sportNom: 'Rugby', restaurant: 'Chez Michel', statut: 'à venir', restaurantId: 2, userId: 'user-demo' },
+  { id: 6, equipe1: 'PSG', equipe2: 'Lyon', date: '28/11/2024', heure: '21:00', reservees: 44, total: 50, sport: '⚽', sportNom: 'Football', restaurant: 'Le Sport Bar', statut: 'terminé', restaurantId: 1, userId: 'user-demo' },
+  { id: 7, equipe1: 'Stade Français', equipe2: 'Toulouse', date: '25/11/2024', heure: '15:00', reservees: 38, total: 40, sport: '🏉', sportNom: 'Rugby', restaurant: 'Chez Michel', statut: 'terminé', restaurantId: 2, userId: 'user-demo' },
+  { id: 8, equipe1: 'Federer', equipe2: 'Nadal', date: '22/11/2024', heure: '14:00', reservees: 28, total: 30, sport: '🎾', sportNom: 'Tennis', restaurant: 'Le Sport Bar', statut: 'terminé', restaurantId: 1, userId: 'user-demo' },
+  { id: 9, equipe1: 'Liverpool', equipe2: 'Manchester', date: '20/11/2024', heure: '20:00', reservees: 42, total: 45, sport: '⚽', sportNom: 'Football', restaurant: 'La Brasserie du Stade', statut: 'terminé', restaurantId: 3, userId: 'user-demo' },
+  { id: 10, equipe1: 'France', equipe2: 'Espagne', date: '18/11/2024', heure: '20:30', reservees: 48, total: 50, sport: '🤾', sportNom: 'Handball', restaurant: 'Le Sport Bar', statut: 'terminé', restaurantId: 1, userId: 'user-demo' },
+  { id: 11, equipe1: 'Bayern', equipe2: 'Dortmund', date: '15/11/2024', heure: '18:45', reservees: 32, total: 35, sport: '⚽', sportNom: 'Football', restaurant: 'Chez Michel', statut: 'terminé', restaurantId: 2, userId: 'user-demo' },
+  { id: 12, equipe1: 'Barcelone', equipe2: 'Real Madrid', date: '12/11/2024', heure: '21:00', reservees: 56, total: 60, sport: '⚽', sportNom: 'Football', restaurant: 'La Brasserie du Stade', statut: 'terminé', restaurantId: 3, userId: 'user-demo' },
+  { id: 13, equipe1: 'Arsenal', equipe2: 'Chelsea', date: '10/11/2024', heure: '17:30', reservees: 29, total: 30, sport: '⚽', sportNom: 'Football', restaurant: 'Le Sport Bar', statut: 'terminé', restaurantId: 1, userId: 'user-demo' },
+  { id: 14, equipe1: 'Milan AC', equipe2: 'Inter', date: '08/11/2024', heure: '20:45', reservees: 38, total: 40, sport: '⚽', sportNom: 'Football', restaurant: 'Chez Michel', statut: 'terminé', restaurantId: 2, userId: 'user-demo' },
+  { id: 15, equipe1: 'Juventus', equipe2: 'Napoli', date: '05/11/2024', heure: '19:00', reservees: 52, total: 60, sport: '⚽', sportNom: 'Football', restaurant: 'La Brasserie du Stade', statut: 'terminé', restaurantId: 3, userId: 'user-demo' },
+  { id: 16, equipe1: 'Monaco', equipe2: 'Marseille', date: '03/11/2024', heure: '21:00', reservees: 41, total: 50, sport: '⚽', sportNom: 'Football', restaurant: 'Le Sport Bar', statut: 'terminé', restaurantId: 1, userId: 'user-demo' },
+  { id: 17, equipe1: 'Lens', equipe2: 'Lille', date: '01/11/2024', heure: '15:00', reservees: 26, total: 35, sport: '⚽', sportNom: 'Football', restaurant: 'Chez Michel', statut: 'terminé', restaurantId: 2, userId: 'user-demo' },
+  { id: 18, equipe1: 'Nice', equipe2: 'Lyon', date: '29/10/2024', heure: '20:00', reservees: 55, total: 60, sport: '⚽', sportNom: 'Football', restaurant: 'La Brasserie du Stade', statut: 'terminé', restaurantId: 3, userId: 'user-demo' },
+];
+
+const initialClients: Client[] = [
+  { id: 1, nom: 'Dupont', prenom: 'Jean', match: 'PSG vs OM', date: '15/11/2024', userId: 'user-demo' },
+  { id: 2, nom: 'Martin', prenom: 'Sophie', match: 'France vs Allemagne', date: '18/11/2024', userId: 'user-demo' },
+  { id: 3, nom: 'Bernard', prenom: 'Luc', match: 'Real Madrid vs Barcelona', date: '22/11/2024', userId: 'user-demo' },
+  { id: 4, nom: 'Petit', prenom: 'Marie', match: 'Liverpool vs Manchester', date: '25/11/2024', userId: 'user-demo' },
+  { id: 5, nom: 'Dubois', prenom: 'Pierre', match: 'PSG vs Lyon', date: '28/11/2024', userId: 'user-demo' },
+  { id: 6, nom: 'Thomas', prenom: 'Emma', match: 'Monaco vs Nice', date: '01/12/2024', userId: 'user-demo' },
+  { id: 7, nom: 'Robert', prenom: 'Lucas', match: 'Bayern vs Dortmund', date: '03/12/2024', userId: 'user-demo' },
+  { id: 8, nom: 'Richard', prenom: 'Julie', match: 'PSG vs OM', date: '05/12/2024', userId: 'user-demo' },
+];
+
+const initialNotifications: Notification[] = [
+  { id: 1, userId: 'user-demo', type: 'reservation', title: 'Nouvelle réservation', message: 'Une nouvelle réservation a été faite pour le match PSG vs OM.', date: '15/11/2024', read: false, reservationId: 1 },
+  { id: 2, userId: 'user-demo', type: 'avis', title: 'Nouvel avis', message: 'Un nouvel avis a été laissé pour votre restaurant Le Sport Bar.', date: '18/11/2024', read: false },
+  { id: 3, userId: 'user-demo', type: 'parrainage', title: 'Nouveau parrainage', message: 'Vous avez un nouveau parrainage pour votre restaurant Chez Michel.', date: '22/11/2024', read: false },
+];
+
+const initialStats: Stats = {
+  clients30Jours: 0,
+  clientsTotal: 0,
+  ageMoyen: 0,
+  sportFavori: '-',
+  moyenneClientsParMatch: 0,
+  matchsDiffuses30Jours: 0,
+  matchsAVenir: 0,
+  matchsTotal: 0,
+  vuesMois: 0,
+  impressions: 0,
+  boostsDisponibles: 12,
+  matchsBoosted: 0,
+  tauxRemplissageMoyen: 0,
+};
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const queryClient = useQueryClient();
-  const { currentUser, isAuthenticated } = useAuth();
-  const [localRestaurants, setLocalRestaurants] = useState<Restaurant[]>([]);
-  const [localMatchs, setLocalMatchs] = useState<Match[]>([]);
-  const [clients] = useState<Client[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(initialRestaurants);
+  const [matchs, setMatchs] = useState<Match[]>(initialMatchs);
+  const [clients, setClients] = useState<Client[]>(initialClients);
   const [boostsDisponibles, setBoostsDisponibles] = useState(12);
+  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const [stats, setStats] = useState<Stats>(initialStats);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [apiAvailable, setApiAvailable] = useState(true);
 
-  // Fetch venues from API
-  const { data: venuesData, isLoading: venuesLoading, refetch: refetchVenues } = useQuery({
-    queryKey: ['my-venues'],
-    queryFn: appApi.getMyVenues,
-    enabled: isAuthenticated,
-    retry: 1,
-    staleTime: 2 * 60 * 1000,
-  });
+  // Fetch all data from API
+  const refreshData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-  // Fetch matches from API
-  const { data: matchesData, isLoading: matchesLoading } = useQuery({
-    queryKey: ['matches'],
-    queryFn: appApi.getMatches,
-    enabled: isAuthenticated,
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Fetch customer stats from API (last 30 days)
-  const { data: customerStatsData } = useQuery({
-    queryKey: ['customer-stats'],
-    queryFn: appApi.getCustomerStats,
-    enabled: isAuthenticated,
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Default customer stats
-  const customerStats: CustomerStats = customerStatsData || {
-    customerCount: 0,
-    totalGuests: 0,
-    totalReservations: 0,
-  };
-
-  // Create venue mutation
-  const createVenueMutation = useMutation({
-    mutationFn: appApi.createVenue,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-venues'] });
-    },
-  });
-
-  // Update restaurants when API data changes
-  useEffect(() => {
-    if (venuesData?.venues && currentUser) {
-      const mappedRestaurants = venuesData.venues.map(v => mapVenueToRestaurant(v, currentUser.id));
-      setLocalRestaurants(mappedRestaurants);
-    } else {
-      // No data when not authenticated - no mock data
-      setLocalRestaurants([]);
-    }
-  }, [venuesData, currentUser, isAuthenticated]);
-
-  // Update matches when API data changes
-  useEffect(() => {
-    if (matchesData?.data && currentUser) {
-      // Map API matches to frontend format
-      const mappedMatches: Match[] = matchesData.data.map((m: ApiMatch) => {
-        // Parse scheduled_at for date and time
-        let dateStr = '';
-        let timeStr = '20:00';
-        if (m.scheduled_at) {
-          const scheduledDate = new Date(m.scheduled_at);
-          dateStr = scheduledDate.toLocaleDateString('fr-FR');
-          timeStr = scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        }
-        
-        // Get team names from nested relations or direct fields
-        const homeTeam = m.homeTeam?.name || m.home_team_name || 'Équipe A';
-        const awayTeam = m.awayTeam?.name || m.away_team_name || 'Équipe B';
-        
-        // Determine status
-        const isCompleted = m.status === 'completed';
-        
-        return {
-          id: m.id,
-          equipe1: homeTeam,
-          equipe2: awayTeam,
-          date: dateStr || m.match_date || '',
-          heure: timeStr || m.match_time || '20:00',
-          reservees: 0, // TODO: Need backend endpoint for venue match reservations
-          total: 30, // TODO: Need backend endpoint for venue match capacity
-          sport: m.sport_emoji || '⚽',
-          sportNom: m.league?.name || m.sport_name || 'Football',
-          restaurant: '', // TODO: Need venue info from venue matches
-          statut: isCompleted ? 'terminé' : 'à venir',
-          restaurantId: '', // TODO: Need venue match data
-          userId: currentUser.id,
-        };
-      });
-      setLocalMatchs(mappedMatches);
-    } else {
-      // No data when not authenticated - no mock data
-      setLocalMatchs([]);
-    }
-  }, [matchesData, currentUser]);
-
-  // Combine API data with local state
-  const restaurants = localRestaurants;
-  const matchs = localMatchs;
-  const isLoading = venuesLoading || matchesLoading;
-
-  // Filter functions
-  const getUserRestaurants = (userId: string) => restaurants.filter(r => r.userId === userId || r.userId === '');
-  const getUserMatchs = (userId: string) => matchs.filter(m => m.userId === userId || m.userId === '');
-  const getUserClients = (userId: string) => clients.filter(c => c.userId === userId || c.userId === '');
-
-  const addRestaurant = async (restaurant: Omit<Restaurant, 'id'>) => {
     try {
-      await createVenueMutation.mutateAsync({
-        name: restaurant.nom,
-        street_address: restaurant.adresse.split(',')[0] || restaurant.adresse,
-        city: restaurant.adresse.split(',')[1]?.trim().split(' ').slice(1).join(' ') || 'Paris',
-        postal_code: restaurant.adresse.split(',')[1]?.trim().split(' ')[0] || '75001',
-        country: 'France',
-        phone: restaurant.telephone,
-        email: restaurant.email,
-        capacity: restaurant.capaciteMax,
-      });
-    } catch (error) {
-      console.error('Error creating venue:', error);
-      // Fallback to local state
-      const newRestaurant: Restaurant = {
-        ...restaurant,
-        id: `local-${Date.now()}`,
-      };
-      setLocalRestaurants(prev => [...prev, newRestaurant]);
+      // Fetch venues
+      const venuesRes = await api.getMyVenues();
+      if (venuesRes.venues && venuesRes.venues.length > 0) {
+        const restaurantData = venuesRes.venues.map((v, i) => venueToRestaurant(v, i));
+        setRestaurants(restaurantData);
+        setApiAvailable(true);
+
+        // Fetch matches
+        const matchesRes = await api.getMyMatches().catch(() => ({ data: [] }));
+        if (matchesRes.data.length > 0) {
+          const matchData = matchesRes.data.map((m, i) => venueMatchToMatch(m, i));
+          setMatchs(matchData);
+        }
+
+        // Fetch clients from all venues
+        const venueIds = venuesRes.venues.map(v => v.id);
+        const clientsRes = await api.getAllClients(venueIds).catch(() => ({ clients: [], total: 0 }));
+        if (clientsRes.clients.length > 0) {
+          const clientData = clientsRes.clients.map((c, i) => apiClientToClient(c, i));
+          setClients(clientData);
+        }
+
+        // Fetch analytics summary
+        const analyticsRes = await api.getAnalyticsSummary().catch(() => ({
+          total_clients: 0,
+          total_reservations: 0,
+          total_views: 0,
+          matches_completed: 0,
+          matches_upcoming: 0,
+          average_occupancy: 0,
+        }));
+
+        // Fetch customer stats
+        const customerStatsRes = await api.getCustomerStats().catch(() => ({
+          customerCount: 0,
+          totalGuests: 0,
+          totalReservations: 0,
+          period: 'last_30_days',
+        }));
+
+        // Update stats
+        setStats((prev: Stats) => ({
+          ...prev,
+          clients30Jours: customerStatsRes.customerCount,
+          clientsTotal: analyticsRes.total_clients,
+          matchsDiffuses30Jours: analyticsRes.matches_completed,
+          matchsAVenir: analyticsRes.matches_upcoming,
+          matchsTotal: analyticsRes.matches_completed + analyticsRes.matches_upcoming,
+          vuesMois: analyticsRes.total_views,
+          tauxRemplissageMoyen: analyticsRes.average_occupancy,
+          moyenneClientsParMatch: analyticsRes.matches_completed > 0
+            ? Math.round(analyticsRes.total_reservations / analyticsRes.matches_completed)
+            : 0,
+        }));
+
+        // Fetch notifications
+        const notificationsRes = await api.getNotifications().catch(() => ({ notifications: [] }));
+        if (notificationsRes.notifications.length > 0) {
+          const notificationData = notificationsRes.notifications.map((n, i) => apiNotificationToNotification(n, i));
+          setNotifications(notificationData);
+        }
+      }
+    } catch (err: any) {
+      console.warn('API unavailable, using mock data:', err.message);
+      setApiAvailable(false);
+      // Keep using initial mock data
+    } finally {
+      setLoading(false);
     }
+  }, []);
+
+  // Initial data fetch
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
+
+  // Fonctions pour filtrer par utilisateur
+  const getUserRestaurants = (userId: string) => restaurants.filter(r => r.userId === userId);
+  const getUserMatchs = (userId: string) => matchs.filter(m => m.userId === userId);
+  const getUserClients = (userId: string) => clients.filter(c => c.userId === userId);
+
+  const addRestaurant = (restaurant: Restaurant) => {
+    setRestaurants([...restaurants, restaurant]);
   };
 
-  const updateRestaurant = (id: string, updatedData: Partial<Restaurant>) => {
-    setLocalRestaurants(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+  const updateRestaurant = (id: number, updatedData: Partial<Restaurant>) => {
+    setRestaurants(restaurants.map(r => r.id === id ? { ...r, ...updatedData } : r));
   };
 
-  const deleteRestaurant = (id: string) => {
-    setLocalRestaurants(prev => prev.filter(r => r.id !== id));
+  const deleteRestaurant = (id: number) => {
+    setRestaurants(restaurants.filter(r => r.id !== id));
   };
 
-  const addMatch = (match: Omit<Match, 'id'>) => {
-    const newMatch: Match = {
-      ...match,
-      id: `local-${Date.now()}`,
-    };
-    setLocalMatchs(prev => [...prev, newMatch]);
+  const addMatch = (match: Match) => {
+    setMatchs([...matchs, match]);
   };
 
-  const updateMatch = (id: string, updatedData: Partial<Match>) => {
-    setLocalMatchs(prev => prev.map(m => m.id === id ? { ...m, ...updatedData } : m));
+  const updateMatch = (id: number, updatedData: Partial<Match>) => {
+    setMatchs(matchs.map(m => m.id === id ? { ...m, ...updatedData } : m));
   };
 
-  const deleteMatch = (id: string) => {
-    setLocalMatchs(prev => prev.filter(m => m.id !== id));
+  const deleteMatch = (id: number) => {
+    setMatchs(matchs.filter(m => m.id !== id));
   };
 
   const useBoost = () => {
     if (boostsDisponibles > 0) {
-      setBoostsDisponibles(prev => prev - 1);
+      setBoostsDisponibles(boostsDisponibles - 1);
     }
   };
 
   const addBoosts = (count: number) => {
-    setBoostsDisponibles(prev => prev + count);
+    setBoostsDisponibles(boostsDisponibles + count);
+  };
+
+  const handleReservationAction = (reservationId: number, action: 'acceptée' | 'refusée') => {
+    const updatedClients = clients.map(client => {
+      if (client.id === reservationId) {
+        return { ...client, statut: action === 'acceptée' ? 'confirmé' : 'refusé' };
+      }
+      return client;
+    });
+    setClients(updatedClients);
+  };
+
+  const updateClient = (id: number, client: Partial<Client>) => {
+    setClients(clients.map(c => c.id === id ? { ...c, ...client } : c));
+  };
+
+  const markAllAsRead = async (userId: string) => {
+    try {
+      if (apiAvailable) {
+        await api.markAllNotificationsAsRead();
+      }
+    } catch (err) {
+      console.warn('Failed to mark notifications as read via API');
+    }
+    setNotifications(notifications.map(n => n.userId === userId ? { ...n, read: true } : n));
   };
 
   return (
@@ -300,9 +432,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       restaurants,
       matchs,
       clients,
-      customerStats,
       boostsDisponibles,
-      isLoading,
+      notifications,
+      stats,
+      loading,
+      error,
       addRestaurant,
       updateRestaurant,
       deleteRestaurant,
@@ -314,7 +448,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getUserRestaurants,
       getUserMatchs,
       getUserClients,
-      refetchVenues,
+      handleReservationAction,
+      updateClient,
+      markAllAsRead,
+      refreshData,
     }}>
       {children}
     </AppContext.Provider>

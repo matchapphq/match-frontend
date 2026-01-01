@@ -24,6 +24,7 @@ import { CompteParametres } from './components/compte/CompteParametres';
 import { CompteNotifications } from './components/compte/CompteNotifications';
 import { CompteSecurite } from './components/compte/CompteSecurite';
 import { CompteAide } from './components/compte/CompteAide';
+import { CompteFacturation } from './components/compte/CompteFacturation';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
@@ -31,6 +32,13 @@ import { Register } from './components/Register';
 import { OnboardingWelcome } from './components/OnboardingWelcome';
 import { LandingPage } from './components/LandingPage';
 import { ReferralPage } from './components/ReferralPage';
+import { Footer } from './components/Footer';
+import { MesLieux } from './components/MesLieux';
+import { CompteDonnees } from './components/compte/CompteDonnees';
+import { InfosEtablissement } from './components/InfosEtablissement';
+import { PaiementValidation } from './components/PaiementValidation';
+import { ConfirmationOnboarding } from './components/ConfirmationOnboarding';
+import { AppPresentation } from './components/AppPresentation';
 
 export type PageType = 
   | 'dashboard'
@@ -50,13 +58,20 @@ export type PageType =
   | 'parrainage'
   | 'restaurant-detail'
   | 'ajouter-restaurant'
+  | 'infos-etablissement'
+  | 'paiement-validation'
+  | 'confirmation-onboarding'
   | 'facturation'
   | 'match-detail'
   | 'compte-infos'
   | 'compte-parametres'
   | 'compte-notifications'
   | 'compte-securite'
-  | 'compte-aide';
+  | 'compte-aide'
+  | 'compte-facturation'
+  | 'mes-lieux'
+  | 'compte-donnees'
+  | 'app-presentation';
 
 export default function App() {
   return (
@@ -74,19 +89,44 @@ function AppContent() {
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<string>('');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
   const [authView, setAuthView] = useState<'landing' | 'login' | 'register' | 'referral'>('landing');
+  
+  // États pour le parcours de souscription
+  const [selectedFormule, setSelectedFormule] = useState<'mensuel' | 'annuel'>('mensuel');
+  const [nomBarOnboarding, setNomBarOnboarding] = useState<string>('');
+  
+  // État pour la navigation non authentifiée
+  const [unauthPage, setUnauthPage] = useState<'landing' | 'app-presentation' | null>(null);
 
   // Gestion de l'inscription avec redirection vers "ajouter-restaurant"
-  const handleRegister = async (data: any): Promise<boolean> => {
-    const success = await register(data);
-    if (success) {
+  const handleRegister = async (data: any) => {
+    const result = await register(data);
+    if (result.success) {
       // L'utilisateur sera redirigé vers l'écran d'onboarding automatiquement
       setCurrentPage('ajouter-restaurant');
     }
-    return success;
+    return result;
   };
 
   // Si l'utilisateur n'est pas authentifié, afficher la landing page, connexion ou inscription
   if (!isAuthenticated) {
+    // Afficher la page de présentation de l'app si demandé
+    if (unauthPage === 'app-presentation') {
+      return (
+        <AppPresentation 
+          onNavigate={(page) => {
+            if (page === 'dashboard') {
+              setUnauthPage(null);
+              setAuthView('landing');
+            }
+          }}
+          onBack={() => {
+            setUnauthPage(null);
+            setAuthView('landing');
+          }}
+        />
+      );
+    }
+    
     if (authView === 'referral') {
       return (
         <ReferralPage 
@@ -100,6 +140,7 @@ function AppContent() {
         <LandingPage 
           onGetStarted={() => setAuthView('login')}
           onReferral={() => setAuthView('referral')}
+          onAppPresentation={() => setUnauthPage('app-presentation')}
         />
       );
     }
@@ -126,17 +167,49 @@ function AppContent() {
     // Afficher l'écran d'onboarding approprié selon l'étape
     if (currentPage === 'ajouter-restaurant') {
       return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
           <AjouterRestaurant 
             onBack={() => setCurrentPage('dashboard')} 
             onNavigate={setCurrentPage}
+            onFormuleSelected={(formule) => setSelectedFormule(formule)}
             isOnboarding={true}
+          />
+        </div>
+      );
+    } else if (currentPage === 'infos-etablissement') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
+          <InfosEtablissement 
+            onBack={() => setCurrentPage('ajouter-restaurant')} 
+            onNavigate={setCurrentPage}
+            selectedFormule={selectedFormule}
+            onBarInfoSubmit={(nom) => setNomBarOnboarding(nom)}
+          />
+        </div>
+      );
+    } else if (currentPage === 'paiement-validation') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
+          <PaiementValidation 
+            onBack={() => setCurrentPage('infos-etablissement')} 
+            onNavigate={setCurrentPage}
+            selectedFormule={selectedFormule}
+            nomBar={nomBarOnboarding}
+          />
+        </div>
+      );
+    } else if (currentPage === 'confirmation-onboarding') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
+          <ConfirmationOnboarding 
+            onNavigate={setCurrentPage}
+            nomBar={nomBarOnboarding}
           />
         </div>
       );
     } else if (currentPage === 'facturation') {
       return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
           <Facturation 
             onBack={() => setCurrentPage('ajouter-restaurant')} 
             onNavigate={setCurrentPage}
@@ -195,11 +268,49 @@ function AppContent() {
       case 'restaurant-detail':
         return <RestaurantDetail onBack={() => setCurrentPage('mes-restaurants')} />;
       case 'ajouter-restaurant':
-        return <AjouterRestaurant onBack={() => setCurrentPage('mes-restaurants')} onNavigate={setCurrentPage} />;
+        return (
+          <AjouterRestaurant 
+            onBack={() => setCurrentPage('mes-restaurants')} 
+            onNavigate={setCurrentPage}
+            onFormuleSelected={(formule) => setSelectedFormule(formule)}
+          />
+        );
+      case 'infos-etablissement':
+        return (
+          <InfosEtablissement 
+            onBack={() => setCurrentPage('ajouter-restaurant')} 
+            onNavigate={setCurrentPage}
+            selectedFormule={selectedFormule}
+            onBarInfoSubmit={(nom) => setNomBarOnboarding(nom)}
+          />
+        );
+      case 'paiement-validation':
+        return (
+          <PaiementValidation 
+            onBack={() => setCurrentPage('infos-etablissement')} 
+            onNavigate={setCurrentPage}
+            selectedFormule={selectedFormule}
+            nomBar={nomBarOnboarding}
+          />
+        );
+      case 'confirmation-onboarding':
+        return (
+          <ConfirmationOnboarding 
+            onNavigate={setCurrentPage}
+            nomBar={nomBarOnboarding}
+          />
+        );
       case 'facturation':
         return <Facturation onBack={() => setCurrentPage('ajouter-restaurant')} onNavigate={setCurrentPage} />;
       case 'match-detail':
-        return <MatchDetail onBack={() => setCurrentPage('mes-matchs')} />;
+        return (
+          <MatchDetail 
+            onBack={() => setCurrentPage('mes-matchs')} 
+            onEditMatch={() => {
+              setCurrentPage('modifier-match');
+            }}
+          />
+        );
       case 'compte-infos':
         return <CompteInfos onBack={() => setCurrentPage('compte')} />;
       case 'compte-parametres':
@@ -210,15 +321,26 @@ function AppContent() {
         return <CompteSecurite onBack={() => setCurrentPage('compte')} />;
       case 'compte-aide':
         return <CompteAide onBack={() => setCurrentPage('compte')} />;
+      case 'compte-facturation':
+        return <CompteFacturation onNavigate={setCurrentPage} onBack={() => setCurrentPage('compte')} />;
+      case 'mes-lieux':
+        return <MesLieux onNavigate={setCurrentPage} onBack={() => setCurrentPage('compte')} />;
+      case 'compte-donnees':
+        return <CompteDonnees onNavigate={setCurrentPage} onBack={() => setCurrentPage('compte')} />;
+      case 'app-presentation':
+        return <AppPresentation onNavigate={setCurrentPage} onBack={() => setCurrentPage('dashboard')} />;
       default:
         return <Dashboard onNavigate={setCurrentPage} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10 flex flex-col">
       <Header onNavigate={setCurrentPage} currentPage={currentPage} />
-      {renderPage()}
+      <div className="flex-1">
+        {renderPage()}
+      </div>
+      <Footer />
     </div>
   );
 }

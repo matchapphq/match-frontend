@@ -1,17 +1,10 @@
-import { useState } from 'react';
-import { Eye, EyeOff, ArrowLeft, Mail, Lock, Phone, User, Sparkles, TrendingUp, Calendar, Users, Check, Zap } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
+import { useState, useEffect } from 'react';
+import { Eye, EyeOff, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
 import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import patternBg from 'figma:asset/20e2f150b2f5f4be01b1aec94edb580bb26d8dcf.png';
+import { useAuth } from '../context/AuthContext';
 
-interface RegisterProps {
-  onRegister: (data: RegisterData) => Promise<boolean>;
-  onSwitchToLogin: () => void;
-  onBackToLanding?: () => void;
-}
-
-export interface RegisterData {
+interface RegisterData {
   email: string;
   password: string;
   nom: string;
@@ -19,10 +12,22 @@ export interface RegisterData {
   telephone: string;
 }
 
+interface RegisterProps {
+  onRegister: (data: RegisterData) => Promise<{ success: boolean; error?: string }> | boolean;
+  onSwitchToLogin: () => void;
+  onBackToLanding?: () => void;
+}
+
 export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: RegisterProps) {
+  const { apiStatus, checkApiHealth } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check API health on mount
+  useEffect(() => {
+    checkApiHealth();
+  }, [checkApiHealth]);
 
   // État du formulaire
   const [formData, setFormData] = useState<RegisterData>({
@@ -51,47 +56,55 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
       return;
     }
 
+    if (apiStatus === 'offline') {
+      setError('API hors ligne. Impossible de créer un compte actuellement.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const success = await onRegister(formData);
-      if (!success) {
-        setError('Cet email est déjà utilisé');
+      const result = await onRegister(formData);
+      
+      // Handle both old boolean and new Promise<{success, error}> format
+      if (typeof result === 'boolean') {
+        if (!result) {
+          setError('Cet email est déjà utilisé');
+        }
+      } else if (result && !result.success) {
+        setError(result.error || 'Cet email est déjà utilisé');
       }
-    } catch (err) {
-      setError('Erreur lors de la création du compte. Veuillez réessayer.');
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'inscription');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Image de fond avec overlay */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          src="https://images.unsplash.com/photo-1738202321971-a7544e464ef9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBiYXIlMjByZXN0YXVyYW50JTIwYXRtb3NwaGVyZSUyMGNyb3dkfGVufDF8fHx8MTc2NjQxNjcyMnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-          alt="Restaurant atmosphere"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/90 to-white/85 backdrop-blur-sm"></div>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Pattern de fond avec éclairs */}
+      <div 
+        className="fixed inset-0 z-0 opacity-[0.05]"
+        style={{
+          backgroundImage: `url(${patternBg})`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '400px',
+        }}
+      ></div>
 
-      {/* Éléments décoratifs animés */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#9cff02]/10 rounded-full blur-3xl animate-pulse"></div>
-      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#5a03cf]/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-
-      <div className="w-full max-w-md space-y-6 relative z-10">
+      <div className="w-full max-w-2xl space-y-6 relative z-10">
         {/* Bouton retour */}
         <button
           onClick={onSwitchToLogin}
           className="flex items-center gap-2 text-gray-600 hover:text-[#5a03cf] transition-colors"
+          style={{ fontWeight: '600' }}
         >
           <ArrowLeft className="w-5 h-5" />
           Retour à la connexion
         </button>
 
         {/* Logo - Cliquable pour retour landing */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-4">
           {onBackToLanding ? (
             <button onClick={onBackToLanding} className="hover:opacity-80 transition-opacity">
               <img 
@@ -111,95 +124,94 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
 
         {/* En-tête */}
         <div className="text-center">
-          <h2 className="text-5xl text-[#5a03cf] mb-4 italic" style={{ fontWeight: '800' }}>
-            Bienvenue ! 🎉
+          <h2 className="text-5xl italic mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
+            Bienvenue !
           </h2>
           <p className="text-gray-600 text-lg">
             Créez votre compte en moins d'une minute
           </p>
         </div>
 
-        {/* Formulaire */}
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-gray-200">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Formulaire en liquid glass */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-sm border border-gray-200/50 p-10">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Prénom et Nom sur la même ligne */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="prenom" className="text-gray-700 flex items-center gap-2">
-                  <User className="w-4 h-4 text-[#5a03cf]" />
-                  Prénom *
-                </Label>
-                <Input
+                <label htmlFor="prenom" className="block text-gray-700" style={{ fontWeight: '600' }}>
+                  Prénom
+                </label>
+                <input
                   id="prenom"
                   value={formData.prenom}
                   onChange={(e) => updateField('prenom', e.target.value)}
                   placeholder="Jean"
                   required
-                  className="h-11 border-gray-200 focus:border-[#9cff02] focus:ring-[#9cff02]/20 bg-white"
+                  className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="nom" className="text-gray-700 flex items-center gap-2">
-                  <User className="w-4 h-4 text-[#5a03cf]" />
-                  Nom *
-                </Label>
-                <Input
+                <label htmlFor="nom" className="block text-gray-700" style={{ fontWeight: '600' }}>
+                  Nom
+                </label>
+                <input
                   id="nom"
                   value={formData.nom}
                   onChange={(e) => updateField('nom', e.target.value)}
                   placeholder="Dupont"
                   required
-                  className="h-11 border-gray-200 focus:border-[#9cff02] focus:ring-[#9cff02]/20 bg-white"
+                  className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
                 />
               </div>
             </div>
 
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-[#5a03cf]" />
-                Email professionnel *
-              </Label>
-              <Input
+              <label htmlFor="email" className="block text-gray-700" style={{ fontWeight: '600' }}>
+                Email professionnel
+              </label>
+              <input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => updateField('email', e.target.value)}
                 placeholder="contact@monrestaurant.fr"
                 required
-                className="h-11 border-gray-200 focus:border-[#9cff02] focus:ring-[#9cff02]/20 bg-white"
+                className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
               />
             </div>
 
+            {/* Téléphone */}
             <div className="space-y-2">
-              <Label htmlFor="telephone" className="text-gray-700 flex items-center gap-2">
-                <Phone className="w-4 h-4 text-[#5a03cf]" />
-                Téléphone *
-              </Label>
-              <Input
+              <label htmlFor="telephone" className="block text-gray-700" style={{ fontWeight: '600' }}>
+                Téléphone
+              </label>
+              <input
                 id="telephone"
                 type="tel"
                 value={formData.telephone}
                 onChange={(e) => updateField('telephone', e.target.value)}
                 placeholder="01 23 45 67 89"
                 required
-                className="h-11 border-gray-200 focus:border-[#9cff02] focus:ring-[#9cff02]/20 bg-white"
+                className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
               />
             </div>
 
+            {/* Mot de passe */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-[#5a03cf]" />
-                Mot de passe *
-              </Label>
+              <label htmlFor="password" className="block text-gray-700" style={{ fontWeight: '600' }}>
+                Mot de passe
+              </label>
               <div className="relative">
-                <Input
+                <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => updateField('password', e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="h-11 border-gray-200 focus:border-[#9cff02] focus:ring-[#9cff02]/20 pr-12 bg-white"
+                  className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 pr-12 transition-all"
                 />
                 <button
                   type="button"
@@ -213,16 +225,18 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+              <div className="bg-red-50/70 backdrop-blur-sm border border-red-200/50 text-red-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-red-500"></div>
                 {error}
               </div>
             )}
 
-            <Button
+            {/* Bouton CTA avec dégradé Match */}
+            <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-[#9cff02] to-[#5a03cf] hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-12 group"
+              className="w-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ fontWeight: '600' }}
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -230,29 +244,63 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
                   Création du compte...
                 </span>
               ) : (
-                <span className="flex items-center justify-center gap-2" style={{ fontWeight: '700' }}>
-                  Créer mon compte et commencer
-                  <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                </span>
+                'Créer mon compte et commencer'
               )}
-            </Button>
+            </button>
 
+            {/* Texte légal */}
             <p className="text-center text-xs text-gray-500">
               En créant un compte, vous acceptez nos conditions d'utilisation
             </p>
+
+            {/* API Status indicator */}
+            <div className="flex items-center justify-center gap-2 text-xs">
+              {apiStatus === 'checking' && (
+                <span className="flex items-center gap-1 text-gray-400">
+                  <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
+                  Connexion au serveur...
+                </span>
+              )}
+              {apiStatus === 'online' && (
+                <span className="flex items-center gap-1 text-green-600">
+                  <Wifi className="w-3 h-3" />
+                  API connectée
+                </span>
+              )}
+              {apiStatus === 'offline' && (
+                <span className="flex items-center gap-1 text-orange-500">
+                  <WifiOff className="w-3 h-3" />
+                  API hors ligne - inscription impossible
+                </span>
+              )}
+            </div>
           </form>
         </div>
 
         {/* Info rassurante */}
-        <div className="bg-gradient-to-r from-[#9cff02]/20 to-[#5a03cf]/20 backdrop-blur-xl rounded-2xl p-4 border border-[#5a03cf]/30">
+        <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/50">
           <div className="text-center">
-            <p className="text-sm text-gray-700">
-              <span className="text-[#5a03cf]">🔒 Vos données sont sécurisées</span>
+            <p className="text-sm text-gray-700 mb-1">
+              <span className="text-[#5a03cf]" style={{ fontWeight: '600' }}>🔒 Vos données sont sécurisées</span>
             </p>
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-gray-600">
               Nous ne partageons jamais vos informations avec des tiers
             </p>
           </div>
+        </div>
+
+        {/* Lien vers connexion - style texte simple */}
+        <div className="text-center">
+          <p className="text-gray-700 text-sm">
+            Déjà un compte ?{' '}
+            <button
+              onClick={onSwitchToLogin}
+              className="text-[#5a03cf] hover:underline transition-all"
+              style={{ fontWeight: '600' }}
+            >
+              Se connecter
+            </button>
+          </p>
         </div>
       </div>
     </div>

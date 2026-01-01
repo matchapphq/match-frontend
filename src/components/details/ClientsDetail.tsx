@@ -1,6 +1,7 @@
 import { ArrowLeft, Users, Calendar, Trophy, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useState } from 'react';
-import { STATS, CLIENTS_RECENTS } from '../../data/mockData';
+import { useAppContext } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface ClientsDetailProps {
   onBack: () => void;
@@ -10,9 +11,14 @@ type SortField = 'nom' | 'prenom' | 'match' | 'date' | null;
 type SortOrder = 'asc' | 'desc' | null;
 
 export function ClientsDetail({ onBack }: ClientsDetailProps) {
+  const { getUserClients, stats } = useAppContext();
+  const { currentUser } = useAuth();
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
-  const [clientsData, setClientsData] = useState(CLIENTS_RECENTS);
+  
+  // Get clients from context (API data or mock fallback)
+  const allClients = currentUser ? getUserClients(currentUser.id) : [];
+  const [clientsData, setClientsData] = useState(allClients);
 
   const handleSort = (field: SortField) => {
     let newOrder: SortOrder = 'asc';
@@ -29,7 +35,7 @@ export function ClientsDetail({ onBack }: ClientsDetailProps) {
     setSortOrder(newOrder);
 
     if (newOrder === null) {
-      setClientsData(CLIENTS_RECENTS);
+      setClientsData(allClients);
     } else {
       const sorted = [...clientsData].sort((a, b) => {
         const aVal = a[field as keyof typeof a];
@@ -82,25 +88,25 @@ export function ClientsDetail({ onBack }: ClientsDetailProps) {
         <div className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white p-6 rounded-xl shadow-lg">
           <Calendar className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-white/80 text-sm mb-1">Âge moyen</p>
-          <p className="italic text-2xl">{STATS.ageMoyen} ans</p>
+          <p className="italic text-2xl">{stats.ageMoyen || '-'} ans</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] p-6 rounded-xl shadow-lg">
           <Trophy className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-[#5a03cf]/80 text-sm mb-1">Sport favori</p>
-          <p className="italic text-2xl">{STATS.sportFavori}</p>
+          <p className="italic text-2xl">{stats.sportFavori || '-'}</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white p-6 rounded-xl shadow-lg">
           <Users className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-white/80 text-sm mb-1">Total clients</p>
-          <p className="italic text-2xl">{STATS.clientsTotal.toLocaleString()}</p>
+          <p className="italic text-2xl">{stats.clientsTotal.toLocaleString()}</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] p-6 rounded-xl shadow-lg">
           <TrendingUp className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-[#5a03cf]/80 text-sm mb-1">Moyenne/match</p>
-          <p className="italic text-2xl">{STATS.moyenneClientsParMatch}</p>
+          <p className="italic text-2xl">{stats.moyenneClientsParMatch}</p>
         </div>
       </div>
 

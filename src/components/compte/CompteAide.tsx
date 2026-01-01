@@ -1,7 +1,9 @@
-import { ArrowLeft, HelpCircle, MessageCircle, Book, Mail, Phone } from 'lucide-react';
+import { PageType } from '../../App';
+import { ArrowLeft } from 'lucide-react';
 
 interface CompteAideProps {
-  onBack: () => void;
+  onBack?: () => void;
+  onNavigate?: (page: PageType) => void;
 }
 
 export function CompteAide({ onBack }: CompteAideProps) {
@@ -12,64 +14,83 @@ export function CompteAide({ onBack }: CompteAideProps) {
     },
     {
       question: 'Comment fonctionne le système de boost ?',
-      reponse: 'Le boost permet de mettre en avant votre établissement sur l\'application. Vous gagnez des boosts en parrainant d\'autres restaurateurs.'
+      reponse: "Le boost permet de mettre en avant votre établissement sur l'application. Vous gagnez des boosts en parrainant d'autres restaurateurs."
     },
     {
       question: 'Comment modifier mes informations de restaurant ?',
-      reponse: 'Allez dans "Mes restaurants", cliquez sur l\'établissement concerné et modifiez les informations.'
+      reponse: "Allez dans \"Mes lieux\", cliquez sur l'établissement concerné et modifiez les informations."
+    },
+    {
+      question: 'Comment gérer mon abonnement ?',
+      reponse: "Rendez-vous dans \"Facturation & abonnement\" pour modifier votre formule ou gérer vos paiements."
     },
   ];
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        Retour au compte
-      </button>
+      {/* Bouton retour aux paramètres */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="mb-6 flex items-center gap-2 px-4 py-2 bg-white/70 backdrop-blur-sm border border-gray-200/50 text-gray-700 rounded-xl hover:bg-white/90 transition-all"
+          style={{ fontWeight: '600' }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Retourner aux paramètres du compte
+        </button>
+      )}
 
-      <div className="mb-8">
-        <h1 className="text-gray-900 italic text-4xl mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
+      {/* Header de la page */}
+      <div className="mb-12">
+        <h1 className="text-5xl italic mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
           Aide et support
         </h1>
-        <p className="text-gray-600 text-lg">Nous sommes là pour vous aider</p>
+        <p className="text-lg text-gray-700">Nous sommes là pour vous aider</p>
       </div>
 
       {/* Contact rapide */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <button className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white rounded-xl p-6 text-left hover:scale-105 transition-all shadow-lg">
-          <MessageCircle className="w-8 h-8 mb-3" />
-          <h3 className="text-xl mb-2" style={{ fontWeight: '700' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8 hover:border-gray-300/60 transition-all">
+          <h3 className="text-2xl mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
             Chat en direct
           </h3>
-          <p className="text-white/80">Discutez avec notre équipe support</p>
-        </button>
+          <p className="text-gray-600 mb-6">
+            Discutez avec notre équipe support en temps réel
+          </p>
+          <button className="px-6 py-3 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm" style={{ fontWeight: '600' }}>
+            Démarrer une conversation
+          </button>
+        </div>
 
-        <button className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-xl p-6 text-left hover:scale-105 transition-all shadow-lg">
-          <Mail className="w-8 h-8 mb-3" />
-          <h3 className="text-xl mb-2" style={{ fontWeight: '700' }}>
+        <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8 hover:border-gray-300/60 transition-all">
+          <h3 className="text-2xl mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
             Email
           </h3>
-          <p className="text-[#5a03cf]/80">support@match-app.fr</p>
-        </button>
+          <p className="text-gray-600 mb-2">
+            Contactez-nous par email
+          </p>
+          <a 
+            href="mailto:support@match-app.fr" 
+            className="text-[#5a03cf] hover:underline"
+            style={{ fontWeight: '600' }}
+          >
+            support@match-app.fr
+          </a>
+        </div>
       </div>
 
       {/* FAQ */}
-      <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6 mb-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Book className="w-6 h-6 text-[#5a03cf]" />
-          <h2 className="text-2xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
-            Questions fréquentes
-          </h2>
-        </div>
+      <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8 mb-6">
+        <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
+          Questions fréquentes
+        </h2>
+        <p className="text-gray-600 mb-6">Trouvez rapidement des réponses à vos questions</p>
 
         <div className="space-y-4">
           {faq.map((item, index) => (
             <div
               key={index}
-              className="bg-gradient-to-r from-[#5a03cf]/5 to-[#9cff02]/5 rounded-xl p-5 border border-[#5a03cf]/20"
+              className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30"
             >
               <h3 className="text-gray-900 mb-2" style={{ fontWeight: '600' }}>
                 {item.question}
@@ -81,19 +102,36 @@ export function CompteAide({ onBack }: CompteAideProps) {
       </div>
 
       {/* Centre d'aide */}
-      <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <HelpCircle className="w-6 h-6 text-[#5a03cf]" />
-          <h2 className="text-2xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
-            Centre d&apos;aide
-          </h2>
-        </div>
-        <p className="text-gray-600 mb-4">
+      <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8 mb-6">
+        <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
+          Centre d'aide
+        </h2>
+        <p className="text-gray-600 mb-6">
           Consultez notre documentation complète pour en savoir plus sur Match
         </p>
-        <button className="px-6 py-3 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white rounded-xl hover:shadow-lg transition-all italic" style={{ fontWeight: '600' }}>
-          Accéder au centre d&apos;aide
+        <button 
+          className="px-6 py-3 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm"
+          style={{ fontWeight: '600' }}
+        >
+          Accéder au centre d'aide
         </button>
+      </div>
+
+      {/* Support téléphonique */}
+      <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8">
+        <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
+          Support téléphonique
+        </h2>
+        <p className="text-gray-600 mb-4">
+          Disponible du lundi au vendredi de 9h à 18h
+        </p>
+        <a 
+          href="tel:+33123456789" 
+          className="text-xl text-[#5a03cf] hover:underline"
+          style={{ fontWeight: '700' }}
+        >
+          01 23 45 67 89
+        </a>
       </div>
     </div>
   );

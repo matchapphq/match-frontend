@@ -18,6 +18,7 @@
         'lucide-react@0.487.0': 'lucide-react',
         'input-otp@1.4.2': 'input-otp',
         'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png': path.resolve(__dirname, './src/assets/c263754cf7a254d8319da5c6945751d81a6f5a94.png'),
+        'figma:asset/20e2f150b2f5f4be01b1aec94edb580bb26d8dcf.png': path.resolve(__dirname, './src/assets/20e2f150b2f5f4be01b1aec94edb580bb26d8dcf.png'),
         'embla-carousel-react@8.6.0': 'embla-carousel-react',
         'cmdk@1.1.1': 'cmdk',
         'class-variance-authority@0.7.1': 'class-variance-authority',
@@ -53,10 +54,8 @@
     build: {
       target: 'esnext',
       outDir: 'build',
-      sourcemap: false,
-      minify: 'esbuild',
     },
-    server: {
+     server: {
       port: 5173,
       host: true, // Listen on all addresses (0.0.0.0)
       strictPort: true,

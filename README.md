@@ -1,7 +1,7 @@
 
-  # Restaurateur Dashboard Setup
+  # Match - maquette site
 
-  This is a code bundle for Restaurateur Dashboard Setup. The original project is available at https://www.figma.com/design/O5xUdn1OgIuxEjYlJU56tP/Restaurateur-Dashboard-Setup.
+  This is a code bundle for Match - maquette site. The original project is available at https://www.figma.com/design/O5xUdn1OgIuxEjYlJU56tP/Match---maquette-site.
 
   ## Running the code
 

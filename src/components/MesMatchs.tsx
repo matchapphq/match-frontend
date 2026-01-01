@@ -1,22 +1,21 @@
-import { Calendar, Eye, Plus, Zap, Edit, TrendingUp, Users, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Calendar, Eye, Plus, Zap, Edit, TrendingUp, Users, ArrowUpDown, ArrowUp, ArrowDown, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 
 interface MesMatchsProps {
-  onNavigate?: (page: PageType, matchId?: string | number) => void;
+  onNavigate?: (page: PageType, matchId?: number) => void;
   defaultFilter?: 'tous' | 'à venir' | 'terminé';
 }
 
-type SortField = 'match' | 'date' | 'heure' | 'statut' | 'places' | 'bar' | null;
+type SortField = 'match' | 'date' | 'heure' | 'statut' | 'places' | null;
 type SortOrder = 'asc' | 'desc' | null;
 
-export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps) {
+export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsProps) {
   const { getUserMatchs } = useAppContext();
   const { currentUser } = useAuth();
   const [filtre, setFiltre] = useState<'tous' | 'à venir' | 'terminé'>(defaultFilter);
-  const [barFilter, setBarFilter] = useState<string>('tous');
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
 
@@ -29,28 +28,25 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
     }
   };
 
-  const handleMatchClick = (matchId: string) => {
+  const handleMatchClick = (matchId: number) => {
     if (onNavigate) {
       onNavigate('match-detail', matchId);
     }
   };
 
-  const handleEditMatch = (e: React.MouseEvent, matchId: string) => {
+  const handleEditMatch = (e: React.MouseEvent, matchId: number) => {
     e.stopPropagation();
     if (onNavigate) {
       onNavigate('modifier-match', matchId);
     }
   };
 
-  const handleBoostClick = (e: React.MouseEvent, matchId: string) => {
+  const handleBoostClick = (e: React.MouseEvent, matchId: number) => {
     e.stopPropagation();
     if (onNavigate) {
       onNavigate('booster');
     }
   };
-
-  // Get unique bar names for filter
-  const uniqueBars = [...new Set(matchs.map(m => m.restaurant).filter(Boolean))];
 
   // Calculs dynamiques
   const totalMatchs = matchs.length;
@@ -58,15 +54,22 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
     ? Math.round(matchs.reduce((acc, m) => acc + (m.reservees / m.total) * 100, 0) / matchs.length)
     : 0;
 
+  // Simuler le nombre de demandes en attente par match (à remplacer par vraies données)
+  const getDemandesEnAttente = (matchId: number) => {
+    // Simuler des données aléatoires pour la démo
+    const random = [0, 0, 0, 1, 2, 3];
+    return random[matchId % random.length] || 0;
+  };
+
   const stats = [
     { label: 'Total matchs', value: totalMatchs.toString(), icon: Calendar, gradient: 'from-[#5a03cf] to-[#7a23ef]' },
     { label: 'Moyenne de remplissage', value: `${moyenneRemplissage}%`, icon: TrendingUp, gradient: 'from-[#9cff02] to-[#7cdf00]' },
-    { label: "Nombre d'impressions", value: '—', icon: Eye, gradient: 'from-[#5a03cf] to-[#7a23ef]' },
+    { label: "Nombre d'impressions", value: `12.4K`, icon: Eye, gradient: 'from-[#5a03cf] to-[#7a23ef]' },
   ];
 
-  const matchsFiltres = matchs
-    .filter(m => filtre === 'tous' || m.statut === filtre)
-    .filter(m => barFilter === 'tous' || m.restaurant === barFilter);
+  const matchsFiltres = filtre === 'tous' 
+    ? matchs 
+    : matchs.filter(m => m.statut === filtre);
 
   const handleSort = (field: SortField) => {
     let newOrder: SortOrder = 'asc';
@@ -110,10 +113,6 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
         aVal = a.reservees / a.total;
         bVal = b.reservees / b.total;
         break;
-      case 'bar':
-        aVal = a.restaurant || '';
-        bVal = b.restaurant || '';
-        break;
       default:
         return 0;
     }
@@ -145,44 +144,45 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="backdrop-blur-xl bg-gradient-to-r from-white/80 to-[#9cff02]/10 border border-white/50 rounded-3xl p-8 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-gray-900 mb-2 italic text-4xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
+      {/* Bloc principal avec bordure dégradée et liquid glass */}
+      <div className="relative p-[3px] rounded-3xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf] mb-8">
+        <div className="backdrop-blur-xl bg-white/80 rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+          {/* En-tête avec titre et bouton */}
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-gray-900 italic text-5xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
               Mes matchs
             </h1>
-            <p className="text-gray-600 text-lg">Gérez tous vos matchs programmés</p>
-          </div>
-          <button
-            onClick={handleProgrammerMatch}
-            className="px-6 py-3 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white rounded-full hover:shadow-lg transition-all flex items-center gap-2 italic"
-          >
-            <Plus className="w-5 h-5" />
-            Programmer un match
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={index}
-              className="bg-white rounded-2xl p-8 shadow-[0_2px_8px_rgba(0,0,0,0.08)] border-2 border-gray-100 hover:border-[#9cff02] transition-all"
+            <button
+              onClick={handleProgrammerMatch}
+              className="px-6 py-3 bg-gradient-to-r from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-full hover:shadow-lg transition-all flex items-center gap-2 italic"
+              style={{ fontWeight: '700' }}
             >
-              <div className="flex items-start justify-between mb-4">
-                <p className="text-gray-600 text-sm" style={{ fontWeight: '500' }}>
-                  {stat.label}
-                </p>
-                <div className={`bg-gradient-to-br ${stat.gradient} p-3 rounded-xl`}>
-                  <Icon className="w-6 h-6 text-white" />
+              <Plus className="w-5 h-5" />
+              Programmer un match
+            </button>
+          </div>
+
+          {/* Statistiques */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {stats.map((stat, index) => {
+              return (
+                <div
+                  key={index}
+                  className="relative p-[2px] rounded-2xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf]"
+                >
+                  <div className="bg-white rounded-2xl p-6 h-full flex flex-col justify-center">
+                    <p className="text-6xl italic bg-gradient-to-r from-[#9cff02] to-[#5a03cf] bg-clip-text text-transparent mb-2" style={{ fontWeight: '800' }}>
+                      {stat.value}
+                    </p>
+                    <p className="text-gray-600 text-sm" style={{ fontWeight: '500' }}>
+                      {stat.label}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <p className="text-5xl italic text-[#5a03cf]" style={{ fontWeight: '800' }}>{stat.value}</p>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="flex gap-3 mb-6">
@@ -193,6 +193,7 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
               ? 'bg-[#9cff02] text-[#5a03cf]'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
           }`}
+          style={{ fontWeight: '600' }}
         >
           Tous
         </button>
@@ -203,6 +204,7 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
               ? 'bg-[#9cff02] text-[#5a03cf]'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
           }`}
+          style={{ fontWeight: '600' }}
         >
           <Calendar className="w-4 h-4" />
           À venir
@@ -214,186 +216,118 @@ export function MesMatchs({ onNavigate, defaultFilter = 'tous' }: MesMatchsProps
               ? 'bg-[#9cff02] text-[#5a03cf]'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
           }`}
+          style={{ fontWeight: '600' }}
         >
           <Eye className="w-4 h-4" />
           Terminés
         </button>
-
-        {/* Bar filter */}
-        {uniqueBars.length > 0 && (
-          <select
-            value={barFilter}
-            onChange={(e) => setBarFilter(e.target.value)}
-            className="px-4 py-2.5 rounded-full border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#5a03cf]"
-          >
-            <option value="tous">Tous les bars</option>
-            {uniqueBars.map((bar) => (
-              <option key={bar} value={bar}>
-                {bar}
-              </option>
-            ))}
-          </select>
-        )}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-4 text-left">
-                  <button
-                    onClick={() => handleSort('match')}
-                    className="flex items-center gap-2 text-gray-700 hover:text-[#5a03cf] transition-colors"
-                    style={{ fontWeight: '600' }}
-                  >
-                    Match
-                    <SortIcon field="match" />
-                  </button>
-                </th>
-                <th className="px-6 py-4 text-left">
-                  <button
-                    onClick={() => handleSort('date')}
-                    className="flex items-center gap-2 text-gray-700 hover:text-[#5a03cf] transition-colors"
-                    style={{ fontWeight: '600' }}
-                  >
-                    Date
-                    <SortIcon field="date" />
-                  </button>
-                </th>
-                <th className="px-6 py-4 text-left">
-                  <button
-                    onClick={() => handleSort('heure')}
-                    className="flex items-center gap-2 text-gray-700 hover:text-[#5a03cf] transition-colors"
-                    style={{ fontWeight: '600' }}
-                  >
-                    Heure
-                    <SortIcon field="heure" />
-                  </button>
-                </th>
-                <th className="px-6 py-4 text-left">
-                  <button
-                    onClick={() => handleSort('statut')}
-                    className="flex items-center gap-2 text-gray-700 hover:text-[#5a03cf] transition-colors"
-                    style={{ fontWeight: '600' }}
-                  >
-                    Statut
-                    <SortIcon field="statut" />
-                  </button>
-                </th>
-                <th className="px-6 py-4 text-left">
-                  <button
-                    onClick={() => handleSort('bar')}
-                    className="flex items-center gap-2 text-gray-700 hover:text-[#5a03cf] transition-colors"
-                    style={{ fontWeight: '600' }}
-                  >
-                    Bar
-                    <SortIcon field="bar" />
-                  </button>
-                </th>
-                <th className="px-6 py-4 text-left">
-                  <button
-                    onClick={() => handleSort('places')}
-                    className="flex items-center gap-2 text-gray-700 hover:text-[#5a03cf] transition-colors"
-                    style={{ fontWeight: '600' }}
-                  >
-                    Places disponibles
-                    <SortIcon field="places" />
-                  </button>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {sortedMatchs.map((match) => {
-                const percentage = getPercentage(match.reservees, match.total);
-                const placesRestantes = getPlacesRestantes(match.reservees, match.total);
+      {/* Liste des matchs en cartes */}
+      <div className="space-y-4">
+        {sortedMatchs.map((match) => {
+          const percentage = getPercentage(match.reservees, match.total);
+          const placesRestantes = getPlacesRestantes(match.reservees, match.total);
+          const demandesEnAttente = getDemandesEnAttente(match.id);
 
-                return (
-                  <tr 
-                    key={match.id}
-                    onClick={() => handleMatchClick(match.id)}
-                    className="hover:bg-gray-50/80 hover:shadow-sm transition-all cursor-pointer border-b border-[#EFEFEF]"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{match.sport}</span>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-gray-900 italic" style={{ fontWeight: '700' }}>
-                              {match.equipe1} vs {match.equipe2}
-                            </p>
-                            {match.statut === 'à venir' && (
-                              <button
-                                onClick={(e) => handleEditMatch(e, match.id)}
-                                className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                                title="Modifier le match"
-                              >
-                                <Edit className="w-4 h-4 text-gray-500 hover:text-[#5a03cf]" />
-                              </button>
-                            )}
-                          </div>
-                          <p className="text-gray-500 text-sm">{match.sportNom}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{match.date}</td>
-                    <td className="px-6 py-4 text-gray-600">{match.heure}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm italic ${
-                          match.statut === 'à venir'
-                            ? 'bg-[#9cff02] text-[#5a03cf]'
-                            : 'bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        {match.statut}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-700" style={{ fontWeight: '500' }}>
-                        {match.restaurant || '—'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                          <p className="text-gray-900 mb-1" style={{ fontWeight: '700' }}>
-                            {placesRestantes}/{match.total}
-                          </p>
-                          <p className="text-gray-500 text-xs">
-                            {match.reservees} réservées
-                          </p>
-                        </div>
-                        <div className="w-14 h-14 rounded-full border-4 border-gray-200 flex items-center justify-center relative flex-shrink-0">
-                          <div
-                            className="absolute inset-0 rounded-full"
-                            style={{
-                              background: `conic-gradient(#9cff02 ${percentage}%, transparent ${percentage}%)`,
-                            }}
-                          />
-                          <div className="absolute inset-1 bg-white rounded-full" />
-                          <span className="relative text-gray-900 text-sm z-10" style={{ fontWeight: '700' }}>
-                            {percentage}%
+          return (
+            <div
+              key={match.id}
+              onClick={() => handleMatchClick(match.id)}
+              className="relative p-[3px] rounded-2xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf] hover:shadow-lg transition-all cursor-pointer"
+            >
+              <div className="bg-white rounded-2xl p-6">
+                <div className="flex items-center justify-between gap-6">
+                  {/* Partie gauche : Icône + infos du match */}
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 flex items-center justify-center bg-gray-50 rounded-full flex-shrink-0">
+                      <span className="text-3xl">{match.sport}</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="text-gray-900 italic text-2xl" style={{ fontWeight: '700' }}>
+                          {match.equipe1} vs {match.equipe2}
+                        </h3>
+                        {demandesEnAttente > 0 && (
+                          <span className="flex items-center gap-1.5 px-3 py-1 bg-orange-100 text-orange-600 rounded-full text-sm border border-orange-200" style={{ fontWeight: '600' }}>
+                            <Clock className="w-3.5 h-3.5" />
+                            {demandesEnAttente} en attente
                           </span>
-                        </div>
-                        {match.statut === 'à venir' && (
-                          <button
-                            onClick={(e) => handleBoostClick(e, match.id)}
-                            className="ml-2 px-5 py-2.5 bg-gradient-to-r from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-full hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2"
-                            style={{ fontWeight: '700' }}
-                          >
-                            <Zap className="w-5 h-5" />
-                            Boost
-                          </button>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      <p className="text-gray-500 text-sm">
+                        {match.date} à {match.heure} · {match.sportNom}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Partie droite : Places + Actions */}
+                  <div className="flex items-center gap-6">
+                    {/* Places */}
+                    <div className="text-right">
+                      <p className="text-gray-500 text-sm mb-1">Places</p>
+                      <p className="text-gray-900 text-lg" style={{ fontWeight: '700' }}>
+                        {placesRestantes}/{match.total}
+                      </p>
+                    </div>
+
+                    {/* Cercle de pourcentage avec dégradé */}
+                    <div className="relative w-16 h-16 flex-shrink-0">
+                      <div className="absolute inset-0 rounded-full bg-gray-100"></div>
+                      <svg className="absolute inset-0 w-16 h-16 transform -rotate-90">
+                        <defs>
+                          <linearGradient id={`gradient-${match.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#9cff02" />
+                            <stop offset="100%" stopColor="#5a03cf" />
+                          </linearGradient>
+                        </defs>
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="28"
+                          stroke="url(#gradient-${match.id})"
+                          strokeWidth="6"
+                          fill="none"
+                          strokeDasharray={`${(percentage / 100) * 2 * Math.PI * 28} ${2 * Math.PI * 28}`}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-gray-900" style={{ fontWeight: '700', fontSize: '15px' }}>
+                          {percentage}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Boutons */}
+                    {match.statut === 'à venir' && (
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditMatch(e, match.id);
+                          }}
+                          className="px-5 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-full hover:border-[#5a03cf] hover:text-[#5a03cf] transition-all italic"
+                          style={{ fontWeight: '600' }}
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={(e) => handleBoostClick(e, match.id)}
+                          className="px-6 py-2.5 bg-gradient-to-r from-[#9cff02] to-[#5a03cf] text-white rounded-full hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2 italic"
+                          style={{ fontWeight: '600' }}
+                        >
+                          <Zap className="w-5 h-5" />
+                          Booster
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
