@@ -93,7 +93,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Try to get current user (will work if cookies are valid)
           const response = await api.getUserProfile();
           if (response.user) {
-            setCurrentUser(apiUserToUser(response.user));
+            let user = apiUserToUser(response.user);
+            
+            // Check if user has venues - if yes, mark onboarding as complete
+            try {
+              const venuesResponse = await api.getMyVenues();
+              if (venuesResponse.venues && venuesResponse.venues.length > 0) {
+                user = {
+                  ...user,
+                  hasCompletedOnboarding: true,
+                  onboardingStep: 'complete',
+                };
+              }
+            } catch {
+              // Failed to fetch venues, keep default state
+            }
+            
+            setCurrentUser(user);
             setIsAuthenticated(true);
           }
         } catch {
@@ -125,36 +141,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.login(email, password);
       
       if (response.user) {
+        let user: User = {
+          id: response.user.id,
+          email: response.user.email,
+          nom: '',
+          prenom: '',
+          role: response.user.role,
+          hasCompletedOnboarding: false,
+          onboardingStep: 'restaurant',
+        };
+
         // Fetch full user profile after login
         try {
           const profileResponse = await api.getUserProfile();
           if (profileResponse.user) {
-            setCurrentUser(apiUserToUser(profileResponse.user));
-          } else {
-            // Use basic user info from login response
-            setCurrentUser({
-              id: response.user.id,
-              email: response.user.email,
-              nom: '',
-              prenom: '',
-              role: response.user.role,
-              hasCompletedOnboarding: false,
-              onboardingStep: 'restaurant',
-            });
+            user = apiUserToUser(profileResponse.user);
           }
         } catch {
           // Use basic user info from login response
-          setCurrentUser({
-            id: response.user.id,
-            email: response.user.email,
-            nom: '',
-            prenom: '',
-            role: response.user.role,
-            hasCompletedOnboarding: false,
-            onboardingStep: 'restaurant',
-          });
+        }
+
+        // Check if user already has venues - if yes, skip onboarding
+        try {
+          const venuesResponse = await api.getMyVenues();
+          if (venuesResponse.venues && venuesResponse.venues.length > 0) {
+            // User has at least one venue, mark onboarding as complete
+            user = {
+              ...user,
+              hasCompletedOnboarding: true,
+              onboardingStep: 'complete',
+            };
+          }
+        } catch {
+          // Failed to fetch venues, keep default onboarding state
         }
         
+        setCurrentUser(user);
         setIsAuthenticated(true);
         return { success: true };
       }

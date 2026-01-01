@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import api, { Venue, VenueMatch, Client as ApiClient, Notification as ApiNotification } from '../services/api';
+import { useAuth } from './AuthContext';
 
 export interface Restaurant {
   id: number;
@@ -102,7 +103,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Helper to convert API Venue to Restaurant format
-function venueToRestaurant(venue: Venue, index: number): Restaurant {
+function venueToRestaurant(venue: Venue, index: number, userId: string): Restaurant {
   return {
     id: index + 1, // Keep numeric ID for backward compatibility
     nom: venue.name,
@@ -115,12 +116,12 @@ function venueToRestaurant(venue: Venue, index: number): Restaurant {
     image: venue.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
     horaires: 'Lun-Dim: 11h00 - 02h00',
     tarif: '30€/mois',
-    userId: 'user-demo',
+    userId: userId,
   };
 }
 
 // Helper to convert API VenueMatch to Match format
-function venueMatchToMatch(vm: VenueMatch, index: number): Match {
+function venueMatchToMatch(vm: VenueMatch, index: number, userId: string): Match {
   const scheduledAt = vm.match?.scheduled_at ? new Date(vm.match.scheduled_at) : new Date();
   const dateStr = scheduledAt.toLocaleDateString('fr-FR');
   const heureStr = scheduledAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -138,29 +139,29 @@ function venueMatchToMatch(vm: VenueMatch, index: number): Match {
     restaurant: vm.venue?.name || '',
     statut: vm.status === 'finished' ? 'terminé' : 'à venir',
     restaurantId: 1,
-    userId: 'user-demo',
+    userId: userId,
   };
 }
 
 // Helper to convert API Client to local Client format
-function apiClientToClient(c: ApiClient, index: number): Client {
+function apiClientToClient(c: ApiClient, index: number, userId: string): Client {
   return {
     id: index + 1,
     nom: c.last_name,
     prenom: c.first_name,
     match: c.match_name,
     date: new Date(c.reservation_date).toLocaleDateString('fr-FR'),
-    userId: 'user-demo',
+    userId: userId,
     statut: c.status === 'confirmed' ? 'confirmé' : c.status === 'pending' ? 'en attente' : 'refusé',
     email: c.email,
   };
 }
 
 // Helper to convert API Notification to local format
-function apiNotificationToNotification(n: ApiNotification, index: number): Notification {
+function apiNotificationToNotification(n: ApiNotification, index: number, userId: string): Notification {
   return {
     id: index + 1,
-    userId: 'user-demo',
+    userId: userId,
     type: n.type === 'reservation' ? 'reservation' : n.type === 'review' ? 'avis' : 'parrainage',
     title: n.title,
     message: n.message,
@@ -271,6 +272,7 @@ const initialStats: Stats = {
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { currentUser, isAuthenticated } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>(initialRestaurants);
   const [matchs, setMatchs] = useState<Match[]>(initialMatchs);
   const [clients, setClients] = useState<Client[]>(initialClients);
@@ -280,6 +282,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiAvailable, setApiAvailable] = useState(true);
+  
+  // Get userId - use actual user ID if authenticated, otherwise fallback to 'user-demo'
+  const userId = currentUser?.id || 'user-demo';
 
   // Fetch all data from API
   const refreshData = useCallback(async () => {
@@ -287,86 +292,117 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      // Fetch venues
+      // Fetch venues - API already filters by authenticated user
       const venuesRes = await api.getMyVenues();
-      if (venuesRes.venues && venuesRes.venues.length > 0) {
-        const restaurantData = venuesRes.venues.map((v, i) => venueToRestaurant(v, i));
-        setRestaurants(restaurantData);
-        setApiAvailable(true);
+      console.log('Venues response:', venuesRes);
+      
+      // Mark API as available once we get a response
+      setApiAvailable(true);
+      
+      // Handle venues - set even if empty to clear mock data
+      const venues = venuesRes?.venues || [];
+      const restaurantData = venues.map((v: Venue, i: number) => venueToRestaurant(v, i, userId));
+      setRestaurants(restaurantData);
 
-        // Fetch matches
-        const matchesRes = await api.getMyMatches().catch(() => ({ data: [] }));
-        if (matchesRes.data.length > 0) {
-          const matchData = matchesRes.data.map((m, i) => venueMatchToMatch(m, i));
-          setMatchs(matchData);
-        }
+      // Fetch matches
+      const matchesRes = await api.getMyMatches().catch(() => ({ data: [] }));
+      console.log('Matches response:', matchesRes);
+      const matchesData = matchesRes?.data || [];
+      const matchData = matchesData.map((m: VenueMatch, i: number) => venueMatchToMatch(m, i, userId));
+      setMatchs(matchData);
 
-        // Fetch clients from all venues
-        const venueIds = venuesRes.venues.map(v => v.id);
+      // Fetch clients from all venues
+      if (venues.length > 0) {
+        const venueIds = venues.map((v: Venue) => v.id);
         const clientsRes = await api.getAllClients(venueIds).catch(() => ({ clients: [], total: 0 }));
-        if (clientsRes.clients.length > 0) {
-          const clientData = clientsRes.clients.map((c, i) => apiClientToClient(c, i));
-          setClients(clientData);
-        }
-
-        // Fetch analytics summary
-        const analyticsRes = await api.getAnalyticsSummary().catch(() => ({
-          total_clients: 0,
-          total_reservations: 0,
-          total_views: 0,
-          matches_completed: 0,
-          matches_upcoming: 0,
-          average_occupancy: 0,
-        }));
-
-        // Fetch customer stats
-        const customerStatsRes = await api.getCustomerStats().catch(() => ({
-          customerCount: 0,
-          totalGuests: 0,
-          totalReservations: 0,
-          period: 'last_30_days',
-        }));
-
-        // Update stats
-        setStats((prev: Stats) => ({
-          ...prev,
-          clients30Jours: customerStatsRes.customerCount,
-          clientsTotal: analyticsRes.total_clients,
-          matchsDiffuses30Jours: analyticsRes.matches_completed,
-          matchsAVenir: analyticsRes.matches_upcoming,
-          matchsTotal: analyticsRes.matches_completed + analyticsRes.matches_upcoming,
-          vuesMois: analyticsRes.total_views,
-          tauxRemplissageMoyen: analyticsRes.average_occupancy,
-          moyenneClientsParMatch: analyticsRes.matches_completed > 0
-            ? Math.round(analyticsRes.total_reservations / analyticsRes.matches_completed)
-            : 0,
-        }));
-
-        // Fetch notifications
-        const notificationsRes = await api.getNotifications().catch(() => ({ notifications: [] }));
-        if (notificationsRes.notifications.length > 0) {
-          const notificationData = notificationsRes.notifications.map((n, i) => apiNotificationToNotification(n, i));
-          setNotifications(notificationData);
-        }
+        console.log('Clients response:', clientsRes);
+        const clientsData = clientsRes?.clients || [];
+        const clientData = clientsData.map((c: ApiClient, i: number) => apiClientToClient(c, i, userId));
+        setClients(clientData);
+      } else {
+        setClients([]);
       }
+
+      // Fetch analytics summary
+      const analyticsRes = await api.getAnalyticsSummary().catch(() => ({
+        total_clients: 0,
+        total_reservations: 0,
+        total_views: 0,
+        matches_completed: 0,
+        matches_upcoming: 0,
+        average_occupancy: 0,
+      }));
+
+      // Fetch customer stats
+      const customerStatsRes = await api.getCustomerStats().catch(() => ({
+        customerCount: 0,
+        totalGuests: 0,
+        totalReservations: 0,
+        period: 'last_30_days',
+      }));
+
+      // Update stats
+      setStats((prev: Stats) => ({
+        ...prev,
+        clients30Jours: customerStatsRes.customerCount,
+        clientsTotal: analyticsRes.total_clients,
+        matchsDiffuses30Jours: analyticsRes.matches_completed,
+        matchsAVenir: analyticsRes.matches_upcoming,
+        matchsTotal: analyticsRes.matches_completed + analyticsRes.matches_upcoming,
+        vuesMois: analyticsRes.total_views,
+        tauxRemplissageMoyen: analyticsRes.average_occupancy,
+        moyenneClientsParMatch: analyticsRes.matches_completed > 0
+          ? Math.round(analyticsRes.total_reservations / analyticsRes.matches_completed)
+          : 0,
+      }));
+
+      // Fetch notifications
+      const notificationsRes = await api.getNotifications().catch(() => ({ notifications: [] }));
+      const notificationsData = notificationsRes?.notifications || [];
+      const notificationData = notificationsData.map((n: ApiNotification, i: number) => apiNotificationToNotification(n, i, userId));
+      setNotifications(notificationData);
+      
     } catch (err: any) {
-      console.warn('API unavailable, using mock data:', err.message);
+      console.error('API error:', err);
       setApiAvailable(false);
       // Keep using initial mock data
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
-  // Initial data fetch
+  // Initial data fetch when user is authenticated
   useEffect(() => {
-    refreshData();
-  }, [refreshData]);
+    if (isAuthenticated) {
+      refreshData();
+    }
+  }, [refreshData, isAuthenticated]);
 
   // Fonctions pour filtrer par utilisateur
-  const getUserRestaurants = (userId: string) => restaurants.filter(r => r.userId === userId);
-  const getUserMatchs = (userId: string) => matchs.filter(m => m.userId === userId);
-  const getUserClients = (userId: string) => clients.filter(c => c.userId === userId);
+  // Note: When API is available, data is already user-specific, so we return all.
+  // We still filter for backward compatibility with mock data.
+  const getUserRestaurants = (requestedUserId: string) => {
+    // If using API data, return all (already filtered by API)
+    // If using mock data, filter by userId
+    if (apiAvailable && currentUser) {
+      return restaurants;
+    }
+    return restaurants.filter(r => r.userId === requestedUserId);
+  };
+  
+  const getUserMatchs = (requestedUserId: string) => {
+    if (apiAvailable && currentUser) {
+      return matchs;
+    }
+    return matchs.filter(m => m.userId === requestedUserId);
+  };
+  
+  const getUserClients = (requestedUserId: string) => {
+    if (apiAvailable && currentUser) {
+      return clients;
+    }
+    return clients.filter(c => c.userId === requestedUserId);
+  };
 
   const addRestaurant = (restaurant: Restaurant) => {
     setRestaurants([...restaurants, restaurant]);
