@@ -61,7 +61,7 @@ class ApiService {
     });
   }
 
-  async register(data: { email: string; password: string; first_name: string; last_name: string; phone?: string }) {
+  async register(data: { email: string; password: string; firstName: string; lastName: string; phone?: string }) {
     return this.request<{ user: any }>('/auth/register', {
       method: 'POST',
       body: data,
@@ -300,15 +300,19 @@ class ApiService {
   // ============================================
 
   async getSubscriptionPlans() {
-    return this.request<{ plans: SubscriptionPlan[] }>('/subscriptions/plans', {
+    return this.request<{ plans: SubscriptionPlan[] }>('/subscriptions/plans');
+  }
+
+  async createCheckout(planId: string, venueId?: string) {
+    return this.request<{ checkout_url: string; session_id: string }>('/subscriptions/create-checkout', {
       method: 'POST',
+      body: { plan_id: planId, venue_id: venueId },
     });
   }
 
-  async createCheckout(planId: string) {
-    return this.request<{ checkout_url: string }>('/subscriptions/create-checkout', {
+  async getPaymentPortal() {
+    return this.request<{ portal_url: string }>('/subscriptions/me/update-payment-method', {
       method: 'POST',
-      body: { plan_id: planId },
     });
   }
 
@@ -597,9 +601,18 @@ export interface SubscriptionPlan {
 
 export interface Subscription {
   id: string;
-  plan_id: string;
-  status: 'active' | 'canceled' | 'past_due';
+  plan: string;
+  status: 'active' | 'canceled' | 'past_due' | 'trialing';
+  current_period_start: string;
   current_period_end: string;
+  auto_renew: boolean;
+  price: string;
+  currency: string;
+  canceled_at: string | null;
+  plan_details: {
+    name: string;
+    features: string[];
+  } | null;
 }
 
 export interface Reservation {

@@ -1,6 +1,6 @@
 import { Dashboard } from './components/Dashboard';
 import { Header } from './components/Header';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ClientsDetail } from './components/details/ClientsDetail';
 import { MatchesDiffusesDetail } from './components/details/MatchesDiffusesDetail';
 import { MatchesAVenirDetail } from './components/details/MatchesAVenirDetail';
@@ -84,7 +84,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { isAuthenticated, login, register, currentUser } = useAuth();
+  const { isAuthenticated, login, register, currentUser, completeOnboarding } = useAuth();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('à venir');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
@@ -93,9 +93,36 @@ function AppContent() {
   // États pour le parcours de souscription
   const [selectedFormule, setSelectedFormule] = useState<'mensuel' | 'annuel'>('mensuel');
   const [nomBarOnboarding, setNomBarOnboarding] = useState<string>('');
+  const [venueIdOnboarding, setVenueIdOnboarding] = useState<string>('');
   
   // État pour la navigation non authentifiée
   const [unauthPage, setUnauthPage] = useState<'landing' | 'app-presentation' | null>(null);
+  
+  // État pour le message de succès checkout
+  const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
+
+  // Handle Stripe checkout redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutResult = params.get('checkout');
+    
+    if (checkoutResult === 'success') {
+      setCheckoutStatus('success');
+      // Complete onboarding after successful payment
+      completeOnboarding();
+      setCurrentPage('confirmation-onboarding');
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname);
+      // Clear status after 5 seconds
+      setTimeout(() => setCheckoutStatus(null), 5000);
+    } else if (checkoutResult === 'cancel') {
+      setCheckoutStatus('cancel');
+      // Stay on facturation page to retry payment
+      setCurrentPage('facturation');
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => setCheckoutStatus(null), 5000);
+    }
+  }, [completeOnboarding]);
 
   // Gestion de l'inscription avec redirection vers "ajouter-restaurant"
   const handleRegister = async (data: any) => {
@@ -183,7 +210,10 @@ function AppContent() {
             onBack={() => setCurrentPage('ajouter-restaurant')} 
             onNavigate={setCurrentPage}
             selectedFormule={selectedFormule}
-            onBarInfoSubmit={(nom) => setNomBarOnboarding(nom)}
+            onBarInfoSubmit={(nom, venueId) => {
+              setNomBarOnboarding(nom);
+              setVenueIdOnboarding(venueId);
+            }}
           />
         </div>
       );
@@ -211,9 +241,10 @@ function AppContent() {
       return (
         <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
           <Facturation 
-            onBack={() => setCurrentPage('ajouter-restaurant')} 
+            onBack={() => setCurrentPage('infos-etablissement')} 
             onNavigate={setCurrentPage}
             isOnboarding={true}
+            venueId={venueIdOnboarding}
           />
         </div>
       );
@@ -281,7 +312,10 @@ function AppContent() {
             onBack={() => setCurrentPage('ajouter-restaurant')} 
             onNavigate={setCurrentPage}
             selectedFormule={selectedFormule}
-            onBarInfoSubmit={(nom) => setNomBarOnboarding(nom)}
+            onBarInfoSubmit={(nom, venueId) => {
+              setNomBarOnboarding(nom);
+              setVenueIdOnboarding(venueId);
+            }}
           />
         );
       case 'paiement-validation':

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageType } from '../../App';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2, ExternalLink } from 'lucide-react';
+import api, { Subscription } from '../../services/api';
 
 interface CompteFacturationProps {
   onNavigate?: (page: PageType) => void;
@@ -10,8 +11,65 @@ interface CompteFacturationProps {
 
 export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps) {
   const { currentUser } = useAuth();
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
 
-  // 4️⃣ Logique : 1 établissement = 1 abonnement
+  // Fetch subscription data
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      try {
+        const response = await api.getMySubscription();
+        setSubscription(response.subscription);
+      } catch (err: any) {
+        console.error('Failed to fetch subscription:', err);
+        // Don't show error, just use demo mode
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSubscription();
+  }, []);
+
+  // Handle payment method update (redirect to Stripe portal)
+  const handleUpdatePayment = async () => {
+    setIsUpdatingPayment(true);
+    try {
+      const response = await api.getPaymentPortal();
+      if (response.portal_url) {
+        window.location.href = response.portal_url;
+      }
+    } catch (err: any) {
+      console.error('Failed to open payment portal:', err);
+      setError('Impossible d\'ouvrir le portail de paiement');
+      setIsUpdatingPayment(false);
+    }
+  };
+
+  // Handle subscription cancellation
+  const handleCancelSubscription = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir résilier votre abonnement ? Vous conserverez l\'accès jusqu\'à la fin de la période en cours.')) {
+      return;
+    }
+
+    setIsCanceling(true);
+    try {
+      await api.cancelSubscription();
+      // Refresh subscription data
+      const response = await api.getMySubscription();
+      setSubscription(response.subscription);
+    } catch (err: any) {
+      console.error('Failed to cancel subscription:', err);
+      setError('Impossible de résilier l\'abonnement');
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
+  // Fallback mock data for demo mode
   const [etablissements] = useState([
     {
       id: '1',

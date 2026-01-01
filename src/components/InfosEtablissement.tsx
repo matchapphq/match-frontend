@@ -1,13 +1,13 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { PageType } from '../App';
-import patternBg from 'figma:asset/20e2f150b2f5f4be01b1aec94edb580bb26d8dcf.png';
+import api from '../services/api';
 
 interface InfosEtablissementProps {
   onBack: () => void;
   onNavigate: (page: PageType) => void;
   selectedFormule?: 'mensuel' | 'annuel';
-  onBarInfoSubmit?: (nomBar: string) => void;
+  onBarInfoSubmit?: (nomBar: string, venueId: string) => void;
 }
 
 export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mensuel', onBarInfoSubmit }: InfosEtablissementProps) {
@@ -21,33 +21,50 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
     capacite: '',
     typeEtablissement: 'bar',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const updateField = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Enregistrer le nom du bar
-    if (onBarInfoSubmit) {
-      onBarInfoSubmit(formData.nomBar);
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Create venue via API
+      const response = await api.createVenue({
+        name: formData.nomBar,
+        street_address: formData.adresse,
+        city: formData.ville,
+        postal_code: formData.codePostal,
+        country: 'France',
+        phone: formData.telephone || undefined,
+        email: formData.email || undefined,
+        capacity: formData.capacite ? parseInt(formData.capacite, 10) : undefined,
+      });
+
+      if (response.venue) {
+        // Pass venue info to parent
+        if (onBarInfoSubmit) {
+          onBarInfoSubmit(formData.nomBar, response.venue.id);
+        }
+        // Navigate to facturation
+        onNavigate('facturation');
+      } else {
+        throw new Error('Failed to create venue');
+      }
+    } catch (err: any) {
+      console.error('Venue creation error:', err);
+      setError(err.message || 'Une erreur est survenue lors de la création de l\'établissement');
+      setIsSubmitting(false);
     }
-    // Passer à la page de paiement
-    onNavigate('paiement-validation' as PageType);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10 p-8 relative overflow-hidden">
-      {/* Pattern de fond avec éclairs */}
-      <div 
-        className="fixed inset-0 z-0 opacity-[0.05]"
-        style={{
-          backgroundImage: `url(${patternBg})`,
-          backgroundRepeat: 'repeat',
-          backgroundSize: '400px',
-        }}
-      ></div>
-
       <div className="relative z-10 max-w-3xl mx-auto">
         {/* Bouton retour */}
         <div className="mb-6">
@@ -70,6 +87,14 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
             Ces informations permettront d'afficher et configurer votre bar sur Match.
           </p>
         </div>
+
+        {/* Error message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <p className="text-red-700">{error}</p>
+          </div>
+        )}
 
         {/* Formulaire en liquid glass */}
         <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200/50 p-8 mb-8">
@@ -207,10 +232,18 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
             {/* Bouton CTA */}
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm mt-8"
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm mt-8 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontWeight: '600' }}
             >
-              Continuer vers le paiement
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Création de l'établissement...
+                </span>
+              ) : (
+                'Continuer vers le paiement'
+              )}
             </button>
           </form>
         </div>

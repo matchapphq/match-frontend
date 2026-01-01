@@ -197,8 +197,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.register({
         email: data.email,
         password: data.password,
-        first_name: data.prenom,
-        last_name: data.nom,
+        firstName: data.prenom,
+        lastName: data.nom,
         phone: data.telephone,
       });
 
