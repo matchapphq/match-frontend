@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { PageType } from '../../App';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowLeft, Loader2, ExternalLink } from 'lucide-react';
-import api, { Subscription } from '../../services/api';
+import { ArrowLeft, Loader2, ExternalLink, Download, CreditCard } from 'lucide-react';
+import api, { Subscription, Invoice } from '../../services/api';
+import { useAppContext } from '../../context/AppContext';
 
 interface CompteFacturationProps {
   onNavigate?: (page: PageType) => void;
@@ -11,34 +12,97 @@ interface CompteFacturationProps {
 
 export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps) {
   const { currentUser } = useAuth();
+  const { restaurants } = useAppContext();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [venueSubscriptions, setVenueSubscriptions] = useState<Record<string, Subscription>>({});
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [selectedVenueId, setSelectedVenueId] = useState<string>('');
 
-  // Fetch subscription data
+  // Fetch invoices on mount
   useEffect(() => {
-    const fetchSubscription = async () => {
+    const fetchInvoices = async () => {
       try {
-        const response = await api.getMySubscription();
-        setSubscription(response.subscription);
+        const invoicesResponse = await api.getMyInvoices().catch(() => ({ invoices: [] }));
+        setInvoices(invoicesResponse.invoices || []);
       } catch (err: any) {
-        console.error('Failed to fetch subscription:', err);
-        // Don't show error, just use demo mode
+        console.error('Failed to fetch invoices:', err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchSubscription();
+    fetchInvoices();
   }, []);
 
-  // Handle payment method update (redirect to Stripe portal)
-  const handleUpdatePayment = async () => {
+  // Set default selected venue
+  useEffect(() => {
+    if (restaurants.length > 0 && !selectedVenueId) {
+      setSelectedVenueId(restaurants[0].venueId);
+    }
+  }, [restaurants, selectedVenueId]);
+
+  // Fetch subscriptions for all venues
+  useEffect(() => {
+    const fetchAllVenueSubscriptions = async () => {
+      if (restaurants.length === 0) return;
+      
+      const subscriptionMap: Record<string, Subscription> = {};
+      
+      await Promise.all(
+        restaurants.map(async (restaurant) => {
+          try {
+            const response = await api.getVenueSubscription(restaurant.venueId);
+            if (response.subscription) {
+              subscriptionMap[restaurant.venueId] = response.subscription;
+            }
+          } catch (err) {
+            console.error(`Failed to fetch subscription for venue ${restaurant.venueId}:`, err);
+          }
+        })
+      );
+      
+      setVenueSubscriptions(subscriptionMap);
+    };
+
+    fetchAllVenueSubscriptions();
+  }, [restaurants]);
+
+  // Update selected subscription when venue changes
+  useEffect(() => {
+    if (selectedVenueId && venueSubscriptions[selectedVenueId]) {
+      setSubscription(venueSubscriptions[selectedVenueId]);
+    } else if (selectedVenueId) {
+      // Fetch if not in cache yet
+      const fetchVenueSubscription = async () => {
+        setIsLoading(true);
+        try {
+          const response = await api.getVenueSubscription(selectedVenueId);
+          setSubscription(response.subscription);
+          if (response.subscription) {
+            setVenueSubscriptions(prev => ({ ...prev, [selectedVenueId]: response.subscription! }));
+          }
+        } catch (err: any) {
+          console.error('Failed to fetch venue subscription:', err);
+          setSubscription(null);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchVenueSubscription();
+    }
+  }, [selectedVenueId, venueSubscriptions]);
+
+  // Handle payment method update for a specific venue (redirect to Stripe portal)
+  const handleUpdatePayment = async (venueId?: string) => {
     setIsUpdatingPayment(true);
     try {
-      const response = await api.getPaymentPortal();
+      const response = venueId 
+        ? await api.getVenuePaymentPortal(venueId)
+        : await api.getPaymentPortal();
       if (response.portal_url) {
         window.location.href = response.portal_url;
       }
@@ -46,6 +110,16 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
       console.error('Failed to open payment portal:', err);
       setError('Impossible d\'ouvrir le portail de paiement');
       setIsUpdatingPayment(false);
+    }
+  };
+
+  // Handle invoice download
+  const handleDownloadInvoice = (invoice: Invoice) => {
+    if (invoice.pdf_url) {
+      window.open(invoice.pdf_url, '_blank');
+    } else {
+      setError('Le PDF de cette facture n\'est pas disponible');
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -68,52 +142,6 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
       setIsCanceling(false);
     }
   };
-
-  // Fallback mock data for demo mode
-  const [etablissements] = useState([
-    {
-      id: '1',
-      nom: 'Le Sport Bar Paris',
-      ville: 'Paris 11ème',
-      formule: 'Annuel',
-      prix: '300€/an',
-      prixMensuel: '25€/mois',
-      statut: 'actif',
-      prochainRenouvellement: '01/12/2025',
-      moyenPaiement: {
-        type: 'VISA',
-        numero: '•••• 4242',
-        expiration: '12/2026',
-      },
-      factures: [
-        { id: 1, date: '01/12/2024', montant: '300€', statut: 'Payée', numero: 'INV-2024-001' },
-        { id: 2, date: '01/12/2023', montant: '300€', statut: 'Payée', numero: 'INV-2023-001' },
-      ],
-    },
-    {
-      id: '2',
-      nom: 'Stadium Café Lyon',
-      ville: 'Lyon 2ème',
-      formule: 'Mensuel',
-      prix: '30€/mois',
-      prixMensuel: '30€/mois',
-      statut: 'actif',
-      prochainRenouvellement: '15/01/2025',
-      moyenPaiement: {
-        type: 'MASTERCARD',
-        numero: '•••• 8888',
-        expiration: '08/2027',
-      },
-      factures: [
-        { id: 1, date: '15/12/2024', montant: '30€', statut: 'Payée', numero: 'INV-2024-002' },
-        { id: 2, date: '15/11/2024', montant: '30€', statut: 'Payée', numero: 'INV-2024-003' },
-      ],
-    },
-  ]);
-
-  const [selectedEtablissement, setSelectedEtablissement] = useState(etablissements[0].id);
-
-  const currentEtablissement = etablissements.find(e => e.id === selectedEtablissement);
 
   const features = [
     'Diffusion illimitée de matchs',
@@ -146,44 +174,46 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
       </div>
 
       {/* Sélecteur d'établissement */}
-      <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-6 mb-6">
-        <h2 className="text-xl mb-4" style={{ fontWeight: '600', color: '#5a03cf' }}>
-          Sélectionnez un établissement
-        </h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          {etablissements.map((etablissement) => (
-            <button
-              key={etablissement.id}
-              onClick={() => setSelectedEtablissement(etablissement.id)}
-              className={`text-left bg-white/70 backdrop-blur-xl rounded-xl p-5 transition-all ${
-                selectedEtablissement === etablissement.id
-                  ? 'border-2 border-[#5a03cf]/40 shadow-md'
-                  : 'border border-gray-200/50 hover:border-gray-300/60'
-              }`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="text-lg mb-1" style={{ fontWeight: '700', color: '#5a03cf' }}>
-                    {etablissement.nom}
-                  </p>
-                  <p className="text-gray-600 text-sm">{etablissement.ville}</p>
+      {restaurants.length > 0 && (
+        <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-6 mb-6">
+          <h2 className="text-xl mb-4" style={{ fontWeight: '600', color: '#5a03cf' }}>
+            Sélectionnez un établissement
+          </h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            {restaurants.map((restaurant) => (
+              <button
+                key={restaurant.venueId}
+                onClick={() => setSelectedVenueId(restaurant.venueId)}
+                className={`text-left bg-white/70 backdrop-blur-xl rounded-xl p-5 transition-all ${
+                  selectedVenueId === restaurant.venueId
+                    ? 'border-2 border-[#5a03cf]/40 shadow-md'
+                    : 'border border-gray-200/50 hover:border-gray-300/60'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="text-lg mb-1" style={{ fontWeight: '700', color: '#5a03cf' }}>
+                      {restaurant.nom}
+                    </p>
+                    <p className="text-gray-600 text-sm">{restaurant.adresse}</p>
+                  </div>
+                  <span
+                    className="inline-block px-3 py-1 bg-[#9cff02]/20 backdrop-blur-sm text-[#5a03cf] rounded-lg border border-[#9cff02]/30 text-sm"
+                    style={{ fontWeight: '600' }}
+                  >
+                    Actif
+                  </span>
                 </div>
-                <span
-                  className="inline-block px-3 py-1 bg-[#9cff02]/20 backdrop-blur-sm text-[#5a03cf] rounded-lg border border-[#9cff02]/30 text-sm"
-                  style={{ fontWeight: '600' }}
-                >
-                  {etablissement.statut === 'actif' ? 'Actif' : 'Inactif'}
-                </span>
-              </div>
-              <p className="text-gray-700" style={{ fontWeight: '600' }}>
-                {etablissement.formule} - {etablissement.prix}
-              </p>
-            </button>
-          ))}
+                <p className="text-gray-700" style={{ fontWeight: '600' }}>
+                  {venueSubscriptions[restaurant.venueId]?.plan_name || 'Chargement...'} - {venueSubscriptions[restaurant.venueId]?.display_price || '...'}
+                </p>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {currentEtablissement && (
+      {selectedVenueId && subscription && (
         <>
           {/* Abonnement actuel de l'établissement */}
           <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-6 mb-6">
@@ -191,21 +221,21 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
               Abonnement actif
             </h2>
             <p className="text-gray-600 mb-6">
-              Formule pour {currentEtablissement.nom}
+              Formule pour {restaurants.find(r => r.venueId === selectedVenueId)?.nom || 'votre établissement'}
             </p>
 
             <div className="grid md:grid-cols-3 gap-6">
               <div className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30">
                 <p className="text-gray-700 mb-1">Formule</p>
                 <p className="text-xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
-                  {currentEtablissement.formule}
+                  {subscription.plan_name || (subscription.plan === 'pro' ? 'Annuel' : 'Mensuel')}
                 </p>
-                <p className="text-gray-600 text-sm mt-1">{currentEtablissement.prix}</p>
+                <p className="text-gray-600 text-sm mt-1">{subscription.display_price || (subscription.plan === 'pro' ? '300€/an' : '30€/mois')}</p>
               </div>
               <div className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30">
                 <p className="text-gray-700 mb-1">Prochain renouvellement</p>
                 <p className="text-lg" style={{ fontWeight: '600' }}>
-                  {currentEtablissement.prochainRenouvellement}
+                  {new Date(subscription.current_period_end).toLocaleDateString('fr-FR')}
                 </p>
               </div>
               <div className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30">
@@ -230,7 +260,7 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
             <div className="grid md:grid-cols-2 gap-4 mb-6">
               <div
                 className={`bg-white/70 backdrop-blur-xl rounded-xl p-6 border ${
-                  currentEtablissement.formule === 'Mensuel'
+                  subscription.plan === 'basic'
                     ? 'border-2 border-[#5a03cf]/40 shadow-md'
                     : 'border-gray-200/50'
                 }`}
@@ -256,7 +286,7 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
 
               <div
                 className={`bg-white/70 backdrop-blur-xl rounded-xl p-6 border ${
-                  currentEtablissement.formule === 'Annuel'
+                  subscription.plan === 'pro'
                     ? 'border-2 border-[#5a03cf]/40 shadow-md'
                     : 'border-gray-200/50'
                 }`}
@@ -308,29 +338,34 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
             <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
               Moyen de paiement
             </h2>
-            <p className="text-gray-600 mb-6">Carte bancaire pour {currentEtablissement.nom}</p>
+            <p className="text-gray-600 mb-6">Carte bancaire pour {restaurants.find(r => r.venueId === selectedVenueId)?.nom || 'votre établissement'}</p>
 
             <div className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-8 bg-gradient-to-br from-[#5a03cf] to-[#9cff02] rounded flex items-center justify-center">
-                    <span className="text-white text-xs" style={{ fontWeight: '700' }}>
-                      {currentEtablissement.moyenPaiement.type}
-                    </span>
+                    <CreditCard className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <p className="text-gray-900" style={{ fontWeight: '600' }}>
-                      {currentEtablissement.moyenPaiement.numero}
+                      Carte enregistrée via Stripe
                     </p>
                     <p className="text-gray-600 text-sm">
-                      Expire le {currentEtablissement.moyenPaiement.expiration}
+                      Gérez votre moyen de paiement via le portail sécurisé
                     </p>
                   </div>
                 </div>
                 <button
-                  className="px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 rounded-lg transition-colors"
+                  onClick={() => handleUpdatePayment(selectedVenueId)}
+                  disabled={isUpdatingPayment}
+                  className="flex items-center gap-2 px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 rounded-lg transition-colors disabled:opacity-50"
                   style={{ fontWeight: '600' }}
                 >
+                  {isUpdatingPayment ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ExternalLink className="w-4 h-4" />
+                  )}
                   Modifier
                 </button>
               </div>
@@ -343,42 +378,52 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
               Historique des factures
             </h2>
             <p className="text-gray-600 mb-6">
-              Factures pour {currentEtablissement.nom}
+              Vos factures
             </p>
 
             <div className="space-y-3">
-              {currentEtablissement.factures.map((invoice) => (
-                <div
-                  key={invoice.id}
-                  className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-4 border border-gray-200/30 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-6">
-                    <div>
-                      <p className="text-gray-900" style={{ fontWeight: '600' }}>
-                        {invoice.numero}
-                      </p>
-                      <p className="text-gray-600 text-sm">{invoice.date}</p>
+              {invoices.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">Aucune facture disponible</p>
+              ) : (
+                invoices.map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-4 border border-gray-200/30 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-6">
+                      <div>
+                        <p className="text-gray-900" style={{ fontWeight: '600' }}>
+                          {invoice.invoice_number}
+                        </p>
+                        <p className="text-gray-600 text-sm">{new Date(invoice.issue_date).toLocaleDateString('fr-FR')}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-900" style={{ fontWeight: '600' }}>
+                          {invoice.total}€
+                        </p>
+                      </div>
+                      <span
+                        className={`px-3 py-1 rounded-lg text-sm border ${
+                          invoice.status === 'paid'
+                            ? 'bg-[#9cff02]/20 text-[#5a03cf] border-[#9cff02]/30'
+                            : 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                        }`}
+                        style={{ fontWeight: '600' }}
+                      >
+                        {invoice.status === 'paid' ? 'Payée' : invoice.status === 'pending' ? 'En attente' : invoice.status}
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-gray-900" style={{ fontWeight: '600' }}>
-                        {invoice.montant}
-                      </p>
-                    </div>
-                    <span
-                      className="px-3 py-1 bg-[#9cff02]/20 backdrop-blur-sm text-[#5a03cf] rounded-lg text-sm border border-[#9cff02]/30"
+                    <button
+                      onClick={() => handleDownloadInvoice(invoice)}
+                      className="flex items-center gap-2 px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 rounded-lg transition-colors"
                       style={{ fontWeight: '600' }}
                     >
-                      {invoice.statut}
-                    </span>
+                      <Download className="w-4 h-4" />
+                      Télécharger
+                    </button>
                   </div>
-                  <button
-                    className="px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 rounded-lg transition-colors"
-                    style={{ fontWeight: '600' }}
-                  >
-                    Télécharger
-                  </button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 

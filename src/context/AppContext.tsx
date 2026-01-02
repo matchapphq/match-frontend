@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 
 export interface Restaurant {
   id: number;
+  venueId: string; // Actual UUID from database
   nom: string;
   adresse: string;
   telephone: string;
@@ -106,6 +107,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 function venueToRestaurant(venue: Venue, index: number, userId: string): Restaurant {
   return {
     id: index + 1, // Keep numeric ID for backward compatibility
+    venueId: venue.id, // Actual UUID from database
     nom: venue.name,
     adresse: `${venue.street_address}, ${venue.postal_code} ${venue.city}`,
     telephone: venue.phone || '',
@@ -175,6 +177,7 @@ function apiNotificationToNotification(n: ApiNotification, index: number, userId
 const initialRestaurants: Restaurant[] = [
   {
     id: 1,
+    venueId: 'mock-venue-1',
     nom: 'Le Sport Bar',
     adresse: '12 Rue de la République, 75001 Paris',
     telephone: '01 23 45 67 89',
@@ -185,10 +188,11 @@ const initialRestaurants: Restaurant[] = [
     image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
     horaires: 'Lun-Dim: 11h00 - 02h00',
     tarif: '30€/mois',
-    userId: 'user-demo', // Associé à l'utilisateur démo
+    userId: 'user-demo',
   },
   {
     id: 2,
+    venueId: 'mock-venue-2',
     nom: 'Chez Michel',
     adresse: '45 Avenue des Champs, 69001 Lyon',
     telephone: '04 12 34 56 78',
@@ -203,6 +207,7 @@ const initialRestaurants: Restaurant[] = [
   },
   {
     id: 3,
+    venueId: 'mock-venue-3',
     nom: 'La Brasserie du Stade',
     adresse: '78 Boulevard Sport, 13001 Marseille',
     telephone: '04 91 23 45 67',

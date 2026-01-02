@@ -333,6 +333,20 @@ class ApiService {
     });
   }
 
+  async getMyInvoices() {
+    return this.request<{ invoices: Invoice[] }>('/subscriptions/invoices');
+  }
+
+  async getVenuePaymentPortal(venueId: string) {
+    return this.request<{ portal_url: string }>(`/partners/venues/${venueId}/payment-portal`, {
+      method: 'POST',
+    });
+  }
+
+  async getVenueSubscription(venueId: string) {
+    return this.request<{ subscription: Subscription | null }>(`/partners/venues/${venueId}/subscription`);
+  }
+
   // ============================================
   // RESERVATIONS
   // ============================================
@@ -528,10 +542,18 @@ export interface Notification {
 
 export interface Invoice {
   id: string;
-  venue_id: string;
+  invoice_number: string;
+  venue_id?: string;
   amount: number;
-  status: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: 'draft' | 'pending' | 'paid' | 'overdue' | 'canceled';
+  issue_date: string;
   due_date: string;
+  paid_date?: string;
+  description?: string;
+  pdf_url?: string;
   created_at: string;
 }
 
@@ -602,6 +624,8 @@ export interface SubscriptionPlan {
 export interface Subscription {
   id: string;
   plan: string;
+  plan_name?: string; // User-friendly name: "Mensuel" or "Annuel"
+  display_price?: string; // Formatted price: "30€/mois" or "300€/an"
   status: 'active' | 'canceled' | 'past_due' | 'trialing';
   current_period_start: string;
   current_period_end: string;
