@@ -4,7 +4,7 @@
 declare const import_meta_env: { VITE_API_URL?: string } | undefined;
 const API_BASE_URL = (typeof import_meta_env !== 'undefined' && import_meta_env?.VITE_API_URL) 
   || (import.meta as any).env?.VITE_API_URL 
-  || 'http://localhost:3000/api';
+  || 'http://localhost:8008/api';
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -124,9 +124,16 @@ class ApiService {
   }
 
   async createVenue(data: CreateVenueData) {
-    return this.request<{ venue: Venue }>('/partners/venues', {
+    return this.request<{ checkout_url: string; session_id: string; message: string }>('/partners/venues', {
       method: 'POST',
       body: data,
+    });
+  }
+
+  async verifyCheckoutAndCreateVenue(sessionId: string) {
+    return this.request<{ venue: Venue; subscription: any; message: string; already_exists?: boolean }>('/partners/venues/verify-checkout', {
+      method: 'POST',
+      body: { session_id: sessionId },
     });
   }
 
@@ -473,6 +480,7 @@ export interface CreateVenueData {
   phone?: string;
   email?: string;
   capacity?: number;
+  plan_id?: 'monthly' | 'annual';
 }
 
 export interface VenueMatch {

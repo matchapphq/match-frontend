@@ -1,6 +1,7 @@
 import { Dashboard } from './components/Dashboard';
 import { Header } from './components/Header';
 import { useState, useEffect } from 'react';
+import api from './services/api';
 import { ClientsDetail } from './components/details/ClientsDetail';
 import { MatchesDiffusesDetail } from './components/details/MatchesDiffusesDetail';
 import { MatchesAVenirDetail } from './components/details/MatchesAVenirDetail';
@@ -25,7 +26,7 @@ import { CompteNotifications } from './components/compte/CompteNotifications';
 import { CompteSecurite } from './components/compte/CompteSecurite';
 import { CompteAide } from './components/compte/CompteAide';
 import { CompteFacturation } from './components/compte/CompteFacturation';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useAppContext } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
@@ -85,7 +86,18 @@ export default function App() {
 
 function AppContent() {
   const { isAuthenticated, login, register, currentUser, completeOnboarding } = useAuth();
-  const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
+  const { refreshData } = useAppContext();
+  
+  // Check if returning from successful checkout - show confirmation immediately
+  const getInitialPage = (): PageType => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') === 'success') {
+      return 'confirmation-onboarding';
+    }
+    return 'dashboard';
+  };
+  
+  const [currentPage, setCurrentPage] = useState<PageType>(getInitialPage);
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('à venir');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
   const [authView, setAuthView] = useState<'landing' | 'login' | 'register' | 'referral'>('landing');
@@ -100,17 +112,55 @@ function AppContent() {
   
   // État pour le message de succès checkout
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
+  
+  // Flag to track if we're processing checkout return
+  const [isProcessingCheckout, setIsProcessingCheckout] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('checkout') === 'success';
+  });
 
   // Handle Stripe checkout redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const checkoutResult = params.get('checkout');
+    const sessionId = params.get('session_id');
+    
+    const verifyAndCreateVenue = async (sessionId: string) => {
+      try {
+        console.log('Verifying checkout session:', sessionId);
+        const result = await api.verifyCheckoutAndCreateVenue(sessionId);
+        console.log('Venue creation result:', result);
+        
+        if (result.venue) {
+          setNomBarOnboarding(result.venue.name);
+        }
+        
+        // Refresh data to fetch the newly created venue
+        await refreshData();
+        
+        setCheckoutStatus('success');
+        completeOnboarding();
+        setCurrentPage('confirmation-onboarding');
+      } catch (error: any) {
+        console.error('Error verifying checkout:', error);
+        // Still complete onboarding even if verification fails (webhook might handle it)
+        await refreshData(); // Try to refresh anyway
+        setCheckoutStatus('success');
+        completeOnboarding();
+        setCurrentPage('confirmation-onboarding');
+      }
+    };
     
     if (checkoutResult === 'success') {
-      setCheckoutStatus('success');
-      // Complete onboarding after successful payment
-      completeOnboarding();
-      setCurrentPage('confirmation-onboarding');
+      if (sessionId) {
+        // Verify checkout and create venue
+        verifyAndCreateVenue(sessionId);
+      } else {
+        // No session_id, just complete onboarding
+        setCheckoutStatus('success');
+        completeOnboarding();
+        setCurrentPage('confirmation-onboarding');
+      }
       // Clear URL params
       window.history.replaceState({}, '', window.location.pathname);
       // Clear status after 5 seconds
@@ -191,6 +241,18 @@ function AppContent() {
 
   // Si l'utilisateur est authentifié mais n'a pas complété son onboarding
   if (currentUser && !currentUser.hasCompletedOnboarding) {
+    // PRIORITY: Show confirmation screen immediately after payment (before any other onboarding screens)
+    if (currentPage === 'confirmation-onboarding' || isProcessingCheckout) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
+          <ConfirmationOnboarding 
+            onNavigate={setCurrentPage}
+            nomBar={nomBarOnboarding}
+          />
+        </div>
+      );
+    }
+    
     // Afficher l'écran d'onboarding approprié selon l'étape
     if (currentPage === 'ajouter-restaurant') {
       return (
@@ -224,15 +286,6 @@ function AppContent() {
             onBack={() => setCurrentPage('infos-etablissement')} 
             onNavigate={setCurrentPage}
             selectedFormule={selectedFormule}
-            nomBar={nomBarOnboarding}
-          />
-        </div>
-      );
-    } else if (currentPage === 'confirmation-onboarding') {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
-          <ConfirmationOnboarding 
-            onNavigate={setCurrentPage}
             nomBar={nomBarOnboarding}
           />
         </div>

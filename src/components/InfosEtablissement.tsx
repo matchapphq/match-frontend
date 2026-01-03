@@ -34,7 +34,13 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
     setError(null);
 
     try {
-      // Create venue via API
+      // Map formule to plan_id
+      const planId = selectedFormule === 'annuel' ? 'annual' : 'monthly';
+      
+      console.log('Creating venue with plan:', planId);
+      console.log('Form data:', formData);
+      
+      // Create venue via API - this now returns checkout_url directly
       const response = await api.createVenue({
         name: formData.nomBar,
         street_address: formData.adresse,
@@ -44,17 +50,22 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
         phone: formData.telephone || undefined,
         email: formData.email || undefined,
         capacity: formData.capacite ? parseInt(formData.capacite, 10) : undefined,
+        plan_id: planId,
       });
 
-      if (response.venue) {
-        // Pass venue info to parent
+      console.log('API Response:', response);
+
+      if (response.checkout_url) {
+        // Pass bar name to parent for confirmation screen
         if (onBarInfoSubmit) {
-          onBarInfoSubmit(formData.nomBar, response.venue.id);
+          onBarInfoSubmit(formData.nomBar, '');
         }
-        // Navigate to facturation
-        onNavigate('facturation');
+        console.log('Redirecting to:', response.checkout_url);
+        // Redirect directly to Stripe checkout - no need for Facturation page
+        window.location.href = response.checkout_url;
       } else {
-        throw new Error('Failed to create venue');
+        console.error('No checkout_url in response:', response);
+        throw new Error('Failed to create checkout session - no checkout URL received');
       }
     } catch (err: any) {
       console.error('Venue creation error:', err);
