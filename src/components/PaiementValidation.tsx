@@ -30,7 +30,7 @@ export function PaiementValidation({ onBack, onNavigate, selectedFormule = 'mens
       prix: '30€',
       periode: 'mois',
       total: '30€',
-      description: 'Facturation mensuelle - Engagement 12 mois',
+      description: 'Facturation mensuelle - Sans Engagement',
     },
     annuel: {
       prix: '300€',

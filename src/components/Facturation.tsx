@@ -91,7 +91,7 @@ export function Facturation({ onBack, onNavigate, isOnboarding = false, venueId 
                 </span>
                 <span className="text-gray-600 text-lg"> / mois</span>
               </div>
-              <p className="text-sm text-gray-500">Engagement 12 mois</p>
+              <p className="text-sm text-gray-500">Sans Engagement</p>
             </div>
 
             <div className="space-y-3 mb-8">
