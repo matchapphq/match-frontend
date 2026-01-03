@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { PageType } from '../../App';
 import { useAuth } from '../../context/AuthContext';
 import { ArrowLeft, Loader2, ExternalLink, Download, CreditCard } from 'lucide-react';
@@ -21,83 +21,76 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
+  
+  // Track if initial fetch has been done to prevent redundant calls
+  const hasFetched = useRef(false);
 
-  // Fetch invoices on mount
+  // OPTIMIZED: Single consolidated useEffect for initial data fetch
   useEffect(() => {
-    const fetchInvoices = async () => {
+    if (hasFetched.current) return;
+    
+    const fetchAllData = async () => {
+      hasFetched.current = true;
+      setIsLoading(true);
+      
       try {
-        const invoicesResponse = await api.getMyInvoices().catch(() => ({ invoices: [] }));
+        // Fetch invoices and subscriptions in parallel
+        const [invoicesResponse, ...subscriptionResults] = await Promise.all([
+          api.getMyInvoices().catch(() => ({ invoices: [] })),
+          ...restaurants.map(restaurant => 
+            api.getVenueSubscription(restaurant.venueId)
+              .then(res => ({ venueId: restaurant.venueId, subscription: res.subscription }))
+              .catch(() => ({ venueId: restaurant.venueId, subscription: null }))
+          )
+        ]);
+        
         setInvoices(invoicesResponse.invoices || []);
+        
+        // Build subscription map
+        const subscriptionMap: Record<string, Subscription> = {};
+        subscriptionResults.forEach((result: any) => {
+          if (result.subscription) {
+            subscriptionMap[result.venueId] = result.subscription;
+          }
+        });
+        setVenueSubscriptions(subscriptionMap);
+        
+        // Set default selected venue and subscription
+        if (restaurants.length > 0) {
+          const defaultVenueId = restaurants[0].venueId;
+          setSelectedVenueId(defaultVenueId);
+          if (subscriptionMap[defaultVenueId]) {
+            setSubscription(subscriptionMap[defaultVenueId]);
+          }
+        }
       } catch (err: any) {
-        console.error('Failed to fetch invoices:', err);
+        // Silently handle errors
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchInvoices();
-  }, []);
-
-  // Set default selected venue
-  useEffect(() => {
-    if (restaurants.length > 0 && !selectedVenueId) {
-      setSelectedVenueId(restaurants[0].venueId);
+    if (restaurants.length > 0) {
+      fetchAllData();
+    } else {
+      // No restaurants, just fetch invoices
+      api.getMyInvoices()
+        .then(res => setInvoices(res.invoices || []))
+        .catch(() => {})
+        .finally(() => setIsLoading(false));
+      hasFetched.current = true;
     }
-  }, [restaurants, selectedVenueId]);
-
-  // Fetch subscriptions for all venues
-  useEffect(() => {
-    const fetchAllVenueSubscriptions = async () => {
-      if (restaurants.length === 0) return;
-      
-      const subscriptionMap: Record<string, Subscription> = {};
-      
-      await Promise.all(
-        restaurants.map(async (restaurant) => {
-          try {
-            const response = await api.getVenueSubscription(restaurant.venueId);
-            if (response.subscription) {
-              subscriptionMap[restaurant.venueId] = response.subscription;
-            }
-          } catch (err) {
-            console.error(`Failed to fetch subscription for venue ${restaurant.venueId}:`, err);
-          }
-        })
-      );
-      
-      setVenueSubscriptions(subscriptionMap);
-    };
-
-    fetchAllVenueSubscriptions();
   }, [restaurants]);
 
-  // Update selected subscription when venue changes
+  // Update selected subscription when venue changes (use cached data)
   useEffect(() => {
     if (selectedVenueId && venueSubscriptions[selectedVenueId]) {
       setSubscription(venueSubscriptions[selectedVenueId]);
-    } else if (selectedVenueId) {
-      // Fetch if not in cache yet
-      const fetchVenueSubscription = async () => {
-        setIsLoading(true);
-        try {
-          const response = await api.getVenueSubscription(selectedVenueId);
-          setSubscription(response.subscription);
-          if (response.subscription) {
-            setVenueSubscriptions(prev => ({ ...prev, [selectedVenueId]: response.subscription! }));
-          }
-        } catch (err: any) {
-          console.error('Failed to fetch venue subscription:', err);
-          setSubscription(null);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchVenueSubscription();
     }
   }, [selectedVenueId, venueSubscriptions]);
 
   // Handle payment method update for a specific venue (redirect to Stripe portal)
-  const handleUpdatePayment = async (venueId?: string) => {
+  const handleUpdatePayment = useCallback(async (venueId?: string) => {
     setIsUpdatingPayment(true);
     try {
       const response = venueId 
@@ -107,11 +100,10 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
         window.location.href = response.portal_url;
       }
     } catch (err: any) {
-      console.error('Failed to open payment portal:', err);
       setError('Impossible d\'ouvrir le portail de paiement');
       setIsUpdatingPayment(false);
     }
-  };
+  }, []);
 
   // Handle invoice download
   const handleDownloadInvoice = (invoice: Invoice) => {

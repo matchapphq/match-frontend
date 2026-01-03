@@ -3,7 +3,7 @@ import { Users, Tv, Calendar, Eye, TrendingUp, Plus } from 'lucide-react';
 import { PageType } from '../App';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface DashboardProps {
   onNavigate: (page: PageType, matchId?: number, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
@@ -15,26 +15,39 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [clientFilter, setClientFilter] = useState<'tous' | 'en attente' | 'confirmé'>('tous');
   const [periodFilter, setPeriodFilter] = useState<'7j' | '15j' | '1m' | '3m' | '6m' | '1a'>('7j');
 
-  // Filtrer les données pour l'utilisateur connecté
-  const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
-  const allClients = currentUser ? getUserClients(currentUser.id) : [];
+  // Memoize data fetching to prevent recalculation on every render
+  const matchs = useMemo(() => 
+    currentUser ? getUserMatchs(currentUser.id) : [], 
+    [currentUser, getUserMatchs]
+  );
+  
+  const allClients = useMemo(() => 
+    currentUser ? getUserClients(currentUser.id) : [], 
+    [currentUser, getUserClients]
+  );
 
-  // Ajouter des statuts aux clients
-  const clientsWithStatus = allClients.map((client, index) => ({
-    ...client,
-    statut: (index < 2 ? 'en attente' : 'confirmé') as 'confirmé' | 'en attente' | 'refusé',
-    email: `${client.prenom.toLowerCase()}.${client.nom.toLowerCase()}@email.fr`,
-    telephone: '06 12 34 56 78',
-    restaurant: 'Le Sport Bar'
-  }));
+  // Memoize expensive computations
+  const clientsWithStatus = useMemo(() => 
+    allClients.map((client, index) => ({
+      ...client,
+      statut: (index < 2 ? 'en attente' : 'confirmé') as 'confirmé' | 'en attente' | 'refusé',
+      email: `${client.prenom.toLowerCase()}.${client.nom.toLowerCase()}@email.fr`,
+      telephone: '06 12 34 56 78',
+      restaurant: 'Le Sport Bar'
+    })),
+    [allClients]
+  );
 
-  const clients = clientFilter === 'tous' 
-    ? clientsWithStatus 
-    : clientsWithStatus.filter(c => c.statut === clientFilter);
+  const clients = useMemo(() => 
+    clientFilter === 'tous' 
+      ? clientsWithStatus 
+      : clientsWithStatus.filter(c => c.statut === clientFilter),
+    [clientFilter, clientsWithStatus]
+  );
 
-  const matchsAVenir = matchs.filter(m => m.statut === 'à venir');
-  const matchsTermines = matchs.filter(m => m.statut === 'terminé');
-  const clientsEnAttente = clientsWithStatus.filter(c => c.statut === 'en attente');
+  const matchsAVenir = useMemo(() => matchs.filter(m => m.statut === 'à venir'), [matchs]);
+  const matchsTermines = useMemo(() => matchs.filter(m => m.statut === 'terminé'), [matchs]);
+  const clientsEnAttente = useMemo(() => clientsWithStatus.filter(c => c.statut === 'en attente'), [clientsWithStatus]);
 
   const getPeriodLabel = () => {
     switch(periodFilter) {

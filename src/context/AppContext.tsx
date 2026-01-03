@@ -1,6 +1,16 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import api, { Venue, VenueMatch, Client as ApiClient, Notification as ApiNotification } from '../services/api';
 import { useAuth } from './AuthContext';
+import { 
+  useVenuesQuery, 
+  useMatchesQuery, 
+  useClientsQuery, 
+  useAnalyticsQuery, 
+  useCustomerStatsQuery, 
+  useNotificationsQuery,
+  queryKeys 
+} from '../hooks/useQueries';
 
 export interface Restaurant {
   id: number;
@@ -98,7 +108,7 @@ interface AppContextType {
   handleReservationAction: (reservationId: number, action: 'acceptée' | 'refusée') => void;
   updateClient: (id: number, client: Partial<Client>) => void;
   markAllAsRead: (userId: string) => void;
-  refreshData: () => Promise<void>;
+  refreshData: (force?: boolean) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -278,110 +288,121 @@ const initialStats: Stats = {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { currentUser, isAuthenticated } = useAuth();
-  const [restaurants, setRestaurants] = useState<Restaurant[]>(initialRestaurants);
-  const [matchs, setMatchs] = useState<Match[]>(initialMatchs);
-  const [clients, setClients] = useState<Client[]>(initialClients);
-  const [boostsDisponibles, setBoostsDisponibles] = useState(12);
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
-  const [stats, setStats] = useState<Stats>(initialStats);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [apiAvailable, setApiAvailable] = useState(true);
+  const queryClient = useQueryClient();
   
-  // Get userId - use actual user ID if authenticated, otherwise fallback to 'user-demo'
+  // Local state for UI operations (boosts, local updates)
+  const [boostsDisponibles, setBoostsDisponibles] = useState(12);
+  const [localNotifications, setLocalNotifications] = useState<Notification[]>([]);
+  
+  // Get userId
   const userId = currentUser?.id || 'user-demo';
 
-  // Fetch all data from API
-  const refreshData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // ============================================
+  // REACT QUERY HOOKS - Data fetches progressively as each completes
+  // ============================================
+  
+  const { 
+    data: venuesData, 
+    isLoading: venuesLoading,
+    isError: venuesError 
+  } = useVenuesQuery(isAuthenticated);
+  
+  const { 
+    data: matchesData, 
+    isLoading: matchesLoading 
+  } = useMatchesQuery(isAuthenticated);
+  
+  // Get venue IDs for clients query
+  const venueIds = useMemo(() => 
+    venuesData?.map((v: Venue) => v.id) || [], 
+    [venuesData]
+  );
+  
+  const { 
+    data: clientsData, 
+    isLoading: clientsLoading 
+  } = useClientsQuery(venueIds, isAuthenticated);
+  
+  const { 
+    data: analyticsData 
+  } = useAnalyticsQuery(isAuthenticated);
+  
+  const { 
+    data: customerStatsData 
+  } = useCustomerStatsQuery(isAuthenticated);
+  
+  const { 
+    data: notificationsData 
+  } = useNotificationsQuery(isAuthenticated);
 
-    try {
-      // Fetch venues - API already filters by authenticated user
-      const venuesRes = await api.getMyVenues();
-      console.log('Venues response:', venuesRes);
-      
-      // Mark API as available once we get a response
-      setApiAvailable(true);
-      
-      // Handle venues - set even if empty to clear mock data
-      const venues = venuesRes?.venues || [];
-      const restaurantData = venues.map((v: Venue, i: number) => venueToRestaurant(v, i, userId));
-      setRestaurants(restaurantData);
+  // ============================================
+  // TRANSFORM API DATA TO LOCAL FORMAT
+  // ============================================
+  
+  const restaurants = useMemo(() => {
+    if (!venuesData || venuesData.length === 0) return initialRestaurants;
+    return venuesData.map((v: Venue, i: number) => venueToRestaurant(v, i, userId));
+  }, [venuesData, userId]);
+  
+  const matchs = useMemo(() => {
+    if (!matchesData || matchesData.length === 0) return initialMatchs;
+    return matchesData.map((m: VenueMatch, i: number) => venueMatchToMatch(m, i, userId));
+  }, [matchesData, userId]);
+  
+  const clients = useMemo(() => {
+    if (!clientsData || clientsData.length === 0) return initialClients;
+    return clientsData.map((c: ApiClient, i: number) => apiClientToClient(c, i, userId));
+  }, [clientsData, userId]);
+  
+  const notifications = useMemo(() => {
+    if (localNotifications.length > 0) return localNotifications;
+    if (!notificationsData || notificationsData.length === 0) return initialNotifications;
+    return notificationsData.map((n: ApiNotification, i: number) => apiNotificationToNotification(n, i, userId));
+  }, [notificationsData, localNotifications, userId]);
+  
+  const stats = useMemo((): Stats => {
+    const analytics = analyticsData || { total_clients: 0, total_reservations: 0, total_views: 0, matches_completed: 0, matches_upcoming: 0, average_occupancy: 0 };
+    const customerStats = customerStatsData || { customerCount: 0 };
+    
+    return {
+      ...initialStats,
+      clients30Jours: customerStats.customerCount || 0,
+      clientsTotal: analytics.total_clients || 0,
+      matchsDiffuses30Jours: analytics.matches_completed || 0,
+      matchsAVenir: analytics.matches_upcoming || 0,
+      matchsTotal: (analytics.matches_completed || 0) + (analytics.matches_upcoming || 0),
+      vuesMois: analytics.total_views || 0,
+      tauxRemplissageMoyen: analytics.average_occupancy || 0,
+      moyenneClientsParMatch: analytics.matches_completed > 0
+        ? Math.round((analytics.total_reservations || 0) / analytics.matches_completed)
+        : 0,
+      boostsDisponibles,
+    };
+  }, [analyticsData, customerStatsData, boostsDisponibles]);
 
-      // Fetch matches
-      const matchesRes = await api.getMyMatches().catch(() => ({ data: [] }));
-      console.log('Matches response:', matchesRes);
-      const matchesData = matchesRes?.data || [];
-      const matchData = matchesData.map((m: VenueMatch, i: number) => venueMatchToMatch(m, i, userId));
-      setMatchs(matchData);
+  // Combined loading state
+  const loading = venuesLoading || matchesLoading || clientsLoading;
+  const error = venuesError ? 'Failed to load data' : null;
+  const apiAvailable = !venuesError;
 
-      // Fetch clients from all venues
-      if (venues.length > 0) {
-        const venueIds = venues.map((v: Venue) => v.id);
-        const clientsRes = await api.getAllClients(venueIds).catch(() => ({ clients: [], total: 0 }));
-        console.log('Clients response:', clientsRes);
-        const clientsData = clientsRes?.clients || [];
-        const clientData = clientsData.map((c: ApiClient, i: number) => apiClientToClient(c, i, userId));
-        setClients(clientData);
-      } else {
-        setClients([]);
-      }
-
-      // Fetch analytics summary
-      const analyticsRes = await api.getAnalyticsSummary().catch(() => ({
-        total_clients: 0,
-        total_reservations: 0,
-        total_views: 0,
-        matches_completed: 0,
-        matches_upcoming: 0,
-        average_occupancy: 0,
-      }));
-
-      // Fetch customer stats
-      const customerStatsRes = await api.getCustomerStats().catch(() => ({
-        customerCount: 0,
-        totalGuests: 0,
-        totalReservations: 0,
-        period: 'last_30_days',
-      }));
-
-      // Update stats
-      setStats((prev: Stats) => ({
-        ...prev,
-        clients30Jours: customerStatsRes.customerCount,
-        clientsTotal: analyticsRes.total_clients,
-        matchsDiffuses30Jours: analyticsRes.matches_completed,
-        matchsAVenir: analyticsRes.matches_upcoming,
-        matchsTotal: analyticsRes.matches_completed + analyticsRes.matches_upcoming,
-        vuesMois: analyticsRes.total_views,
-        tauxRemplissageMoyen: analyticsRes.average_occupancy,
-        moyenneClientsParMatch: analyticsRes.matches_completed > 0
-          ? Math.round(analyticsRes.total_reservations / analyticsRes.matches_completed)
-          : 0,
-      }));
-
-      // Fetch notifications
-      const notificationsRes = await api.getNotifications().catch(() => ({ notifications: [] }));
-      const notificationsData = notificationsRes?.notifications || [];
-      const notificationData = notificationsData.map((n: ApiNotification, i: number) => apiNotificationToNotification(n, i, userId));
-      setNotifications(notificationData);
-      
-    } catch (err: any) {
-      console.error('API error:', err);
-      setApiAvailable(false);
-      // Keep using initial mock data
-    } finally {
-      setLoading(false);
+  // ============================================
+  // REFRESH DATA - Invalidate all queries
+  // ============================================
+  
+  const refreshData = useCallback(async (force = false) => {
+    if (force) {
+      // Force refetch all queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.venues }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.matches }),
+        queryClient.invalidateQueries({ queryKey: ['clients'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.customerStats }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.notifications }),
+      ]);
     }
-  }, [userId]);
-
-  // Initial data fetch when user is authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      refreshData();
-    }
-  }, [refreshData, isAuthenticated]);
+    // If not forced, React Query handles staleness automatically
+  }, [queryClient]);
 
   // Fonctions pour filtrer par utilisateur
   // Note: When API is available, data is already user-specific, so we return all.
@@ -409,64 +430,70 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return clients.filter(c => c.userId === requestedUserId);
   };
 
-  const addRestaurant = (restaurant: Restaurant) => {
-    setRestaurants([...restaurants, restaurant]);
-  };
+  // These functions now invalidate queries to trigger refetch
+  const addRestaurant = useCallback((restaurant: Restaurant) => {
+    // After adding via API, invalidate venues query
+    queryClient.invalidateQueries({ queryKey: queryKeys.venues });
+  }, [queryClient]);
 
-  const updateRestaurant = (id: number, updatedData: Partial<Restaurant>) => {
-    setRestaurants(restaurants.map(r => r.id === id ? { ...r, ...updatedData } : r));
-  };
+  const updateRestaurant = useCallback((id: number, updatedData: Partial<Restaurant>) => {
+    // After updating via API, invalidate venues query
+    queryClient.invalidateQueries({ queryKey: queryKeys.venues });
+  }, [queryClient]);
 
-  const deleteRestaurant = (id: number) => {
-    setRestaurants(restaurants.filter(r => r.id !== id));
-  };
+  const deleteRestaurant = useCallback((id: number) => {
+    // After deleting via API, invalidate venues query
+    queryClient.invalidateQueries({ queryKey: queryKeys.venues });
+  }, [queryClient]);
 
-  const addMatch = (match: Match) => {
-    setMatchs([...matchs, match]);
-  };
+  const addMatch = useCallback((match: Match) => {
+    // After adding via API, invalidate matches query
+    queryClient.invalidateQueries({ queryKey: queryKeys.matches });
+  }, [queryClient]);
 
-  const updateMatch = (id: number, updatedData: Partial<Match>) => {
-    setMatchs(matchs.map(m => m.id === id ? { ...m, ...updatedData } : m));
-  };
+  const updateMatch = useCallback((id: number, updatedData: Partial<Match>) => {
+    // After updating via API, invalidate matches query
+    queryClient.invalidateQueries({ queryKey: queryKeys.matches });
+  }, [queryClient]);
 
-  const deleteMatch = (id: number) => {
-    setMatchs(matchs.filter(m => m.id !== id));
-  };
+  const deleteMatch = useCallback((id: number) => {
+    // After deleting via API, invalidate matches query
+    queryClient.invalidateQueries({ queryKey: queryKeys.matches });
+  }, [queryClient]);
 
-  const useBoost = () => {
+  const useBoost = useCallback(() => {
     if (boostsDisponibles > 0) {
-      setBoostsDisponibles(boostsDisponibles - 1);
+      setBoostsDisponibles(prev => prev - 1);
     }
-  };
+  }, [boostsDisponibles]);
 
-  const addBoosts = (count: number) => {
-    setBoostsDisponibles(boostsDisponibles + count);
-  };
+  const addBoosts = useCallback((count: number) => {
+    setBoostsDisponibles(prev => prev + count);
+  }, []);
 
-  const handleReservationAction = (reservationId: number, action: 'acceptée' | 'refusée') => {
-    const updatedClients = clients.map(client => {
-      if (client.id === reservationId) {
-        return { ...client, statut: action === 'acceptée' ? 'confirmé' : 'refusé' };
-      }
-      return client;
-    });
-    setClients(updatedClients);
-  };
+  const handleReservationAction = useCallback((reservationId: number, action: 'acceptée' | 'refusée') => {
+    // After updating via API, invalidate clients query
+    queryClient.invalidateQueries({ queryKey: ['clients'] });
+  }, [queryClient]);
 
-  const updateClient = (id: number, client: Partial<Client>) => {
-    setClients(clients.map(c => c.id === id ? { ...c, ...client } : c));
-  };
+  const updateClient = useCallback((id: number, client: Partial<Client>) => {
+    // After updating via API, invalidate clients query
+    queryClient.invalidateQueries({ queryKey: ['clients'] });
+  }, [queryClient]);
 
-  const markAllAsRead = async (userId: string) => {
+  const markAllAsRead = useCallback(async (markUserId: string) => {
     try {
       if (apiAvailable) {
         await api.markAllNotificationsAsRead();
       }
+      // Update local notifications state
+      setLocalNotifications(notifications.map(n => n.userId === markUserId ? { ...n, read: true } : n));
+      // Also invalidate query
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications });
     } catch (err) {
-      console.warn('Failed to mark notifications as read via API');
+      // Silently handle error
     }
-    setNotifications(notifications.map(n => n.userId === userId ? { ...n, read: true } : n));
-  };
+  }, [apiAvailable, notifications, queryClient]);
 
   return (
     <AppContext.Provider value={{

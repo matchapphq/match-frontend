@@ -1,6 +1,7 @@
 import { Dashboard } from './components/Dashboard';
 import { Header } from './components/Header';
 import { useState, useEffect } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import api from './services/api';
 import { ClientsDetail } from './components/details/ClientsDetail';
 import { MatchesDiffusesDetail } from './components/details/MatchesDiffusesDetail';
@@ -74,13 +75,27 @@ export type PageType =
   | 'compte-donnees'
   | 'app-presentation';
 
+// Create QueryClient with caching options
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30 seconds - data is fresh for this duration
+      gcTime: 5 * 60 * 1000, // 5 minutes cache retention
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 export default function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -127,22 +142,19 @@ function AppContent() {
     
     const verifyAndCreateVenue = async (sessionId: string) => {
       try {
-        console.log('Verifying checkout session:', sessionId);
         const result = await api.verifyCheckoutAndCreateVenue(sessionId);
-        console.log('Venue creation result:', result);
         
         if (result.venue) {
           setNomBarOnboarding(result.venue.name);
         }
         
-        // Refresh data to fetch the newly created venue
-        await refreshData();
+        // Refresh data to fetch the newly created venue (force=true to bypass staleness check)
+        await refreshData(true);
         
         setCheckoutStatus('success');
         completeOnboarding();
         setCurrentPage('confirmation-onboarding');
       } catch (error: any) {
-        console.error('Error verifying checkout:', error);
         // Still complete onboarding even if verification fails (webhook might handle it)
         await refreshData(); // Try to refresh anyway
         setCheckoutStatus('success');

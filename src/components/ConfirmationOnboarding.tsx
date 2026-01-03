@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react';
+import { memo } from 'react';
 import { PageType } from '../App';
 import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import patternBg from 'figma:asset/20e2f150b2f5f4be01b1aec94edb580bb26d8dcf.png';
@@ -8,7 +9,7 @@ interface ConfirmationOnboardingProps {
   nomBar?: string;
 }
 
-export function ConfirmationOnboarding({ onNavigate, nomBar }: ConfirmationOnboardingProps) {
+export const ConfirmationOnboarding = memo(function ConfirmationOnboarding({ onNavigate, nomBar }: ConfirmationOnboardingProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10 flex items-center justify-center p-8 relative overflow-hidden">
       {/* Pattern de fond avec éclairs */}
@@ -111,4 +112,4 @@ export function ConfirmationOnboarding({ onNavigate, nomBar }: ConfirmationOnboa
       </div>
     </div>
   );
-}
+});
