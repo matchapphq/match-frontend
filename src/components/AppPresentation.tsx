@@ -33,19 +33,24 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
         }}
       ></div>
 
-      <div className="relative z-10">
+      <div className="relative">
         {/* Header simple avec logo */}
         <header className="py-6 px-6 md:px-12">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <img src={logoMatch} alt="Match" className="h-10 md:h-12" />
             {onBack && (
-              <button
-                onClick={onBack}
-                className="px-6 py-2.5 bg-white/70 backdrop-blur-sm border border-gray-200/50 rounded-xl text-gray-700 hover:bg-white/90 transition-all"
-                style={{ fontWeight: '600' }}
-              >
-                Retour
-              </button>
+              <div className="fixed top-6 right-6 z-50">
+                <button
+                  onClick={() => {
+                    window.scrollTo({ top: 0});
+                    onBack();
+                  }}
+                  className="px-6 py-2.5 bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-xl text-gray-700 hover:bg-white transition-all shadow-lg cursor-pointer hover:shadow-xl"
+                  style={{ fontWeight: '600' }}
+                >
+                  Retour
+                </button>
+              </div>
             )}
           </div>
         </header>
@@ -91,7 +96,7 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
             <h2 className="text-4xl italic text-center mb-12" style={{ fontWeight: '700', color: '#5a03cf' }}>
               Pourquoi Match ?
             </h2>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Carte 1 */}
               <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-8 border border-gray-200/50 hover:scale-[1.02] transition-transform">
@@ -131,9 +136,8 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
                   Des lieux sélectionnés pour vivre le match à fond
                 </p>
               </div>
-
               {/* Carte 4 */}
-              <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-8 border border-gray-200/50 hover:scale-[1.02] transition-transform">
+              <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-8 border border-gray-200/50 hover:scale-[1.02] transition-transform lg:col-start-2">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 flex items-center justify-center mb-4">
                   <Star className="w-7 h-7 text-[#5a03cf]" />
                 </div>
