@@ -2,7 +2,7 @@ import { ArrowRight, Zap, Users, TrendingUp, Star, Check, Sparkles, Calendar, Ba
 import { Button } from './ui/button';
 import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import patternBg from 'figma:asset/20e2f150b2f5f4be01b1aec94edb580bb26d8dcf.png';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -19,6 +19,31 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onGetStarted, onReferral, onAppPresentation, onNavigateLegal }: LandingPageProps) {
+  const footerRef = useRef<HTMLElement | null>(null);
+  const [dockAboveFooter, setDockAboveFooter] = useState(false);
+
+
+  useEffect(() => {
+    const el = footerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Dès que le footer est visible, on dock le bouton au-dessus
+        setDockAboveFooter(entry.isIntersecting);
+      },
+      {
+        // un peu de marge pour anticiper (ajuste si besoin)
+        root: null,
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+
   const avantages = [
     {
       chiffre: '+5K',
@@ -299,7 +324,10 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation, onNav
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 px-6 md:px-8 py-12 border-t border-gray-300/60 bg-white/20 backdrop-blur-sm">
+      <footer
+        ref={footerRef}
+        className="relative z-10 px-6 md:px-8 py-12 border-t border-gray-300/60 bg-white/20 backdrop-blur-sm"
+      >
         <div className="max-w-7xl mx-auto">
           <div className="text-center">
             <p className="text-gray-700 mb-4" style={{ fontWeight: '600' }}>
@@ -353,24 +381,38 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation, onNav
       </footer>
 
       {/* Bouton flottant installation app */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div
+        className={
+          dockAboveFooter
+            ? "absolute right-6 z-50" 
+            : "fixed bottom-6 right-6 z-50"
+        }
+        style={
+          dockAboveFooter
+            ? { bottom: 180 }
+            : undefined
+        }
+      >
         <div className="relative p-[2px] rounded-2xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf] shadow-2xl">
           <button
             onClick={() => {
+              window.scrollTo({ top: 0 });
               if (onAppPresentation) {
                 onAppPresentation();
               } else {
                 alert("Installation de l'application Match");
               }
             }}
-            className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 hover:bg-white/95 transition-all group"
+            className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 hover:bg-white/95 transition-all group cursor-pointer"
           >
             <div className="bg-gradient-to-r from-[#9cff02] to-[#5a03cf] p-2 rounded-full">
               <Smartphone className="w-5 h-5 text-white" />
             </div>
             <div className="text-left">
               <p className="text-xs text-gray-500">Cliquez ici pour</p>
-              <p className="text-sm text-gray-900" style={{ fontWeight: '700' }}>Installer l'application</p>
+              <p className="text-sm text-gray-900" style={{ fontWeight: '700' }}>
+                Installer l'application
+              </p>
             </div>
           </button>
         </div>
