@@ -8,9 +8,17 @@ interface LandingPageProps {
   onGetStarted: () => void;
   onReferral?: () => void;
   onAppPresentation?: () => void;
+  onNavigateLegal?: (page:
+    | 'confidentialite'
+    | 'cookies'
+    | 'conditions'
+    | 'ventes-remboursements'
+    | 'mentions-legales'
+    | 'plan-du-site'
+  ) => void;
 }
 
-export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: LandingPageProps) {
+export function LandingPage({ onGetStarted, onReferral, onAppPresentation, onNavigateLegal }: LandingPageProps) {
   const avantages = [
     {
       chiffre: '+5K',
@@ -298,17 +306,47 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: Lan
               Copyright © 2025 Match SAS • Tous droits réservés.
             </p>
             <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-sm text-gray-600">
-              <a href="#" className="hover:text-[#5a03cf] transition-colors">Engagement de confidentialité</a>
+              <button
+                onClick={() => onNavigateLegal?.('confidentialite')}
+                className="hover:text-[#5a03cf] transition-colors"
+              >
+                Engagement de confidentialité
+              </button>
               <span className="hidden md:inline text-gray-400">•</span>
-              <a href="#" className="hover:text-[#5a03cf] transition-colors">Utilisation des cookies</a>
+              <button
+                onClick={() => onNavigateLegal?.('cookies')}
+                className="hover:text-[#5a03cf] transition-colors"
+              >
+                Utilisation des cookies
+              </button>
               <span className="hidden md:inline text-gray-400">•</span>
-              <a href="#" className="hover:text-[#5a03cf] transition-colors">Conditions d'utilisation</a>
+              <button
+                onClick={() => onNavigateLegal?.('conditions')}
+                className="hover:text-[#5a03cf] transition-colors"
+              >
+                Conditions d'utilisation
+              </button>
               <span className="hidden md:inline text-gray-400">•</span>
-              <a href="#" className="hover:text-[#5a03cf] transition-colors">Ventes et remboursements</a>
+              <button
+                onClick={() => onNavigateLegal?.('ventes-remboursements')}
+                className="hover:text-[#5a03cf] transition-colors"
+              >
+                Ventes et remboursements
+              </button>
               <span className="hidden md:inline text-gray-400">•</span>
-              <a href="#" className="hover:text-[#5a03cf] transition-colors">Mentions légales</a>
+              <button
+                onClick={() => onNavigateLegal?.('mentions-legales')}
+                className="hover:text-[#5a03cf] transition-colors"
+              >
+                Mentions légales
+              </button>
               <span className="hidden md:inline text-gray-400">•</span>
-              <a href="#" className="hover:text-[#5a03cf] transition-colors">Plan du site</a>
+              <button
+                onClick={() => onNavigateLegal?.('plan-du-site')}
+                className="hover:text-[#5a03cf] transition-colors"
+              >
+                Plan du site
+              </button>
             </div>
           </div>
         </div>

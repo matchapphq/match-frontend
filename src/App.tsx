@@ -41,6 +41,7 @@ import { InfosEtablissement } from './components/InfosEtablissement';
 import { PaiementValidation } from './components/PaiementValidation';
 import { ConfirmationOnboarding } from './components/ConfirmationOnboarding';
 import { AppPresentation } from './components/AppPresentation';
+import { LegalPlaceholderPage } from './components/legal/LegalPlaceholderPage';
 
 export type PageType = 
   | 'dashboard'
@@ -73,7 +74,13 @@ export type PageType =
   | 'compte-facturation'
   | 'mes-lieux'
   | 'compte-donnees'
-  | 'app-presentation';
+  | 'app-presentation'
+  | 'confidentialite'
+  | 'cookies'
+  | 'conditions'
+  | 'ventes-remboursements'
+  | 'mentions-legales'
+  | 'plan-du-site';
 
 // Create QueryClient with caching options
 const queryClient = new QueryClient({
@@ -123,7 +130,7 @@ function AppContent() {
   const [venueIdOnboarding, setVenueIdOnboarding] = useState<string>('');
   
   // État pour la navigation non authentifiée
-  const [unauthPage, setUnauthPage] = useState<'landing' | 'app-presentation' | null>(null);
+  const [unauthPage, setUnauthPage] = useState<'landing' | 'app-presentation' | 'legal' | null>(null);
   
   // État pour le message de succès checkout
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
@@ -215,6 +222,43 @@ function AppContent() {
         />
       );
     }
+
+    // Afficher la page légale si demandé
+    if (unauthPage === 'legal') {
+    const onBack = () => {
+      setUnauthPage(null);
+      setAuthView('landing');
+      // optionnel: revenir à une page “neutre”
+      setCurrentPage('dashboard');
+    };
+
+    switch (currentPage) {
+      case 'confidentialite':
+        return <LegalPlaceholderPage title="Confidentialité" onNavigate={setCurrentPage} onBack={onBack} />;
+      case 'cookies':
+        return <LegalPlaceholderPage title="Cookies" onNavigate={setCurrentPage} onBack={onBack} />;
+      case 'conditions':
+        return <LegalPlaceholderPage title="Conditions" onNavigate={setCurrentPage} onBack={onBack} />;
+      case 'ventes-remboursements':
+        return <LegalPlaceholderPage title="Ventes & Remboursements" onNavigate={setCurrentPage} onBack={onBack} />;
+      case 'mentions-legales':
+        return <LegalPlaceholderPage title="Mentions Légales" onNavigate={setCurrentPage} onBack={onBack} />;
+      case 'plan-du-site':
+        return <LegalPlaceholderPage title="Plan du Site" onNavigate={setCurrentPage} onBack={onBack} />;
+      default:
+        // fallback si currentPage n'est pas une page légale
+        return <LandingPage
+          onGetStarted={() => setAuthView('login')}
+          onReferral={() => setAuthView('referral')}
+          onAppPresentation={() => setUnauthPage('app-presentation')}
+          onNavigateLegal={(page: PageType) => {
+            setCurrentPage(page);
+            setUnauthPage('legal');
+            setAuthView('landing');
+          }}
+        />;
+    }
+  }
     
     if (authView === 'referral') {
       return (
@@ -230,6 +274,10 @@ function AppContent() {
           onGetStarted={() => setAuthView('login')}
           onReferral={() => setAuthView('referral')}
           onAppPresentation={() => setUnauthPage('app-presentation')}
+          onNavigateLegal={(page: PageType) => {
+            setCurrentPage(page);
+            setUnauthPage('legal');
+          }}
         />
       );
     }
