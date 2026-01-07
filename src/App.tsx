@@ -169,7 +169,7 @@ function AppContent() {
         setCurrentPage('confirmation-onboarding');
       }
     };
-    
+
     if (checkoutResult === 'success') {
       if (sessionId) {
         // Verify checkout and create venue
@@ -227,9 +227,12 @@ function AppContent() {
     if (unauthPage === 'legal') {
     const onBack = () => {
       setUnauthPage(null);
-      setAuthView('landing');
-      // optionnel: revenir à une page “neutre”
-      setCurrentPage('dashboard');
+      if (authView === 'register') {
+        setAuthView('register');
+      } else {
+        setAuthView('landing');
+        setCurrentPage('dashboard');
+      }
     };
 
     switch (currentPage) {
@@ -287,6 +290,10 @@ function AppContent() {
           onRegister={handleRegister}
           onSwitchToLogin={() => setAuthView('login')}
           onBackToLanding={() => setAuthView('landing')}
+          onShowTerms={() => {
+            setCurrentPage('conditions');
+            setUnauthPage('legal');
+          }}
         />
       );
     }
