@@ -1,22 +1,15 @@
-import { ArrowLeft, List, Calendar, Eye } from 'lucide-react';
 import { useState } from 'react';
+import { ArrowLeft, List, Calendar, Eye } from 'lucide-react';
+import { mockAllMatches } from '../data/mockData';
 
 interface ListeMatchsProps {
   onBack: () => void;
 }
 
-// Données mockées combinant passé et futur
-const tousLesMatchs = [
-  { id: 1, equipe1: 'Monaco', equipe2: 'Nice', date: '10/12/2024', heure: '20:00', statut: 'à venir', places: 30 },
-  { id: 2, equipe1: 'Bayern', equipe2: 'Dortmund', date: '12/12/2024', heure: '18:45', statut: 'à venir', places: 25 },
-  { id: 3, equipe1: 'PSG', equipe2: 'Lyon', date: '28/11/2024', heure: '21:00', statut: 'terminé', spectateurs: 44 },
-  { id: 4, equipe1: 'Liverpool', equipe2: 'Manchester', date: '25/11/2024', heure: '20:00', statut: 'terminé', spectateurs: 38 },
-  { id: 5, equipe1: 'Real Madrid', equipe2: 'Barcelona', date: '22/11/2024', heure: '21:00', statut: 'terminé', spectateurs: 58 },
-  { id: 6, equipe1: 'PSG', equipe2: 'OM', date: '15/12/2024', heure: '21:00', statut: 'à venir', places: 40 },
-];
-
 export function ListeMatchs({ onBack }: ListeMatchsProps) {
   const [filtre, setFiltre] = useState<'tous' | 'à venir' | 'terminé'>('tous');
+  
+  const tousLesMatchs = mockAllMatches;
 
   const matchsFiltres = filtre === 'tous' 
     ? tousLesMatchs 

@@ -1,6 +1,7 @@
-import { ArrowLeft, MapPin, Users, Star, Phone, Mail, Edit2, Calendar, BarChart3, Eye } from 'lucide-react';
+import { ArrowLeft, MapPin, Users, Star, Phone, Mail, Clock, Euro, Edit2, Calendar, BarChart3, Eye } from 'lucide-react';
 
 interface RestaurantDetailProps {
+  restaurantId: number | null;
   onBack: () => void;
   onNavigate?: (page: string) => void;
 }
@@ -12,11 +13,11 @@ const restaurant = {
   email: 'contact@lesportbar.fr',
   capaciteMax: 50,
   note: 4.5,
-  totalAvis: 0,
+  totalAvis: 0, // Nombre d'avis réels
   image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
   horaires: 'Lun-Dim: 11h00 - 02h00',
   tarif: '30€/mois',
-  statut: 'actif',
+  statut: 'actif', // 'actif' | 'inactif' | 'en_attente'
   matchsDiffuses: 45,
   clientsAccueillis: 1240,
 };
@@ -48,11 +49,13 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
               className={`px-3 py-1.5 rounded-lg text-sm backdrop-blur-sm ${
                 restaurant.statut === 'actif'
                   ? 'bg-[#9cff02]/20 text-[#5a03cf] border border-[#9cff02]/40'
-                  : 'bg-gray-100/80 text-gray-600 border border-gray-300/50'
+                  : restaurant.statut === 'inactif'
+                  ? 'bg-gray-100/80 text-gray-600 border border-gray-300/50'
+                  : 'bg-orange-50/80 text-orange-600 border border-orange-200/50'
               }`}
               style={{ fontWeight: '600' }}
             >
-              {restaurant.statut === 'actif' ? 'Actif' : 'Inactif'}
+              {restaurant.statut === 'actif' ? 'Actif' : restaurant.statut === 'inactif' ? 'Inactif' : 'En attente de validation'}
             </span>
           </div>
         </div>

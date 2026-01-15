@@ -1,19 +1,12 @@
 import { ArrowLeft, Star } from 'lucide-react';
+import { mockAvis } from '../data/mockData';
 
 interface MesAvisProps {
   onBack: () => void;
 }
 
-// Données mockées pour les avis
-const avisData = [
-  { id: 1, client: 'Jean Dupont', note: 5, commentaire: 'Excellente ambiance pour regarder les matchs !', date: '05/12/2024' },
-  { id: 2, client: 'Sophie Martin', note: 4, commentaire: 'Très bon service, écrans de qualité.', date: '03/12/2024' },
-  { id: 3, client: 'Luc Bernard', note: 5, commentaire: 'Super expérience, je reviendrai !', date: '01/12/2024' },
-  { id: 4, client: 'Marie Petit', note: 4, commentaire: 'Bon restaurant, parfait pour les matchs.', date: '28/11/2024' },
-  { id: 5, client: 'Pierre Dubois', note: 5, commentaire: 'Ambiance de folie pendant le match !', date: '25/11/2024' },
-];
-
 export function MesAvis({ onBack }: MesAvisProps) {
+  const avisData = mockAvis;
   const noteMoyenne = (avisData.reduce((sum, avis) => sum + avis.note, 0) / avisData.length).toFixed(1);
 
   return (

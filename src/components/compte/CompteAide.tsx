@@ -32,7 +32,7 @@ export function CompteAide({ onBack }: CompteAideProps) {
       {onBack && (
         <button
           onClick={onBack}
-          className="mb-6 flex items-center gap-2 px-4 py-2 bg-white/70 backdrop-blur-sm border border-gray-200/50 text-gray-700 rounded-xl hover:bg-white/90 transition-all"
+          className="mb-6 flex items-center gap-2 px-4 py-2 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-white/90 dark:hover:bg-gray-800/90 transition-all"
           style={{ fontWeight: '600' }}
         >
           <ArrowLeft className="w-4 h-4" />
@@ -45,16 +45,16 @@ export function CompteAide({ onBack }: CompteAideProps) {
         <h1 className="text-5xl italic mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
           Aide et support
         </h1>
-        <p className="text-lg text-gray-700">Nous sommes là pour vous aider</p>
+        <p className="text-lg text-gray-700 dark:text-gray-300">Nous sommes là pour vous aider</p>
       </div>
 
       {/* Contact rapide */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8 hover:border-gray-300/60 transition-all">
+        <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-8 hover:border-gray-300/60 dark:hover:border-gray-600/60 transition-all">
           <h3 className="text-2xl mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
             Chat en direct
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             Discutez avec notre équipe support en temps réel
           </p>
           <button className="px-6 py-3 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm" style={{ fontWeight: '600' }}>
@@ -62,11 +62,11 @@ export function CompteAide({ onBack }: CompteAideProps) {
           </button>
         </div>
 
-        <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8 hover:border-gray-300/60 transition-all">
+        <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-8 hover:border-gray-300/60 dark:hover:border-gray-600/60 transition-all">
           <h3 className="text-2xl mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
             Email
           </h3>
-          <p className="text-gray-600 mb-2">
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
             Contactez-nous par email
           </p>
           <a 
@@ -80,33 +80,33 @@ export function CompteAide({ onBack }: CompteAideProps) {
       </div>
 
       {/* FAQ */}
-      <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8 mb-6">
+      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-8 mb-6">
         <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
           Questions fréquentes
         </h2>
-        <p className="text-gray-600 mb-6">Trouvez rapidement des réponses à vos questions</p>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">Trouvez rapidement des réponses à vos questions</p>
 
         <div className="space-y-4">
           {faq.map((item, index) => (
             <div
               key={index}
-              className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30"
+              className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30"
             >
-              <h3 className="text-gray-900 mb-2" style={{ fontWeight: '600' }}>
+              <h3 className="text-gray-900 dark:text-white mb-2" style={{ fontWeight: '600' }}>
                 {item.question}
               </h3>
-              <p className="text-gray-600">{item.reponse}</p>
+              <p className="text-gray-600 dark:text-gray-400">{item.reponse}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Centre d'aide */}
-      <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8 mb-6">
+      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-8 mb-6">
         <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
           Centre d'aide
         </h2>
-        <p className="text-gray-600 mb-6">
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
           Consultez notre documentation complète pour en savoir plus sur Match
         </p>
         <button 
@@ -118,11 +118,11 @@ export function CompteAide({ onBack }: CompteAideProps) {
       </div>
 
       {/* Support téléphonique */}
-      <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8">
+      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-8">
         <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
           Support téléphonique
         </h2>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           Disponible du lundi au vendredi de 9h à 18h
         </p>
         <a 

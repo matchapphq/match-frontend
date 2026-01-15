@@ -1,206 +1,113 @@
-import { Dashboard } from './components/Dashboard';
-import { Header } from './components/Header';
-import { useState, useEffect } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import api from './services/api';
-import { ClientsDetail } from './components/details/ClientsDetail';
-import { MatchesDiffusesDetail } from './components/details/MatchesDiffusesDetail';
-import { MatchesAVenirDetail } from './components/details/MatchesAVenirDetail';
-import { VuesDetail } from './components/details/VuesDetail';
-import { ProgrammerMatch } from './components/ProgrammerMatch';
-import { ModifierMatch } from './components/ModifierMatch';
-import { MesAvis } from './components/MesAvis';
-import { ListeMatchs } from './components/ListeMatchs';
-import { MesMatchs } from './components/MesMatchs';
-import { MesRestaurants } from './components/MesRestaurants';
-import { ModifierRestaurant } from './components/ModifierRestaurant';
-import { Compte } from './components/Compte';
-import { Booster } from './components/Booster';
-import { Parrainage } from './components/Parrainage';
-import { RestaurantDetail } from './components/RestaurantDetail';
-import { AjouterRestaurant } from './components/AjouterRestaurant';
-import { Facturation } from './components/Facturation';
-import { MatchDetail } from './components/MatchDetail';
-import { CompteInfos } from './components/compte/CompteInfos';
-import { CompteParametres } from './components/compte/CompteParametres';
-import { CompteNotifications } from './components/compte/CompteNotifications';
-import { CompteSecurite } from './components/compte/CompteSecurite';
-import { CompteAide } from './components/compte/CompteAide';
-import { CompteFacturation } from './components/compte/CompteFacturation';
-import { AppProvider, useAppContext } from './context/AppContext';
+import { useState } from 'react';
+import { QRScanner } from './components/QRScanner';
+import { QrCode } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AppProvider } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
+import { CompteInfos } from './components/compte/CompteInfos';
+import { CompteFacturation } from './components/compte/CompteFacturation';
+import { Dashboard } from './components/Dashboard';
+import { LandingPage } from './components/LandingPage';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
-import { OnboardingWelcome } from './components/OnboardingWelcome';
-import { LandingPage } from './components/LandingPage';
-import { ReferralPage } from './components/ReferralPage';
-import { Footer } from './components/Footer';
-import { MesLieux } from './components/MesLieux';
-import { CompteDonnees } from './components/compte/CompteDonnees';
+import { ListeMatchs } from './components/ListeMatchs';
+import { MatchDetail } from './components/MatchDetail';
+import { MesMatchs } from './components/MesMatchs';
+import { MesRestaurants } from './components/MesRestaurants';
+import { RestaurantDetail } from './components/RestaurantDetail';
+import { ProgrammerMatch } from './components/ProgrammerMatch';
+import { ModifierMatch } from './components/ModifierMatch';
+import { AjouterRestaurant } from './components/AjouterRestaurant';
+import { ModifierRestaurant } from './components/ModifierRestaurant';
+import { Booster } from './components/Booster';
+import { AcheterBoosts } from './components/AcheterBoosts';
+import Parrainage from './pages/Parrainage';
+import { MesAvis } from './components/MesAvis';
+import { Compte } from './components/Compte';
 import { InfosEtablissement } from './components/InfosEtablissement';
-import { PaiementValidation } from './components/PaiementValidation';
+import { Facturation } from './components/Facturation';
+import { OnboardingWelcome } from './components/OnboardingWelcome';
 import { ConfirmationOnboarding } from './components/ConfirmationOnboarding';
+import { PaiementValidation } from './components/PaiementValidation';
 import { AppPresentation } from './components/AppPresentation';
-import { LegalPlaceholderPage } from './components/legal/LegalPlaceholderPage';
+import { ReferralPage } from './components/ReferralPage';
+import { Sidebar } from './components/Sidebar';
+import { CompteNotifications } from './components/compte/CompteNotifications';
+import { CompteSecurite } from './components/compte/CompteSecurite';
+import { CompteDonnees } from './components/compte/CompteDonnees';
+import { CompteAide } from './components/compte/CompteAide';
+import { Reservations } from './components/Reservations';
 
 export type PageType = 
   | 'dashboard'
-  | 'clients-detail'
-  | 'matchs-diffuses-detail'
-  | 'matchs-avenir-detail'
-  | 'vues-detail'
-  | 'programmer-match'
-  | 'modifier-match'
-  | 'mes-avis'
   | 'liste-matchs'
+  | 'match-detail'
   | 'mes-matchs'
   | 'mes-restaurants'
-  | 'modifier-restaurant'
-  | 'compte'
-  | 'booster'
-  | 'parrainage'
   | 'restaurant-detail'
+  | 'programmer-match'
+  | 'modifier-match'
   | 'ajouter-restaurant'
-  | 'infos-etablissement'
-  | 'paiement-validation'
-  | 'confirmation-onboarding'
-  | 'facturation'
-  | 'match-detail'
+  | 'modifier-restaurant'
+  | 'booster'
+  | 'acheter-boosts'
+  | 'parrainage'
+  | 'mes-avis'
+  | 'compte'
   | 'compte-infos'
-  | 'compte-parametres'
+  | 'compte-facturation'
   | 'compte-notifications'
   | 'compte-securite'
-  | 'compte-aide'
-  | 'compte-facturation'
-  | 'mes-lieux'
   | 'compte-donnees'
+  | 'compte-aide'
+  | 'infos-etablissement'
+  | 'facturation'
+  | 'onboarding-welcome'
+  | 'confirmation-onboarding'
+  | 'paiement-validation'
   | 'app-presentation'
-  | 'confidentialite'
-  | 'cookies'
-  | 'conditions'
-  | 'ventes-remboursements'
-  | 'mentions-legales'
-  | 'plan-du-site';
-
-// Create QueryClient with caching options
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30 * 1000, // 30 seconds - data is fresh for this duration
-      gcTime: 5 * 60 * 1000, // 5 minutes cache retention
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+  | 'referral'
+  | 'qr-scanner'
+  | 'reservations';
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
       <AuthProvider>
         <AppProvider>
-          <AppContent />
+          <LanguageProvider>
+            <AppContent />
+          </LanguageProvider>
         </AppProvider>
       </AuthProvider>
-    </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 
 function AppContent() {
-  const { isAuthenticated, login, register, currentUser, completeOnboarding } = useAuth();
-  const { refreshData } = useAppContext();
-  
-  // Check if returning from successful checkout - show confirmation immediately
-  const getInitialPage = (): PageType => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('checkout') === 'success') {
-      return 'confirmation-onboarding';
-    }
-    return 'dashboard';
-  };
-  
-  const [currentPage, setCurrentPage] = useState<PageType>(getInitialPage);
+  const { isAuthenticated, login, register, currentUser } = useAuth();
+  const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('à venir');
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
   const [authView, setAuthView] = useState<'landing' | 'login' | 'register' | 'referral'>('landing');
   
   // États pour le parcours de souscription
   const [selectedFormule, setSelectedFormule] = useState<'mensuel' | 'annuel'>('mensuel');
   const [nomBarOnboarding, setNomBarOnboarding] = useState<string>('');
-  const [venueIdOnboarding, setVenueIdOnboarding] = useState<string>('');
   
   // État pour la navigation non authentifiée
-  const [unauthPage, setUnauthPage] = useState<'landing' | 'app-presentation' | 'legal' | null>(null);
-  
-  // État pour le message de succès checkout
-  const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
-  
-  // Flag to track if we're processing checkout return
-  const [isProcessingCheckout, setIsProcessingCheckout] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('checkout') === 'success';
-  });
-
-  // Handle Stripe checkout redirect
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const checkoutResult = params.get('checkout');
-    const sessionId = params.get('session_id');
-    
-    const verifyAndCreateVenue = async (sessionId: string) => {
-      try {
-        const result = await api.verifyCheckoutAndCreateVenue(sessionId);
-        
-        if (result.venue) {
-          setNomBarOnboarding(result.venue.name);
-        }
-        
-        // Refresh data to fetch the newly created venue (force=true to bypass staleness check)
-        await refreshData(true);
-        
-        setCheckoutStatus('success');
-        completeOnboarding();
-        setCurrentPage('confirmation-onboarding');
-      } catch (error: any) {
-        // Still complete onboarding even if verification fails (webhook might handle it)
-        await refreshData(); // Try to refresh anyway
-        setCheckoutStatus('success');
-        completeOnboarding();
-        setCurrentPage('confirmation-onboarding');
-      }
-    };
-
-    if (checkoutResult === 'success') {
-      if (sessionId) {
-        // Verify checkout and create venue
-        verifyAndCreateVenue(sessionId);
-      } else {
-        // No session_id, just complete onboarding
-        setCheckoutStatus('success');
-        completeOnboarding();
-        setCurrentPage('confirmation-onboarding');
-      }
-      // Clear URL params
-      window.history.replaceState({}, '', window.location.pathname);
-      // Clear status after 5 seconds
-      setTimeout(() => setCheckoutStatus(null), 5000);
-    } else if (checkoutResult === 'cancel') {
-      setCheckoutStatus('cancel');
-      // Stay on facturation page to retry payment
-      setCurrentPage('facturation');
-      window.history.replaceState({}, '', window.location.pathname);
-      setTimeout(() => setCheckoutStatus(null), 5000);
-    }
-  }, [completeOnboarding]);
+  const [unauthPage, setUnauthPage] = useState<'landing' | 'app-presentation' | null>(null);
 
   // Gestion de l'inscription avec redirection vers "ajouter-restaurant"
-  const handleRegister = async (data: any) => {
-    const result = await register(data);
-    if (result.success) {
+  const handleRegister = (data: any) => {
+    const success = register(data);
+    if (success) {
       // L'utilisateur sera redirigé vers l'écran d'onboarding automatiquement
       setCurrentPage('ajouter-restaurant');
     }
-    return result;
+    return success;
   };
 
   // Si l'utilisateur n'est pas authentifié, afficher la landing page, connexion ou inscription
@@ -222,46 +129,6 @@ function AppContent() {
         />
       );
     }
-
-    // Afficher la page légale si demandé
-    if (unauthPage === 'legal') {
-    const onBack = () => {
-      setUnauthPage(null);
-      if (authView === 'register') {
-        setAuthView('register');
-      } else {
-        setAuthView('landing');
-        setCurrentPage('dashboard');
-      }
-    };
-
-    switch (currentPage) {
-      case 'confidentialite':
-        return <LegalPlaceholderPage title="Confidentialité" onNavigate={setCurrentPage} onBack={onBack} />;
-      case 'cookies':
-        return <LegalPlaceholderPage title="Cookies" onNavigate={setCurrentPage} onBack={onBack} />;
-      case 'conditions':
-        return <LegalPlaceholderPage title="Conditions" onNavigate={setCurrentPage} onBack={onBack} />;
-      case 'ventes-remboursements':
-        return <LegalPlaceholderPage title="Ventes & Remboursements" onNavigate={setCurrentPage} onBack={onBack} />;
-      case 'mentions-legales':
-        return <LegalPlaceholderPage title="Mentions Légales" onNavigate={setCurrentPage} onBack={onBack} />;
-      case 'plan-du-site':
-        return <LegalPlaceholderPage title="Plan du Site" onNavigate={setCurrentPage} onBack={onBack} />;
-      default:
-        // fallback si currentPage n'est pas une page légale
-        return <LandingPage
-          onGetStarted={() => setAuthView('login')}
-          onReferral={() => setAuthView('referral')}
-          onAppPresentation={() => setUnauthPage('app-presentation')}
-          onNavigateLegal={(page: PageType) => {
-            setCurrentPage(page);
-            setUnauthPage('legal');
-            setAuthView('landing');
-          }}
-        />;
-    }
-  }
     
     if (authView === 'referral') {
       return (
@@ -277,10 +144,6 @@ function AppContent() {
           onGetStarted={() => setAuthView('login')}
           onReferral={() => setAuthView('referral')}
           onAppPresentation={() => setUnauthPage('app-presentation')}
-          onNavigateLegal={(page: PageType) => {
-            setCurrentPage(page);
-            setUnauthPage('legal');
-          }}
         />
       );
     }
@@ -290,10 +153,6 @@ function AppContent() {
           onRegister={handleRegister}
           onSwitchToLogin={() => setAuthView('login')}
           onBackToLanding={() => setAuthView('landing')}
-          onShowTerms={() => {
-            setCurrentPage('conditions');
-            setUnauthPage('legal');
-          }}
         />
       );
     }
@@ -308,24 +167,15 @@ function AppContent() {
 
   // Si l'utilisateur est authentifié mais n'a pas complété son onboarding
   if (currentUser && !currentUser.hasCompletedOnboarding) {
-    // PRIORITY: Show confirmation screen immediately after payment (before any other onboarding screens)
-    if (currentPage === 'confirmation-onboarding' || isProcessingCheckout) {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
-          <ConfirmationOnboarding 
-            onNavigate={setCurrentPage}
-            nomBar={nomBarOnboarding}
-          />
-        </div>
-      );
-    }
-    
     // Afficher l'écran d'onboarding approprié selon l'étape
     if (currentPage === 'ajouter-restaurant') {
       return (
         <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
           <AjouterRestaurant 
-            onBack={() => setCurrentPage('dashboard')} 
+            onBack={() => {
+              // Retour vers l'écran de bienvenue onboarding
+              setCurrentPage('dashboard'); // Cela déclenchera l'affichage de OnboardingWelcome
+            }} 
             onNavigate={setCurrentPage}
             onFormuleSelected={(formule) => setSelectedFormule(formule)}
             isOnboarding={true}
@@ -339,10 +189,7 @@ function AppContent() {
             onBack={() => setCurrentPage('ajouter-restaurant')} 
             onNavigate={setCurrentPage}
             selectedFormule={selectedFormule}
-            onBarInfoSubmit={(nom, venueId) => {
-              setNomBarOnboarding(nom);
-              setVenueIdOnboarding(venueId);
-            }}
+            onBarInfoSubmit={(nom) => setNomBarOnboarding(nom)}
           />
         </div>
       );
@@ -357,19 +204,31 @@ function AppContent() {
           />
         </div>
       );
+    } else if (currentPage === 'confirmation-onboarding') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
+          <ConfirmationOnboarding 
+            onNavigate={setCurrentPage}
+            nomBar={nomBarOnboarding}
+          />
+        </div>
+      );
     } else if (currentPage === 'facturation') {
       return (
         <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
           <Facturation 
-            onBack={() => setCurrentPage('infos-etablissement')} 
+            onBack={() => {
+              // Retour vers l'écran de bienvenue onboarding
+              setCurrentPage('dashboard'); // Cela déclenchera l'affichage de OnboardingWelcome
+            }} 
             onNavigate={setCurrentPage}
             isOnboarding={true}
-            venueId={venueIdOnboarding}
           />
         </div>
       );
     } else {
       // Écran de bienvenue avec bouton pour continuer
+      // Empêche l'accès au dashboard tant que l'onboarding n'est pas terminé
       return (
         <OnboardingWelcome 
           onContinue={setCurrentPage}
@@ -380,44 +239,43 @@ function AppContent() {
     }
   }
 
-  const handleNavigate = (page: PageType) => {
+  const handleNavigate = (page: PageType, matchId?: number, restaurantId?: number) => {
+    if (matchId !== undefined) {
+      setSelectedMatchId(matchId);
+    }
+    if (restaurantId !== undefined) {
+      setSelectedRestaurantId(restaurantId);
+    }
     setCurrentPage(page);
   };
 
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard onNavigate={setCurrentPage} />;
-      case 'clients-detail':
-        return <ClientsDetail onBack={() => setCurrentPage('dashboard')} />;
-      case 'matchs-diffuses-detail':
-        return <MatchesDiffusesDetail onBack={() => setCurrentPage('dashboard')} />;
-      case 'matchs-avenir-detail':
-        return <MatchesAVenirDetail onBack={() => setCurrentPage('dashboard')} />;
-      case 'vues-detail':
-        return <VuesDetail onBack={() => setCurrentPage('dashboard')} />;
-      case 'programmer-match':
-        return <ProgrammerMatch onBack={() => setCurrentPage('dashboard')} />;
-      case 'modifier-match':
-        return <ModifierMatch onBack={() => setCurrentPage('dashboard')} />;
-      case 'mes-avis':
-        return <MesAvis onBack={() => setCurrentPage('dashboard')} />;
+        return <Dashboard onNavigate={handleNavigate} />;
       case 'liste-matchs':
         return <ListeMatchs onBack={() => setCurrentPage('dashboard')} />;
+      case 'match-detail':
+        return (
+          <MatchDetail 
+            matchId={selectedMatchId}
+            onBack={() => setCurrentPage('mes-matchs')} 
+            onEditMatch={() => {
+              setCurrentPage('modifier-match');
+            }}
+            onNavigate={handleNavigate}
+          />
+        );
       case 'mes-matchs':
         return <MesMatchs onNavigate={handleNavigate} defaultFilter={defaultMatchFilter} />;
       case 'mes-restaurants':
-        return <MesRestaurants onNavigate={setCurrentPage} />;
-      case 'modifier-restaurant':
-        return <ModifierRestaurant restaurantId={selectedRestaurantId} onBack={() => setCurrentPage('mes-restaurants')} />;
-      case 'compte':
-        return <Compte onNavigate={setCurrentPage} />;
-      case 'booster':
-        return <Booster onBack={() => setCurrentPage('dashboard')} onNavigate={setCurrentPage} />;
-      case 'parrainage':
-        return <Parrainage />;
+        return <MesRestaurants onNavigate={handleNavigate} />;
       case 'restaurant-detail':
-        return <RestaurantDetail onBack={() => setCurrentPage('mes-restaurants')} />;
+        return <RestaurantDetail restaurantId={selectedRestaurantId} onBack={() => setCurrentPage('mes-restaurants')} />;
+      case 'programmer-match':
+        return <ProgrammerMatch onBack={() => setCurrentPage('dashboard')} />;
+      case 'modifier-match':
+        return <ModifierMatch matchId={selectedMatchId} onBack={() => setCurrentPage('mes-matchs')} />;
       case 'ajouter-restaurant':
         return (
           <AjouterRestaurant 
@@ -426,16 +284,54 @@ function AppContent() {
             onFormuleSelected={(formule) => setSelectedFormule(formule)}
           />
         );
+      case 'modifier-restaurant':
+        return <ModifierRestaurant restaurantId={selectedRestaurantId} onBack={() => setCurrentPage('mes-restaurants')} />;
+      case 'booster':
+        return <Booster onBack={() => setCurrentPage('dashboard')} onNavigate={setCurrentPage} />;
+      case 'acheter-boosts':
+        return <AcheterBoosts onBack={() => setCurrentPage('booster')} />;
+      case 'parrainage':
+        return <Parrainage onBack={() => setCurrentPage('dashboard')} />;
+      case 'mes-avis':
+        return <MesAvis onBack={() => setCurrentPage('dashboard')} />;
+      case 'compte':
+        return <Compte onNavigate={setCurrentPage} />;
+      case 'compte-infos':
+        return <CompteInfos onBack={() => setCurrentPage('compte')} />;
+      case 'compte-facturation':
+        return <CompteFacturation onBack={() => setCurrentPage('compte')} onNavigate={setCurrentPage} />;
+      case 'compte-notifications':
+        return <CompteNotifications onBack={() => setCurrentPage('compte')} onNavigate={setCurrentPage} />;
+      case 'compte-securite':
+        return <CompteSecurite onBack={() => setCurrentPage('compte')} onNavigate={setCurrentPage} />;
+      case 'compte-donnees':
+        return <CompteDonnees onBack={() => setCurrentPage('compte')} onNavigate={setCurrentPage} />;
+      case 'compte-aide':
+        return <CompteAide onBack={() => setCurrentPage('compte')} onNavigate={setCurrentPage} />;
       case 'infos-etablissement':
         return (
           <InfosEtablissement 
             onBack={() => setCurrentPage('ajouter-restaurant')} 
             onNavigate={setCurrentPage}
             selectedFormule={selectedFormule}
-            onBarInfoSubmit={(nom, venueId) => {
-              setNomBarOnboarding(nom);
-              setVenueIdOnboarding(venueId);
-            }}
+            onBarInfoSubmit={(nom) => setNomBarOnboarding(nom)}
+          />
+        );
+      case 'facturation':
+        return <Facturation onBack={() => setCurrentPage('ajouter-restaurant')} onNavigate={setCurrentPage} />;
+      case 'onboarding-welcome':
+        return (
+          <OnboardingWelcome 
+            onContinue={setCurrentPage}
+            currentStep={currentUser.onboardingStep}
+            userName={currentUser.prenom}
+          />
+        );
+      case 'confirmation-onboarding':
+        return (
+          <ConfirmationOnboarding 
+            onNavigate={setCurrentPage}
+            nomBar={nomBarOnboarding}
           />
         );
       case 'paiement-validation':
@@ -447,54 +343,48 @@ function AppContent() {
             nomBar={nomBarOnboarding}
           />
         );
-      case 'confirmation-onboarding':
-        return (
-          <ConfirmationOnboarding 
-            onNavigate={setCurrentPage}
-            nomBar={nomBarOnboarding}
-          />
-        );
-      case 'facturation':
-        return <Facturation onBack={() => setCurrentPage('ajouter-restaurant')} onNavigate={setCurrentPage} />;
-      case 'match-detail':
-        return (
-          <MatchDetail 
-            onBack={() => setCurrentPage('mes-matchs')} 
-            onEditMatch={() => {
-              setCurrentPage('modifier-match');
-            }}
-          />
-        );
-      case 'compte-infos':
-        return <CompteInfos onBack={() => setCurrentPage('compte')} />;
-      case 'compte-parametres':
-        return <CompteParametres onBack={() => setCurrentPage('compte')} />;
-      case 'compte-notifications':
-        return <CompteNotifications onBack={() => setCurrentPage('compte')} />;
-      case 'compte-securite':
-        return <CompteSecurite onBack={() => setCurrentPage('compte')} />;
-      case 'compte-aide':
-        return <CompteAide onBack={() => setCurrentPage('compte')} />;
-      case 'compte-facturation':
-        return <CompteFacturation onNavigate={setCurrentPage} onBack={() => setCurrentPage('compte')} />;
-      case 'mes-lieux':
-        return <MesLieux onNavigate={setCurrentPage} onBack={() => setCurrentPage('compte')} />;
-      case 'compte-donnees':
-        return <CompteDonnees onNavigate={setCurrentPage} onBack={() => setCurrentPage('compte')} />;
       case 'app-presentation':
         return <AppPresentation onNavigate={setCurrentPage} onBack={() => setCurrentPage('dashboard')} />;
+      case 'referral':
+        return (
+          <ReferralPage 
+            onBackToLanding={() => setAuthView('landing')}
+            onGoToLogin={() => setAuthView('login')}
+          />
+        );
+      case 'qr-scanner':
+        return (
+          <QRScanner 
+            onBack={() => setCurrentPage('dashboard')}
+            onNavigate={setCurrentPage}
+          />
+        );
+      case 'reservations':
+        return <Reservations onNavigate={handleNavigate} matchId={selectedMatchId} />;
       default:
         return <Dashboard onNavigate={setCurrentPage} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10 flex flex-col">
-      <Header onNavigate={setCurrentPage} currentPage={currentPage} />
-      <div className="flex-1">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
+      <Sidebar onNavigate={setCurrentPage} currentPage={currentPage} />
+      <div className="lg:ml-64 flex flex-col min-h-screen">
         {renderPage()}
       </div>
-      <Footer />
+      
+      {/* Floating QR Scanner Button - Only on mobile when authenticated */}
+      {isAuthenticated && currentPage !== 'qr-scanner' && (
+        <button
+          onClick={() => setCurrentPage('qr-scanner')}
+          className="lg:hidden fixed bottom-6 right-6 z-40 w-16 h-16 bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white rounded-full shadow-2xl shadow-[#5a03cf]/40 hover:scale-110 transition-transform duration-300 flex items-center justify-center"
+          style={{ 
+            bottom: 'max(1.5rem, calc(1.5rem + env(safe-area-inset-bottom)))' 
+          }}
+        >
+          <QrCode className="w-8 h-8" />
+        </button>
+      )}
     </div>
   );
 }

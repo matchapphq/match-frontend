@@ -14,7 +14,6 @@
         'react-resizable-panels@2.1.7': 'react-resizable-panels',
         'react-hook-form@7.55.0': 'react-hook-form',
         'react-day-picker@8.10.1': 'react-day-picker',
-        'next-themes@0.4.6': 'next-themes',
         'lucide-react@0.487.0': 'lucide-react',
         'input-otp@1.4.2': 'input-otp',
         'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png': path.resolve(__dirname, './src/assets/c263754cf7a254d8319da5c6945751d81a6f5a94.png'),
@@ -55,7 +54,7 @@
       target: 'esnext',
       outDir: 'build',
     },
-     server: {
+    server: {
       port: 5173,
       host: true, // Listen on all addresses (0.0.0.0)
       strictPort: true,

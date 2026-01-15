@@ -1,687 +1,656 @@
-// API Service for Match Frontend
-// Connects to match-api backend
+/**
+ * API Service Layer for Match Platform
+ * 
+ * Centralized Axios configuration and API endpoints
+ * Base URL should be configured via environment variables
+ */
 
-declare const import_meta_env: { VITE_API_URL?: string } | undefined;
-const API_BASE_URL = (typeof import_meta_env !== 'undefined' && import_meta_env?.VITE_API_URL) 
-  || (import.meta as any).env?.VITE_API_URL 
-  || 'http://localhost:8008/api';
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  body?: any;
-  headers?: Record<string, string>;
-}
+// ============================================================================
+// API CONFIGURATION
+// ============================================================================
 
-class ApiService {
-  private baseUrl: string;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_TIMEOUT = 30000; // 30 seconds
 
-  constructor() {
-    this.baseUrl = API_BASE_URL;
-  }
+// ============================================================================
+// AXIOS INSTANCE
+// ============================================================================
 
-  // Get base URL without /api suffix for health check
-  private getBaseUrlWithoutApi(): string {
-    return this.baseUrl.replace(/\/api$/, '');
-  }
+export const api: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { method = 'GET', body, headers = {} } = options;
+// ============================================================================
+// REQUEST INTERCEPTOR (Add auth token)
+// ============================================================================
 
-    const config: RequestInit = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
-      credentials: 'include', // Include cookies for auth
-    };
-
-    if (body) {
-      config.body = JSON.stringify(body);
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem('authToken');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || 'Request failed');
-    }
-
-    return response.json();
+    return config;
+  },
+  (error: AxiosError) => {
+    return Promise.reject(error);
   }
+);
 
-  // ============================================
-  // AUTH
-  // ============================================
+// ============================================================================
+// RESPONSE INTERCEPTOR (Handle errors globally)
+// ============================================================================
 
-  async login(email: string, password: string) {
-    return this.request<{ user: any; token?: string }>('/auth/login', {
-      method: 'POST',
-      body: { email, password },
-    });
-  }
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-  async register(data: { email: string; password: string; firstName: string; lastName: string; phone?: string }) {
-    return this.request<{ user: any }>('/auth/register', {
-      method: 'POST',
-      body: data,
-    });
-  }
+    // Handle 401 Unauthorized (token expired)
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
 
-  async logout() {
-    return this.request<{ success: boolean }>('/auth/logout', {
-      method: 'POST',
-    });
-  }
+      try {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (refreshToken) {
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
+            refresh_token: refreshToken,
+          });
 
-  async getCurrentUser() {
-    return this.request<{ user: any }>('/users/me');
-  }
+          const { token } = response.data;
+          localStorage.setItem('authToken', token);
 
-  async refreshToken() {
-    return this.request<{ token: string; refresh_token: string }>('/auth/refresh-token', {
-      method: 'POST',
-    });
-  }
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+          }
 
-  async getMe() {
-    return this.request<{ user: ApiUser }>('/auth/me');
-  }
-
-  async updateMe(data: { first_name?: string; last_name?: string; phone?: string }) {
-    return this.request<{ msg: string }>('/auth/me', {
-      method: 'PUT',
-      body: data,
-    });
-  }
-
-  // ============================================
-  // HEALTH CHECK (No auth required)
-  // ============================================
-
-  async healthCheck(): Promise<{ status: 'ok' | 'error'; message?: string }> {
-    try {
-      const response = await fetch(`${this.baseUrl}/health`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (response.ok) {
-        const text = await response.text();
-        return { status: 'ok', message: text };
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        // Refresh failed, logout user
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
       }
-      return { status: 'error', message: 'API not responding' };
-    } catch (error: any) {
-      return { status: 'error', message: error.message || 'Connection failed' };
     }
+
+    // Handle other errors
+    return Promise.reject(error);
   }
-
-  // ============================================
-  // PARTNER - VENUES (Restaurants)
-  // ============================================
-
-  async getMyVenues() {
-    return this.request<{ venues: Venue[] }>('/partners/venues');
-  }
-
-  async createVenue(data: CreateVenueData) {
-    return this.request<{ checkout_url: string; session_id: string; message: string }>('/partners/venues', {
-      method: 'POST',
-      body: data,
-    });
-  }
-
-  async verifyCheckoutAndCreateVenue(sessionId: string) {
-    return this.request<{ venue: Venue; subscription: any; message: string; already_exists?: boolean }>('/partners/venues/verify-checkout', {
-      method: 'POST',
-      body: { session_id: sessionId },
-    });
-  }
-
-  // ============================================
-  // PARTNER - MATCHES
-  // ============================================
-
-  async getMyMatches() {
-    return this.request<{ data: VenueMatch[] }>('/partners/venues/matches');
-  }
-
-  async scheduleMatch(venueId: string, matchId: string, totalCapacity: number) {
-    return this.request<{ venueMatch: any }>(`/partners/venues/${venueId}/matches`, {
-      method: 'POST',
-      body: { match_id: matchId, total_capacity: totalCapacity },
-    });
-  }
-
-  async cancelMatch(venueId: string, matchId: string) {
-    return this.request<{ success: boolean }>(`/partners/venues/${venueId}/matches/${matchId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // ============================================
-  // PARTNER - CLIENTS
-  // ============================================
-
-  async getVenueClients(venueId: string) {
-    return this.request<{ clients: Client[]; total: number }>(`/partners/venues/${venueId}/clients`);
-  }
-
-  async getAllClients(venueIds: string[]) {
-    // Fetch clients from all venues
-    const results = await Promise.all(
-      venueIds.map(id => this.getVenueClients(id).catch(() => ({ clients: [], total: 0 })))
-    );
-    const allClients = results.flatMap(r => r.clients);
-    return { clients: allClients, total: allClients.length };
-  }
-
-  // ============================================
-  // PARTNER - STATS & ANALYTICS
-  // ============================================
-
-  async getCustomerStats() {
-    return this.request<CustomerStats>('/partners/stats/customers');
-  }
-
-  async getAnalyticsSummary() {
-    return this.request<AnalyticsSummary>('/partners/analytics/summary');
-  }
-
-  async getVenueAnalytics(venueId: string, params?: { start_date?: string; end_date?: string }) {
-    const queryString = params
-      ? '?' + new URLSearchParams(params as Record<string, string>).toString()
-      : '';
-    return this.request<VenueAnalytics>(`/venues/${venueId}/analytics/overview${queryString}`);
-  }
-
-  // ============================================
-  // NOTIFICATIONS
-  // ============================================
-
-  async getNotifications() {
-    return this.request<{ notifications: Notification[] }>('/notifications');
-  }
-
-  async markNotificationAsRead(notificationId: string) {
-    return this.request<{ success: boolean }>(`/notifications/${notificationId}/read`, {
-      method: 'PUT',
-    });
-  }
-
-  async markAllNotificationsAsRead() {
-    return this.request<{ success: boolean }>('/notifications/read-all', {
-      method: 'PUT',
-    });
-  }
-
-  async deleteNotification(notificationId: string) {
-    return this.request<{ success: boolean }>(`/notifications/${notificationId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // ============================================
-  // BILLING
-  // ============================================
-
-  async getInvoices() {
-    return this.request<{ invoices: Invoice[] }>('/invoices');
-  }
-
-  async getTransactions() {
-    return this.request<{ transactions: Transaction[] }>('/transactions');
-  }
-
-  // ============================================
-  // SPORTS & MATCHES (Discovery)
-  // ============================================
-
-  async getSports() {
-    return this.request<{ sports: Sport[] }>('/sports');
-  }
-
-  async getUpcomingMatches(params?: { sport_id?: string; league_id?: string; date?: string }) {
-    const queryString = params
-      ? '?' + new URLSearchParams(params as Record<string, string>).toString()
-      : '';
-    return this.request<{ matches: Match[] }>(`/matches${queryString}`);
-  }
-
-  // ============================================
-  // ONBOARDING
-  // ============================================
-
-  async getOnboardingStatus() {
-    return this.request<{ status: OnboardingStatus }>('/onboarding/status');
-  }
-
-  async saveOnboardingPreferences(data: { sports?: string[]; categories?: string[]; ambiances?: string[] }) {
-    return this.request<{ success: boolean }>('/onboarding/preferences', {
-      method: 'POST',
-      body: data,
-    });
-  }
-
-  async getOnboardingSports() {
-    return this.request<{ sports: Sport[] }>('/onboarding/sports');
-  }
-
-  async getOnboardingCategories() {
-    return this.request<{ categories: Category[] }>('/onboarding/categories');
-  }
-
-  async getOnboardingAmbiances() {
-    return this.request<{ ambiances: Ambiance[] }>('/onboarding/ambiances');
-  }
-
-  // ============================================
-  // USER PROFILE
-  // ============================================
-
-  async getUserProfile() {
-    return this.request<{ user: ApiUser }>('/users/me');
-  }
-
-  async updateUserProfile(data: Partial<ApiUser>) {
-    return this.request<{ msg: string }>('/users/me', {
-      method: 'PUT',
-      body: data,
-    });
-  }
-
-  async completeUserOnboarding() {
-    return this.request<{ success: boolean }>('/users/me/onboarding-complete', {
-      method: 'PUT',
-    });
-  }
-
-  async updateNotificationPreferences(preferences: NotificationPreferences) {
-    return this.request<{ success: boolean }>('/users/me/notification-preferences', {
-      method: 'PUT',
-      body: preferences,
-    });
-  }
-
-  // ============================================
-  // SUBSCRIPTIONS
-  // ============================================
-
-  async getSubscriptionPlans() {
-    return this.request<{ plans: SubscriptionPlan[] }>('/subscriptions/plans');
-  }
-
-  async createCheckout(planId: string, venueId?: string) {
-    return this.request<{ checkout_url: string; session_id: string }>('/subscriptions/create-checkout', {
-      method: 'POST',
-      body: { plan_id: planId, venue_id: venueId },
-    });
-  }
-
-  async getPaymentPortal() {
-    return this.request<{ portal_url: string }>('/subscriptions/me/update-payment-method', {
-      method: 'POST',
-    });
-  }
-
-  async getMySubscription() {
-    return this.request<{ subscription: Subscription | null }>('/subscriptions/me');
-  }
-
-  async cancelSubscription() {
-    return this.request<{ success: boolean }>('/subscriptions/me/cancel', {
-      method: 'POST',
-    });
-  }
-
-  async upgradeSubscription(planId: string) {
-    return this.request<{ success: boolean }>('/subscriptions/me/upgrade', {
-      method: 'POST',
-      body: { plan_id: planId },
-    });
-  }
-
-  async getMyInvoices() {
-    return this.request<{ invoices: Invoice[] }>('/subscriptions/invoices');
-  }
-
-  async getVenuePaymentPortal(venueId: string) {
-    return this.request<{ portal_url: string }>(`/partners/venues/${venueId}/payment-portal`, {
-      method: 'POST',
-    });
-  }
-
-  async getVenueSubscription(venueId: string) {
-    return this.request<{ subscription: Subscription | null }>(`/partners/venues/${venueId}/subscription`);
-  }
-
-  // ============================================
-  // RESERVATIONS
-  // ============================================
-
-  async getMyReservations() {
-    return this.request<{ reservations: Reservation[] }>('/reservations');
-  }
-
-  async getReservation(reservationId: string) {
-    return this.request<{ reservation: Reservation }>(`/reservations/${reservationId}`);
-  }
-
-  async cancelReservation(reservationId: string) {
-    return this.request<{ success: boolean }>(`/reservations/${reservationId}/cancel`, {
-      method: 'POST',
-    });
-  }
-
-  async verifyQRCode(qrCode: string) {
-    return this.request<{ valid: boolean; reservation?: Reservation }>('/reservations/verify-qr', {
-      method: 'POST',
-      body: { qr_code: qrCode },
-    });
-  }
-
-  async checkInReservation(reservationId: string) {
-    return this.request<{ success: boolean }>(`/reservations/${reservationId}/check-in`, {
-      method: 'POST',
-    });
-  }
-
-  async getVenueMatchReservations(venueMatchId: string) {
-    return this.request<{ reservations: Reservation[] }>(`/reservations/venue-match/${venueMatchId}`);
-  }
-
-  // ============================================
-  // DISCOVERY
-  // ============================================
-
-  async getNearbyVenues(lat: number, lng: number, radius?: number) {
-    const params = new URLSearchParams({ lat: lat.toString(), lng: lng.toString() });
-    if (radius) params.append('radius', radius.toString());
-    return this.request<{ venues: Venue[] }>(`/discovery/nearby?${params}`);
-  }
-
-  async getVenueDetails(venueId: string) {
-    return this.request<{ venue: Venue }>(`/discovery/venues/${venueId}`);
-  }
-
-  async getVenueMenu(venueId: string) {
-    return this.request<{ menu: MenuItem[] }>(`/discovery/venues/${venueId}/menu`);
-  }
-
-  async getVenueHours(venueId: string) {
-    return this.request<{ hours: VenueHours[] }>(`/discovery/venues/${venueId}/hours`);
-  }
-
-  async getNearbyMatches(lat: number, lng: number, radius?: number) {
-    const params = new URLSearchParams({ lat: lat.toString(), lng: lng.toString() });
-    if (radius) params.append('radius', radius.toString());
-    return this.request<{ matches: any[] }>(`/discovery/matches-nearby?${params}`);
-  }
-
-  async searchVenues(query: string, filters?: { sport_id?: string; date?: string }) {
-    return this.request<{ venues: Venue[]; matches: any[] }>('/discovery/search', {
-      method: 'POST',
-      body: { query, ...filters },
-    });
-  }
-
-  // ============================================
-  // REVIEWS
-  // ============================================
-
-  async updateReview(reviewId: string, data: { rating?: number; comment?: string }) {
-    return this.request<{ review: Review }>(`/reviews/${reviewId}`, {
-      method: 'PUT',
-      body: data,
-    });
-  }
-
-  async deleteReview(reviewId: string) {
-    return this.request<{ success: boolean }>(`/reviews/${reviewId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async markReviewHelpful(reviewId: string) {
-    return this.request<{ success: boolean }>(`/reviews/${reviewId}/helpful`, {
-      method: 'POST',
-    });
-  }
-}
-
-// ============================================
-// TYPES
-// ============================================
-
-export interface Venue {
-  id: string;
-  name: string;
-  owner_id: string;
-  street_address: string;
-  city: string;
-  state_province?: string;
-  postal_code: string;
-  country: string;
-  phone?: string;
-  email?: string;
-  capacity?: number;
-  image_url?: string;
-  rating?: number;
-  review_count?: number;
-  created_at?: string;
-}
-
-export interface CreateVenueData {
-  name: string;
-  street_address: string;
-  city: string;
-  state_province?: string;
-  postal_code: string;
-  country: string;
-  phone?: string;
-  email?: string;
-  capacity?: number;
-  plan_id?: 'monthly' | 'annual';
-}
-
-export interface VenueMatch {
-  id: string;
-  venue: { id: string; name: string } | null;
-  match: {
-    id: string;
-    homeTeam: string;
-    awayTeam: string;
-    scheduled_at: string;
-    league?: string;
-  } | null;
-  total_capacity: number;
-  reserved_seats: number;
-  available_capacity: number;
-  status: 'upcoming' | 'live' | 'finished';
-}
-
-export interface Client {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  match_name: string;
-  reservation_date: string;
-  party_size: number;
-  status: string;
-}
-
-export interface CustomerStats {
-  customerCount: number;
-  totalGuests: number;
-  totalReservations: number;
-  period: string;
-}
-
-export interface AnalyticsSummary {
-  total_clients: number;
-  total_reservations: number;
-  total_views: number;
-  matches_completed: number;
-  matches_upcoming: number;
-  average_occupancy: number;
-}
-
-export interface VenueAnalytics {
-  venue: { id: string; name: string; city: string };
-  period: { startDate: string | null; endDate: string | null };
-  overview: {
-    totalReservations: number;
-    totalGuests: number;
-    averageOccupancy: number;
-    matchesHosted: number;
-  };
-}
-
-export interface Notification {
-  id: string;
-  user_id: string;
-  type: 'reservation' | 'review' | 'referral' | 'system';
-  title: string;
-  message: string;
-  created_at: string;
-  read: boolean;
-  metadata?: any;
-}
-
-export interface Invoice {
-  id: string;
-  invoice_number: string;
-  venue_id?: string;
-  amount: number;
-  subtotal: number;
-  tax: number;
-  total: number;
-  status: 'draft' | 'pending' | 'paid' | 'overdue' | 'canceled';
-  issue_date: string;
-  due_date: string;
-  paid_date?: string;
-  description?: string;
-  pdf_url?: string;
-  created_at: string;
-}
-
-export interface Transaction {
-  id: string;
-  type: string;
-  amount: number;
-  status: string;
-  created_at: string;
-}
-
-export interface Sport {
-  id: string;
-  name: string;
-  icon?: string;
-}
-
-export interface Match {
-  id: string;
-  home_team: { id: string; name: string };
-  away_team: { id: string; name: string };
-  league: { id: string; name: string };
-  scheduled_at: string;
-  status: string;
-}
-
-export interface ApiUser {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone?: string;
-  role: 'user' | 'venue_owner' | 'admin';
-  has_completed_onboarding?: boolean;
-  created_at?: string;
-}
-
-export interface OnboardingStatus {
-  completed: boolean;
-  current_step: string;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-}
-
-export interface Ambiance {
-  id: string;
-  name: string;
-}
-
-export interface NotificationPreferences {
-  email_notifications?: boolean;
-  push_notifications?: boolean;
-  reservation_reminders?: boolean;
-  match_alerts?: boolean;
-}
-
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  price: number;
-  interval: 'month' | 'year';
-  features: string[];
-}
-
-export interface Subscription {
-  id: string;
-  plan: string;
-  plan_name?: string; // User-friendly name: "Mensuel" or "Annuel"
-  display_price?: string; // Formatted price: "30€/mois" or "300€/an"
-  status: 'active' | 'canceled' | 'past_due' | 'trialing';
-  current_period_start: string;
-  current_period_end: string;
-  auto_renew: boolean;
-  price: string;
-  currency: string;
-  canceled_at: string | null;
-  plan_details: {
+);
+
+// ============================================================================
+// AUTHENTICATION API
+// ============================================================================
+
+export const authAPI = {
+  register: (data: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    role: 'user' | 'venue_owner' | 'admin';
+  }) => api.post('/auth/register', data),
+
+  login: (email: string, password: string) =>
+    api.post('/auth/login', { email, password }),
+
+  logout: () => api.post('/auth/logout'),
+
+  refreshToken: (refreshToken: string) =>
+    api.post('/auth/refresh-token', { refresh_token: refreshToken }),
+
+  getMe: () => api.get('/auth/me'),
+
+  updateMe: (data: {
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    avatar_url?: string;
+  }) => api.put('/auth/me', data),
+
+  deleteAccount: () => api.delete('/auth/me'),
+};
+
+// ============================================================================
+// USER API
+// ============================================================================
+
+export const userAPI = {
+  getMe: () => api.get('/users/me'),
+
+  updateMe: (data: {
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    avatar_url?: string;
+    bio?: string;
+  }) => api.put('/users/me', data),
+
+  deleteAccount: () => api.delete('/users/me'),
+
+  updateNotificationPreferences: (data: {
+    email_notifications?: boolean;
+    push_notifications?: boolean;
+    sms_notifications?: boolean;
+    match_notifications?: boolean;
+    reservation_reminders?: boolean;
+  }) => api.put('/users/me/notification-preferences', data),
+
+  completeOnboarding: () => api.put('/users/me/onboarding-complete'),
+
+  getAddresses: () => api.get('/users/me/addresses'),
+
+  addAddress: (data: {
+    street_address: string;
+    city: string;
+    state_province?: string;
+    postal_code: string;
+    country: string;
+    is_default?: boolean;
+  }) => api.post('/users/me/addresses', data),
+
+  updateAddress: (
+    addressId: string,
+    data: {
+      street_address?: string;
+      city?: string;
+      postal_code?: string;
+      is_default?: boolean;
+    }
+  ) => api.put(`/users/me/addresses/${addressId}`, data),
+
+  deleteAddress: (addressId: string) => api.delete(`/users/me/addresses/${addressId}`),
+
+  getFavoriteVenues: () => api.get('/users/me/favorite-venues'),
+
+  getUser: (userId: string) => api.get(`/users/${userId}`),
+};
+
+// ============================================================================
+// ONBOARDING API
+// ============================================================================
+
+export const onboardingAPI = {
+  complete: (data: {
+    sports: string[];
+    ambiances: string[];
+    venue_types: string[];
+    budget?: string;
+    food_drinks_preferences?: string[];
+  }) => api.post('/onboarding/complete', data),
+};
+
+// ============================================================================
+// VENUE API
+// ============================================================================
+
+export const venueAPI = {
+  getAll: (params?: {
+    limit?: number;
+    offset?: number;
+    city?: string;
+    type?: string;
+    search?: string;
+    lat?: number;
+    lng?: number;
+    distance_km?: number;
+  }) => api.get('/venues', { params }),
+
+  getNearby: (params: {
+    lat: number;
+    lng: number;
+    distance_km?: number;
+    limit?: number;
+  }) => api.get('/venues/nearby', { params }),
+
+  getById: (venueId: string) => api.get(`/venues/${venueId}`),
+
+  getPhotos: (venueId: string) => api.get(`/venues/${venueId}/photos`),
+
+  getReviews: (venueId: string, params?: { limit?: number; offset?: number }) =>
+    api.get(`/venues/${venueId}/reviews`, { params }),
+
+  getMatches: (venueId: string, params?: { status?: string; limit?: number }) =>
+    api.get(`/venues/${venueId}/matches`, { params }),
+
+  getAvailability: (venueId: string, params?: { date?: string; match_id?: string }) =>
+    api.get(`/venues/${venueId}/availability`, { params }),
+
+  create: (data: {
     name: string;
-    features: string[];
-  } | null;
-}
+    description?: string;
+    type: string;
+    street_address: string;
+    city: string;
+    postal_code: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+    phone?: string;
+    capacity?: number;
+  }) => api.post('/venues', data),
 
-export interface Reservation {
-  id: string;
-  user_id: string;
-  venue_match_id: string;
-  party_size: number;
-  status: 'pending' | 'confirmed' | 'checked_in' | 'canceled' | 'no_show';
-  qr_code?: string;
-  created_at: string;
-  venue?: { id: string; name: string };
-  match?: { home_team: string; away_team: string; scheduled_at: string };
-}
+  update: (
+    venueId: string,
+    data: {
+      name?: string;
+      description?: string;
+      phone?: string;
+      opening_hours?: object;
+      capacity?: number;
+    }
+  ) => api.put(`/venues/${venueId}`, data),
 
-export interface MenuItem {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  category: string;
-}
+  delete: (venueId: string) => api.delete(`/venues/${venueId}`),
 
-export interface VenueHours {
-  day: string;
-  open: string;
-  close: string;
-}
+  // 🆕 Booking Mode - Dedicated endpoint
+  updateBookingMode: (venueId: string, bookingMode: 'INSTANT' | 'REQUEST') =>
+    api.put(`/venues/${venueId}/booking-mode`, { booking_mode: bookingMode }),
 
-export interface Review {
-  id: string;
-  user_id: string;
-  venue_id: string;
-  rating: number;
-  comment?: string;
-  created_at: string;
-}
+  addToFavorites: (venueId: string, note?: string) =>
+    api.post(`/venues/${venueId}/favorite`, { note }),
 
-// Export singleton instance
-export const api = new ApiService();
+  removeFromFavorites: (venueId: string) => api.delete(`/venues/${venueId}/favorite`),
+
+  updateFavoriteNote: (venueId: string, note: string) =>
+    api.patch(`/venues/${venueId}/favorite`, { note }),
+
+  checkIsFavorite: (venueId: string) => api.get(`/venues/${venueId}/favorite`),
+};
+
+// ============================================================================
+// SPORTS API
+// ============================================================================
+
+export const sportsAPI = {
+  getAll: (params?: { limit?: number; offset?: number }) =>
+    api.get('/sports', { params }),
+
+  getById: (sportId: string) => api.get(`/sports/${sportId}`),
+
+  getLeagues: (sportId: string) => api.get(`/sports/${sportId}/leagues`),
+};
+
+// ============================================================================
+// LEAGUES API
+// ============================================================================
+
+export const leaguesAPI = {
+  getById: (leagueId: string) => api.get(`/leagues/${leagueId}`),
+
+  getTeams: (leagueId: string) => api.get(`/leagues/${leagueId}/teams`),
+};
+
+// ============================================================================
+// TEAMS API
+// ============================================================================
+
+export const teamsAPI = {
+  getById: (teamId: string) => api.get(`/teams/${teamId}`),
+};
+
+// ============================================================================
+// MATCHES API
+// ============================================================================
+
+export const matchesAPI = {
+  getAll: (params?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+    league_id?: string;
+    scheduled_from?: string;
+    scheduled_to?: string;
+  }) => api.get('/matches', { params }),
+
+  getUpcoming: (params?: { limit?: number; sport_id?: string }) =>
+    api.get('/matches/upcoming', { params }),
+
+  getUpcomingNearby: (params: {
+    lat: number;
+    lng: number;
+    distance_km?: number;
+    limit?: number;
+  }) => api.get('/matches/upcoming-nearby', { params }),
+
+  getById: (matchId: string) => api.get(`/matches/${matchId}`),
+
+  getVenues: (matchId: string) => api.get(`/matches/${matchId}/venues`),
+
+  getLiveUpdates: (matchId: string) => api.get(`/matches/${matchId}/live-updates`),
+};
+
+// ============================================================================
+// DISCOVERY API
+// ============================================================================
+
+export const discoveryAPI = {
+  getNearby: (params: { lat: number; lng: number; distance_km?: number }) =>
+    api.get('/discovery/nearby', { params }),
+
+  getVenueDetails: (venueId: string) => api.get(`/discovery/venues/${venueId}`),
+
+  getVenueMenu: (venueId: string) => api.get(`/discovery/venues/${venueId}/menu`),
+
+  getVenueHours: (venueId: string) => api.get(`/discovery/venues/${venueId}/hours`),
+
+  getMatchesNearby: (params: { lat: number; lng: number; distance_km?: number }) =>
+    api.get('/discovery/matches-nearby', { params }),
+
+  search: (data: {
+    query: string;
+    lat?: number;
+    lng?: number;
+    filters?: {
+      type?: string;
+      sport?: string;
+    };
+  }) => api.post('/discovery/search', data),
+};
+
+// ============================================================================
+// SEATS API
+// ============================================================================
+
+export const seatsAPI = {
+  getSeats: (venueId: string, params?: { match_id?: string }) =>
+    api.get(`/venues/${venueId}/seats`, { params }),
+
+  reserveSeats: (
+    venueId: string,
+    data: {
+      seat_ids: string[];
+      match_id: string;
+    }
+  ) => api.post(`/venues/${venueId}/seats/reserve`, data),
+
+  getPricing: (venueId: string, params?: { match_id?: string }) =>
+    api.get(`/venues/${venueId}/seats/pricing`, { params }),
+};
+
+// ============================================================================
+// RESERVATIONS API
+// ============================================================================
+
+export const reservationsAPI = {
+  getAll: (params?: { status?: string; limit?: number; offset?: number }) =>
+    api.get('/reservations', { params }),
+
+  getById: (reservationId: string) => api.get(`/reservations/${reservationId}`),
+
+  // 🆕 Simplified reservation creation (replaces hold + confirm)
+  // Backend determines PENDING vs CONFIRMED based on venue.booking_mode
+  create: (data: {
+    venue_match_id: string;
+    party_size: number;
+    requires_accessibility?: boolean;
+    special_requests?: string;
+  }) => api.post('/reservations', data),
+
+  cancel: (reservationId: string, reason?: string) =>
+    api.post(`/reservations/${reservationId}/cancel`, { reason }),
+
+  verifyQR: (qrCode: string) => api.post('/reservations/verify-qr', { qr_code: qrCode }),
+
+  checkIn: (reservationId: string) => api.post(`/reservations/${reservationId}/check-in`),
+
+  getByVenueMatch: (venueMatchId: string) =>
+    api.get(`/reservations/venue-match/${venueMatchId}`),
+
+  // Waitlist
+  joinWaitlist: (data: { venue_match_id: string; party_size: number }) =>
+    api.post('/reservations/waitlist', data),
+
+  getMyWaitlist: () => api.get('/reservations/waitlist/me'),
+
+  leaveWaitlist: (waitlistId: string) =>
+    api.delete(`/reservations/waitlist/${waitlistId}`),
+};
+
+// ============================================================================
+// REVIEWS API
+// ============================================================================
+
+export const reviewsAPI = {
+  create: (
+    venueId: string,
+    data: {
+      rating: number;
+      title: string;
+      content: string;
+      atmosphere_rating?: number;
+      food_rating?: number;
+      service_rating?: number;
+      value_rating?: number;
+    }
+  ) => api.post(`/venues/${venueId}/reviews`, data),
+
+  getByVenue: (
+    venueId: string,
+    params?: { limit?: number; offset?: number; sort?: string }
+  ) => api.get(`/venues/${venueId}/reviews`, { params }),
+
+  update: (
+    reviewId: string,
+    data: {
+      rating?: number;
+      title?: string;
+      content?: string;
+      atmosphere_rating?: number;
+      food_rating?: number;
+      service_rating?: number;
+      value_rating?: number;
+    }
+  ) => api.put(`/reviews/${reviewId}`, data),
+
+  delete: (reviewId: string) => api.delete(`/reviews/${reviewId}`),
+
+  markHelpful: (reviewId: string, isHelpful: boolean) =>
+    api.post(`/reviews/${reviewId}/helpful`, { is_helpful: isHelpful }),
+};
+
+// ============================================================================
+// NOTIFICATIONS API
+// ============================================================================
+
+export const notificationsAPI = {
+  getAll: (params?: {
+    is_read?: boolean;
+    type?: string;
+    limit?: number;
+    offset?: number;
+  }) => api.get('/notifications', { params }),
+
+  markAsRead: (notificationId: string) =>
+    api.put(`/notifications/${notificationId}/read`),
+
+  markAllAsRead: () => api.put('/notifications/read-all'),
+
+  delete: (notificationId: string) => api.delete(`/notifications/${notificationId}`),
+};
+
+// ============================================================================
+// MESSAGING API
+// ============================================================================
+
+export const messagingAPI = {
+  createOrGetConversation: (data: { participant_id: string; subject?: string }) =>
+    api.post('/conversations', data),
+
+  getConversations: (params?: { limit?: number; offset?: number }) =>
+    api.get('/conversations', { params }),
+
+  getMessages: (conversationId: string, params?: { limit?: number; offset?: number }) =>
+    api.get(`/conversations/${conversationId}/messages`, { params }),
+
+  sendMessage: (
+    conversationId: string,
+    data: {
+      type: 'text' | 'image' | 'file';
+      content: string;
+      file?: File;
+    }
+  ) => {
+    const formData = new FormData();
+    formData.append('type', data.type);
+    formData.append('content', data.content);
+    if (data.file) {
+      formData.append('file', data.file);
+    }
+    return api.post(`/conversations/${conversationId}/messages`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  editMessage: (messageId: string, content: string) =>
+    api.put(`/messages/${messageId}`, { content }),
+
+  deleteMessage: (messageId: string) => api.delete(`/messages/${messageId}`),
+
+  archiveConversation: (conversationId: string) =>
+    api.put(`/conversations/${conversationId}/archive`),
+};
+
+// ============================================================================
+// SUBSCRIPTIONS API (Venue Owners)
+// ============================================================================
+
+export const subscriptionsAPI = {
+  getPlans: () => api.get('/subscriptions/plans'),
+
+  createCheckout: (data: {
+    plan: 'basic' | 'pro' | 'enterprise';
+    billing_period?: 'monthly' | 'yearly';
+  }) => api.post('/subscriptions/create-checkout', data),
+
+  getMySubscription: () => api.get('/subscriptions/me'),
+
+  updatePaymentMethod: (stripePaymentMethodId: string) =>
+    api.post('/subscriptions/me/update-payment-method', {
+      stripe_payment_method_id: stripePaymentMethodId,
+    }),
+
+  cancel: () => api.post('/subscriptions/me/cancel'),
+
+  upgrade: (plan: 'basic' | 'pro' | 'enterprise') =>
+    api.post('/subscriptions/me/upgrade', { plan }),
+
+  getInvoices: (params?: { status?: string; limit?: number; offset?: number }) =>
+    api.get('/subscriptions/invoices', { params }),
+};
+
+// ============================================================================
+// INVOICES API (Venue Owners)
+// ============================================================================
+
+export const invoicesAPI = {
+  getAll: (params?: { status?: string; limit?: number; offset?: number }) =>
+    api.get('/invoices', { params }),
+
+  getById: (invoiceId: string) => api.get(`/invoices/${invoiceId}`),
+
+  downloadPDF: (invoiceId: string) => api.get(`/invoices/${invoiceId}/pdf`),
+};
+
+// ============================================================================
+// TRANSACTIONS API (Venue Owners)
+// ============================================================================
+
+export const transactionsAPI = {
+  getAll: (params?: {
+    type?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }) => api.get('/transactions', { params }),
+
+  getById: (transactionId: string) => api.get(`/transactions/${transactionId}`),
+};
+
+// ============================================================================
+// ANALYTICS API (Venue Owners)
+// ============================================================================
+
+export const analyticsAPI = {
+  getOverview: (venueId: string, params?: { from?: string; to?: string }) =>
+    api.get(`/venues/${venueId}/analytics/overview`, { params }),
+
+  getReservations: (
+    venueId: string,
+    params?: { from?: string; to?: string; group_by?: string }
+  ) => api.get(`/venues/${venueId}/analytics/reservations`, { params }),
+
+  getRevenue: (venueId: string, params?: { from?: string; to?: string }) =>
+    api.get(`/venues/${venueId}/analytics/revenue`, { params }),
+};
+
+// ============================================================================
+// COUPONS API
+// ============================================================================
+
+export const couponsAPI = {
+  validate: (code: string, venueId?: string) =>
+    api.get('/coupons/validate', { params: { code, venue_id: venueId } }),
+};
+
+// ============================================================================
+// REFERRALS API (PARRAINAGE)
+// ============================================================================
+
+export const referralsAPI = {
+  getMyCode: () => api.get('/referrals/my-code'),
+
+  validate: (code: string) => api.post('/referrals/validate', { code }),
+
+  getStats: () => api.get('/referrals/stats'),
+
+  getHistory: (params?: { limit?: number; offset?: number; status?: string }) =>
+    api.get('/referrals/history', { params }),
+
+  claimReward: (referralId: string) => api.post('/referrals/rewards/claim', { referral_id: referralId }),
+};
+
+// ============================================================================
+// WEBHOOKS API
+// ============================================================================
+
+export const webhooksAPI = {
+  create: (data: {
+    url: string;
+    events: string[];
+    secret?: string;
+  }) => api.post('/webhooks', data),
+
+  getAll: () => api.get('/webhooks'),
+
+  get: (webhookId: string) => api.get(`/webhooks/${webhookId}`),
+
+  update: (
+    webhookId: string,
+    data: {
+      url?: string;
+      events?: string[];
+      secret?: string;
+    }
+  ) => api.put(`/webhooks/${webhookId}`, data),
+
+  delete: (webhookId: string) => api.delete(`/webhooks/${webhookId}`),
+};
+
+// ============================================================================
+// HEALTH CHECK
+// ============================================================================
+
+export const healthAPI = {
+  check: () => api.get('/health'),
+};
+
 export default api;

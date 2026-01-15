@@ -1,5 +1,4 @@
 import { LucideIcon } from 'lucide-react';
-import { memo } from 'react';
 
 interface StatCardProps {
   title: string;
@@ -13,7 +12,7 @@ interface StatCardProps {
   onClick: () => void;
 }
 
-export const StatCard = memo(function StatCard({ title, value, subtitle, icon: Icon, color, textColor = 'text-white', iconBg = 'bg-white/20', iconColor = 'text-white', onClick }: StatCardProps) {
+export function StatCard({ title, value, subtitle, icon: Icon, color, textColor = 'text-white', iconBg = 'bg-white/20', iconColor = 'text-white', onClick }: StatCardProps) {
   return (
     <div className="relative p-[3px] rounded-3xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf]">
       <button
@@ -28,4 +27,4 @@ export const StatCard = memo(function StatCard({ title, value, subtitle, icon: I
       </button>
     </div>
   );
-});
+}

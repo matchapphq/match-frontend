@@ -1,9 +1,9 @@
-import { StatCard } from './StatCard';
-import { Users, Tv, Calendar, Eye, TrendingUp, Plus } from 'lucide-react';
+import { Calendar, TrendingUp, Users, Eye, MapPin, Zap, Clock, ArrowUpRight, Star, MessageSquare, CheckCircle, Plus, MoreVertical, QrCode } from 'lucide-react';
 import { PageType } from '../App';
+import { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { useState, useMemo } from 'react';
+import { ParrainageWidget } from './ParrainageWidget';
 
 interface DashboardProps {
   onNavigate: (page: PageType, matchId?: number, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
@@ -12,303 +12,286 @@ interface DashboardProps {
 export function Dashboard({ onNavigate }: DashboardProps) {
   const { getUserMatchs, getUserClients, boostsDisponibles } = useAppContext();
   const { currentUser } = useAuth();
-  const [clientFilter, setClientFilter] = useState<'tous' | 'en attente' | 'confirmé'>('tous');
-  const [periodFilter, setPeriodFilter] = useState<'7j' | '15j' | '1m' | '3m' | '6m' | '1a'>('7j');
+  const [periodFilter, setPeriodFilter] = useState<'7j' | '30j' | '90j'>('30j');
 
-  // Memoize data fetching to prevent recalculation on every render
-  const matchs = useMemo(() => 
-    currentUser ? getUserMatchs(currentUser.id) : [], 
-    [currentUser, getUserMatchs]
-  );
-  
-  const allClients = useMemo(() => 
-    currentUser ? getUserClients(currentUser.id) : [], 
-    [currentUser, getUserClients]
-  );
+  const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
+  const allClients = currentUser ? getUserClients(currentUser.id) : [];
 
-  // Memoize expensive computations
-  const clientsWithStatus = useMemo(() => 
-    allClients.map((client, index) => ({
-      ...client,
-      statut: (index < 2 ? 'en attente' : 'confirmé') as 'confirmé' | 'en attente' | 'refusé',
-      email: `${client.prenom.toLowerCase()}.${client.nom.toLowerCase()}@email.fr`,
-      telephone: '06 12 34 56 78',
-      restaurant: 'Le Sport Bar'
-    })),
-    [allClients]
-  );
-
-  const clients = useMemo(() => 
-    clientFilter === 'tous' 
-      ? clientsWithStatus 
-      : clientsWithStatus.filter(c => c.statut === clientFilter),
-    [clientFilter, clientsWithStatus]
-  );
-
-  const matchsAVenir = useMemo(() => matchs.filter(m => m.statut === 'à venir'), [matchs]);
-  const matchsTermines = useMemo(() => matchs.filter(m => m.statut === 'terminé'), [matchs]);
-  const clientsEnAttente = useMemo(() => clientsWithStatus.filter(c => c.statut === 'en attente'), [clientsWithStatus]);
-
-  const getPeriodLabel = () => {
-    switch(periodFilter) {
-      case '7j': return '7 derniers jours';
-      case '15j': return '15 derniers jours';
-      case '1m': return '30 derniers jours';
-      case '3m': return '3 derniers mois';
-      case '6m': return '6 derniers mois';
-      case '1a': return '1 an';
-      default: return '7 derniers jours';
-    }
-  };
+  const matchsAVenir = matchs.filter(m => m.statut === 'à venir');
+  const matchsTermines = matchs.filter(m => m.statut === 'terminé');
 
   const stats = [
     {
       id: 'clients-detail' as PageType,
-      title: 'Clients',
+      title: 'Total clients',
       value: allClients.length.toString(),
-      subtitle: getPeriodLabel(),
+      change: '+12.5%',
+      changeType: 'increase' as const,
       icon: Users,
-      color: 'bg-white',
-      textColor: 'text-[#5a03cf]',
-      iconBg: 'bg-gradient-to-br from-[#5a03cf] to-[#7a23ef]',
-      iconColor: 'text-white',
-      filter: undefined
+      color: 'purple' as const,
     },
     {
       id: 'mes-matchs' as PageType,
       title: 'Matchs diffusés',
       value: matchsTermines.length.toString(),
-      subtitle: getPeriodLabel(),
-      icon: Tv,
-      color: 'bg-gradient-to-br from-[#9cff02]/20 to-[#7cdf00]/20',
-      textColor: 'text-[#5a03cf]',
-      iconBg: 'bg-gradient-to-br from-[#9cff02] to-[#7cdf00]',
-      iconColor: 'text-[#5a03cf]',
-      filter: 'terminé' as const
+      change: '+8.2%',
+      changeType: 'increase' as const,
+      icon: Eye,
+      color: 'blue' as const,
+      filter: 'terminé' as const,
     },
     {
       id: 'mes-matchs' as PageType,
       title: 'Matchs à venir',
       value: matchsAVenir.length.toString(),
-      subtitle: 'Déjà programmés',
+      change: '+5.1%',
+      changeType: 'increase' as const,
       icon: Calendar,
-      color: 'bg-gradient-to-br from-[#5a03cf]/20 to-[#7a23ef]/20',
-      textColor: 'text-[#5a03cf]',
-      iconBg: 'bg-gradient-to-br from-[#5a03cf] to-[#7a23ef]',
-      iconColor: 'text-white',
-      filter: 'à venir' as const
+      color: 'green' as const,
+      filter: 'à venir' as const,
     },
     {
       id: 'vues-detail' as PageType,
-      title: 'Vues',
-      value: '1 453',
-      subtitle: getPeriodLabel(),
+      title: 'Vues totales',
+      value: '1,453',
+      change: '+23.4%',
+      changeType: 'increase' as const,
       icon: Eye,
-      color: 'bg-white',
-      textColor: 'text-[#5a03cf]',
-      iconBg: 'bg-gradient-to-br from-[#9cff02] to-[#7cdf00]',
-      iconColor: 'text-[#5a03cf]',
-      filter: undefined
-    }
+      color: 'orange' as const,
+    },
   ];
 
-  const getPercentage = (reservees: number, total: number) => {
-    return Math.round((reservees / total) * 100);
-  };
+  const recentActivity = [
+    { type: 'booking', text: 'Nouvelle réservation pour PSG vs OM', time: 'Il y a 2h', match: 'PSG vs OM', matchId: 1, clickable: true },
+    { type: 'view', text: '45 nouvelles vues sur Real Madrid vs Barcelona', time: 'Il y a 3h', match: 'Real Madrid vs Barcelona', matchId: 2, clickable: false },
+    { type: 'match', text: 'Match diffusé: Manchester United vs Liverpool', time: 'Il y a 5h', match: 'Manchester United vs Liverpool', matchId: 3, clickable: false },
+    { type: 'booking', text: '3 réservations pour Bayern vs Dortmund', time: 'Hier', match: 'Bayern vs Dortmund', matchId: 4, clickable: true },
+  ];
 
-  // Fonction pour calculer la couleur du cercle de remplissage (vert → violet)
-  const getCircleGradient = (percentage: number) => {
-    // L'anneau affiche toujours un dégradé vert → violet sur la portion remplie
-    return `conic-gradient(from 0deg, #9cff02 0%, #5a03cf ${percentage}%, transparent ${percentage}%)`;
-  };
-
-  // Fonction pour déterminer le texte de statut de remplissage
-  const getRemplissageStatus = (percentage: number) => {
-    if (percentage >= 80) return { text: 'Presque complet', color: 'text-orange-600' };
-    if (percentage >= 50) return { text: 'Bon remplissage', color: 'text-green-600' };
-    return { text: 'À booster', color: 'text-gray-600' };
-  };
-
-  const handleEditMatch = (e: React.MouseEvent, matchId: number) => {
-    e.stopPropagation();
-    onNavigate('modifier-match', matchId);
-  };
-
-  const handleMatchClick = (matchId: number) => {
-    onNavigate('match-detail', matchId);
-  };
-
-  const handleBoostClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onNavigate('booster');
-  };
+  const upcomingMatches = matchsAVenir.slice(0, 4);
 
   return (
-    <div className="min-h-screen p-8">
-      {/* En-tête avec salutation centrée */}
-      <div className="flex flex-col items-center justify-center mb-12">
-        <p className="text-gray-900 text-2xl mb-2" style={{ fontWeight: '600' }}>Bonjour</p>
-        <h1 className="text-6xl mb-2 italic bg-gradient-to-r from-[#5a03cf] to-[#9cff02] bg-clip-text text-transparent" style={{ fontWeight: '800' }}>
-          {currentUser?.prenom || 'Restaurateur'}
-        </h1>
-        <p className="text-gray-600 text-sm mt-2">
-          Voici un aperçu de l'activité de vos établissements
-        </p>
-      </div>
-
-      {/* Tableau de bord avec bouton programmer et sélecteur de période */}
-      <div className="border-2 border-gray-300/60 rounded-3xl p-8 mb-12 bg-white/20 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-6">
-            <h2 className="text-5xl" style={{ fontWeight: '800', color: '#5a03cf' }}>
-              Tableau de bord
-            </h2>
-            
-            {/* Menu déroulant pour la période */}
-            <div className="flex flex-col gap-1">
-              <label className="text-gray-600 text-sm" style={{ fontWeight: '600' }}>
-                Période d'analyse
-              </label>
-              <select
-                value={periodFilter}
-                onChange={(e) => setPeriodFilter(e.target.value as any)}
-                className="px-6 py-3 bg-gradient-to-r from-[#5a03cf]/5 via-white/10 to-[#9cff02]/5 backdrop-blur-2xl border-2 border-black/15 rounded-3xl text-gray-700 cursor-pointer hover:border-[#5a03cf] transition-all shadow-xl"
-                style={{ fontWeight: '600' }}
-              >
-                <option value="7j">7 derniers jours</option>
-                <option value="15j">15 derniers jours</option>
-                <option value="1m">1 mois</option>
-                <option value="3m">3 mois</option>
-                <option value="6m">6 mois</option>
-                <option value="1a">1 an</option>
-              </select>
-            </div>
-          </div>
-          
-          {/* Bouton Programmer un match */}
-          <div className="group relative">
-            <button
-              onClick={() => onNavigate('programmer-match')}
-              className="px-6 py-2.5 bg-gradient-to-r from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-full hover:shadow-[0_0_20px_rgba(156,255,2,0.5)] transition-all shadow-lg flex items-center gap-2"
-              style={{ fontWeight: '800' }}
-            >
-              <Plus className="w-4 h-4" />
-              Programmer un match
-            </button>
-            <span className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 px-3 py-2 bg-gray-900/90 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap backdrop-blur-sm">
-              Planifiez un événement sportif dans l'un de vos établissements
-            </span>
-          </div>
+    <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900 dark:text-white">
+            Bonjour, <span className="text-[#5a03cf]">{currentUser?.prenom}</span> 👋
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Voici un aperçu de votre activité aujourd'hui</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <StatCard 
-              key={index} 
-              {...stat} 
-              onClick={() => {
-                if (stat.filter) {
-                  onNavigate('mes-matchs', undefined, undefined, stat.filter);
-                } else {
-                  onNavigate(stat.id);
-                }
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Section Prochains Matchs */}
-      <div className="border-2 border-gray-300/60 rounded-3xl p-8 mb-12 bg-white/20 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-5xl" style={{ fontWeight: '800', color: '#5a03cf' }}>
-            Prochains matchs
-          </h2>
+        {/* Quick Actions Bar */}
+        <div className="grid sm:grid-cols-2 gap-4 mb-8">
           <button
-            onClick={() => onNavigate('mes-matchs', undefined, undefined, 'à venir')}
-            className="px-6 py-2.5 bg-gradient-to-r from-[5a03cf]/5 via-white/10 to-[9cff02]/5 backdrop-blur-2xl border-2 border-black/15 rounded-3xl text-gray-700 hover:border-[#5a03cf] transition-all shadow-xl"
-            style={{ fontWeight: '600' }}
+            onClick={() => onNavigate('programmer-match')}
+            className="group relative overflow-hidden bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white rounded-2xl p-6 hover:shadow-2xl hover:shadow-[#5a03cf]/30 transition-all duration-300"
           >
-            Voir tout
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="text-left">
+                <div className="text-sm opacity-90 mb-1">Action rapide</div>
+                <div className="text-xl">Programmer un match</div>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+          
+          <button
+            onClick={() => onNavigate('booster')}
+            className="group relative overflow-hidden bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-6 hover:border-[#9cff02] hover:shadow-xl transition-all duration-300"
+          >
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="text-left">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Booster vos matchs</div>
+                <div className="text-xl text-gray-900 dark:text-white">Augmentez la visibilité</div>
+              </div>
+              <div className="w-12 h-12 bg-gradient-to-br from-[#9cff02]/20 to-[#7cdf00]/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Zap className="w-6 h-6 text-[#5a03cf]" />
+              </div>
+            </div>
           </button>
         </div>
-        <div className="space-y-3">
-          {matchsAVenir.slice(0, 3).map((match) => {
-            const percentage = getPercentage(match.reservees, match.total);
-            const remplissageStatus = getRemplissageStatus(percentage);
-            return (
-              <div key={match.id} className="relative p-[2px] rounded-xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf]">
-                <div className="bg-white rounded-xl shadow-sm p-5 hover:shadow-lg transition-all">
-                  <div className="flex items-center justify-between gap-6">
-                    <button
-                      onClick={() => handleMatchClick(match.id)}
-                      className="flex items-center gap-3 flex-1 text-left"
-                    >
-                      <span className="text-3xl">{match.sport}</span>
-                      <div>
-                        <p className="text-gray-900 mb-1 italic text-xl" style={{ fontWeight: '700' }}>
-                          {match.equipe1} vs {match.equipe2}
-                        </p>
-                        <p className="text-gray-500 text-sm">
-                          {match.date} à {match.heure} • {match.restaurant}
-                        </p>
-                      </div>
-                    </button>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <p className="text-gray-500 text-xs mb-1">Places</p>
-                        <p className="text-gray-900" style={{ fontWeight: '600' }}>
-                          {match.reservees}/{match.total}
-                        </p>
-                      </div>
 
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="w-16 h-16 rounded-full border-4 border-gray-200 flex items-center justify-center relative">
-                          <div
-                            className="absolute inset-0 rounded-full"
-                            style={{
-                              background: getCircleGradient(percentage),
-                            }}
-                          />
-                          <div className="absolute inset-1 bg-white rounded-full" />
-                          <span className="relative text-gray-900 text-sm z-10" style={{ fontWeight: '600' }}>
-                            {percentage}%
-                          </span>
-                        </div>
-                        <p className={`text-xs ${remplissageStatus.color}`} style={{ fontWeight: '600' }}>
-                          {remplissageStatus.text}
-                        </p>
-                      </div>
+        {/* Period Filter */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg text-gray-900 dark:text-white">Statistiques</h2>
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-1 shadow-sm">
+            {(['7j', '30j', '90j'] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => setPeriodFilter(period)}
+                className={`px-4 py-1.5 rounded-md text-sm transition-all duration-200 ${
+                  periodFilter === period
+                    ? 'bg-[#5a03cf] text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+        </div>
 
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={(e) => handleEditMatch(e, match.id)}
-                          className="px-4 py-2 bg-white/70 backdrop-blur-sm border border-gray-200/50 text-gray-700 rounded-full hover:bg-white/90 transition-all text-sm"
-                          style={{ fontWeight: '600' }}
-                        >
-                          Modifier
-                        </button>
-                        <div className="group relative">
-                          <button 
-                            onClick={(e) => handleBoostClick(e)}
-                            className="px-5 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white rounded-full hover:shadow-lg transition-all flex items-center gap-2 italic"
-                            style={{ fontWeight: '700' }}
-                          >
-                            Booster
-                          </button>
-                          <span className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 px-3 py-2 bg-gray-900/90 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap backdrop-blur-sm">
-                            Augmenter la visibilité
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+        {/* Stats Grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {stats.map((stat, index) => (
+            <button
+              key={index}
+              onClick={() => onNavigate(stat.id, undefined, undefined, stat.filter)}
+              className="group relative bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:border-[#5a03cf]/30 hover:shadow-xl hover:shadow-[#5a03cf]/5 transition-all duration-300 text-left"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  stat.color === 'purple' ? 'bg-[#5a03cf]/10' :
+                  stat.color === 'blue' ? 'bg-blue-50 dark:bg-blue-900/20' :
+                  stat.color === 'green' ? 'bg-green-50 dark:bg-green-900/20' :
+                  'bg-orange-50 dark:bg-orange-900/20'
+                }`}>
+                  <stat.icon className={`w-6 h-6 ${
+                    stat.color === 'purple' ? 'text-[#5a03cf]' :
+                    stat.color === 'blue' ? 'text-blue-600' :
+                    stat.color === 'green' ? 'text-green-600' :
+                    'text-orange-600'
+                  }`} />
+                </div>
+                <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-[#5a03cf] transition-colors" />
+              </div>
+              
+              <div className="space-y-2">
+                <div className="text-3xl text-gray-900 dark:text-white">{stat.value}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{stat.title}</div>
+                <div className="flex items-center gap-2">
+                  {stat.changeType === 'increase' ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
+                      <TrendingUp className="w-3 h-3" />
+                      {stat.change}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full">
+                      <ArrowDownRight className="w-3 h-3" />
+                      {stat.change}
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-500 dark:text-gray-400">vs période précédente</span>
                 </div>
               </div>
-            );
-          })}
+            </button>
+          ))}
         </div>
+
+        {/* Two Column Layout */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Upcoming Matches - 2/3 width */}
+          <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg text-gray-900 dark:text-white">Matchs à venir</h2>
+                <button
+                  onClick={() => onNavigate('mes-matchs', undefined, undefined, 'à venir')}
+                  className="text-sm text-[#5a03cf] hover:underline"
+                >
+                  Voir tout
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {upcomingMatches.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Calendar className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">Aucun match programmé</p>
+                  <button
+                    onClick={() => onNavigate('programmer-match')}
+                    className="px-6 py-2.5 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-colors shadow-lg shadow-[#5a03cf]/20"
+                  >
+                    Programmer un match
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {upcomingMatches.map((match) => (
+                    <button
+                      key={match.id}
+                      onClick={() => onNavigate('match-detail', match.id)}
+                      className="w-full group bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl p-4 transition-all duration-200 text-left border border-transparent hover:border-[#5a03cf]/20"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-900 dark:text-white mb-1">{match.equipes}</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                            {new Date(match.date).toLocaleDateString('fr-FR', { 
+                              weekday: 'long', 
+                              day: 'numeric', 
+                              month: 'long' 
+                            })} • {match.heure}
+                          </div>
+                        </div>
+                        <MoreVertical className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400" />
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 bg-white dark:bg-gray-900 rounded-lg p-2">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-gray-600 dark:text-gray-400">Réservations</span>
+                            <span className="text-gray-900 dark:text-white">{match.reservations || 0}/{match.placesDisponibles || 50}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                            <div 
+                              className="bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] h-1.5 rounded-full transition-all duration-300"
+                              style={{ width: `${((match.reservations || 0) / (match.placesDisponibles || 50)) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Vues</div>
+                          <div className="text-sm text-gray-900 dark:text-white">{match.vues || 0}</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Activity - 1/3 width */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="text-lg text-gray-900 dark:text-white">Activité récente</h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                {recentActivity.map((activity, index) => (
+                  <div 
+                    key={index} 
+                    className={`flex gap-3 ${activity.clickable ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 py-2 rounded-lg transition-colors' : ''}`}
+                    onClick={() => activity.clickable && onNavigate('reservations', activity.matchId)}
+                  >
+                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                      activity.type === 'booking' ? 'bg-green-500' :
+                      activity.type === 'view' ? 'bg-blue-500' :
+                      'bg-purple-500'
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900 dark:text-white mb-1">{activity.text}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
+                    </div>
+                    {activity.clickable && (
+                      <ArrowUpRight className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 mt-1" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Parrainage Widget */}
+        <ParrainageWidget onNavigate={onNavigate} />
       </div>
     </div>
   );

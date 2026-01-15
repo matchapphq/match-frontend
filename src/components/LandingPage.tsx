@@ -1,138 +1,111 @@
-import { ArrowRight, Zap, Users, TrendingUp, Star, Check, Sparkles, Calendar, BarChart3, Quote, DollarSign, Share2, ChevronDown, Smartphone } from 'lucide-react';
-import { Button } from './ui/button';
-import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import patternBg from 'figma:asset/20e2f150b2f5f4be01b1aec94edb580bb26d8dcf.png';
-import { useState, useEffect, useRef } from 'react';
+import { ArrowRight, Moon, Sun } from 'lucide-react';
+import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import { useTheme } from '../context/ThemeContext';
 
 interface LandingPageProps {
   onGetStarted: () => void;
   onReferral?: () => void;
   onAppPresentation?: () => void;
-  onNavigateLegal?: (page:
-    | 'confidentialite'
-    | 'cookies'
-    | 'conditions'
-    | 'ventes-remboursements'
-    | 'mentions-legales'
-    | 'plan-du-site'
-  ) => void;
 }
 
-export function LandingPage({ onGetStarted, onReferral, onAppPresentation, onNavigateLegal }: LandingPageProps) {
-  const footerRef = useRef<HTMLElement | null>(null);
-  const [dockAboveFooter, setDockAboveFooter] = useState(false);
-
-
-  useEffect(() => {
-    const el = footerRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // Dès que le footer est visible, on dock le bouton au-dessus
-        setDockAboveFooter(entry.isIntersecting);
-      },
-      {
-        // un peu de marge pour anticiper (ajuste si besoin)
-        root: null,
-        threshold: 0.01,
-      }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-
-  const avantages = [
+export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: LandingPageProps) {
+  const { theme, toggleTheme } = useTheme();
+  
+  const features = [
     {
-      chiffre: '+5K',
-      label: 'utilisateurs sur l\'application'
+      title: 'Gérez vos diffusions',
+      description: 'Annoncez vos matchs à l\'avance et remplissez votre établissement lors des grands événements sportifs.',
     },
     {
-      chiffre: '+100',
-      label: 'établissements partenaires'
+      title: 'Boostez votre visibilité',
+      description: 'Mettez en avant les matchs clés pour attirer plus de clients lors des moments stratégiques.',
     },
     {
-      chiffre: '+10',
-      label: 'villes où Match est présent'
-    }
+      title: 'Suivez vos performances',
+      description: 'Analysez l\'intérêt des fans et optimisez votre programmation avec des statistiques détaillées.',
+    },
   ];
 
-  const casUsage = [
-    {
-      titre: 'Publier ses matchs à l\'avance',
-      description: 'Les établissements annoncent leurs matchs pour apparaître auprès des fans qui organisent leur soirée.',
-      icone: Calendar
-    },
-    {
-      titre: 'Mettre en avant les matchs clés',
-      description: 'Les restaurateurs peuvent booster certains matchs pour gagner en visibilité lors des grands événements.',
-      icone: Zap
-    },
-    {
-      titre: 'Suivre l\'intérêt des fans',
-      description: 'Les statistiques permettent de voir quels matchs génèrent le plus d\'attention.',
-      icone: BarChart3
-    }
+  const benefits = [
+    'Interface intuitive et rapide',
+    'Gestion multi-établissements',
+    'Support client réactif',
+    'Tarification transparente',
+    'Aucun engagement de durée',
+    'Mises à jour régulières',
   ];
 
-  const stats = [
-    { nombre: '2,500+', label: 'Restaurants partenaires' },
-    { nombre: '150K+', label: 'Clients satisfaits' },
-    { nombre: '10K+', label: 'Matchs diffusés/mois' },
-    { nombre: '+140%', label: 'Affluence moyenne' }
+  const pricing = [
+    {
+      name: 'Mensuel',
+      price: '30€',
+      period: 'par mois',
+      features: [
+        'Gestion illimitée de matchs',
+        'Statistiques en temps réel',
+        'Support client prioritaire',
+        'Boosts mensuels inclus',
+      ],
+    },
+    {
+      name: 'Annuel',
+      price: '300€',
+      period: 'par an',
+      features: [
+        'Gestion illimitée de matchs',
+        'Statistiques en temps réel',
+        'Support client prioritaire',
+        'Boosts illimités',
+        '2 mois offerts',
+      ],
+      popular: true,
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#5a03cf]/5 via-white to-[#9cff02]/5 relative overflow-hidden">
-      {/* Pattern de fond avec éclairs */}
-      <div 
-        className="fixed inset-0 z-0 opacity-[0.08]"
-        style={{
-          backgroundImage: `url(${patternBg})`,
-          backgroundRepeat: 'repeat',
-          backgroundSize: '400px',
-          filter: 'hue-rotate(230deg) saturate(2.5) brightness(0.6)',
-        }}
-      ></div>
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] relative overflow-hidden">
+      {/* Ambient background effects */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#5a03cf]/5 dark:bg-[#5a03cf]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#9cff02]/5 dark:bg-[#9cff02]/10 rounded-full blur-3xl" />
+      </div>
 
-      {/* Éléments décoratifs */}
-      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#9cff02]/10 rounded-full blur-3xl animate-pulse"></div>
-      <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-[#5a03cf]/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-
-      {/* Header sticky */}
-      <header className="fixed top-0 left-0 right-0 z-50 p-6 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center bg-gradient-to-r from-[#5a03cf]/5 via-white/10 to-[#9cff02]/5 backdrop-blur-2xl border-2 border-black/15 rounded-3xl px-6 py-4 shadow-2xl">
-            {/* Bouton parrainage à gauche */}
-            <div className="relative p-[2px] rounded-full bg-gradient-to-r from-[#9cff02] to-[#5a03cf]">
-              <button
-                onClick={onReferral}
-                className="px-4 py-2 bg-white backdrop-blur-xl rounded-full text-gray-900 hover:bg-white/90 hover:text-[#5a03cf] transition-all text-sm"
-                style={{ fontWeight: '600' }}
-              >
-                <span className="hidden sm:inline">Parrainer un lieu</span>
-                <span className="sm:hidden">Parrainer</span>
-              </button>
+      {/* Header */}
+      <header className="sticky top-0 z-50 backdrop-blur-2xl bg-white/40 dark:bg-black/40 border-b border-white/20 dark:border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2">
+              <img 
+                src={logo} 
+                alt="Match" 
+                className="h-8 dark:brightness-150" 
+                style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
+              />
             </div>
-
-            {/* Logo centré en violet */}
-            <img 
-              src={logoMatch} 
-              alt="Match" 
-              className="h-12 absolute left-1/2 transform -translate-x-1/2"
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-            />
-
-            {/* Bouton connexion à droite */}
-            <div className="relative p-[2px] rounded-full bg-gradient-to-r from-[#9cff02] to-[#5a03cf]">
+            
+            <div className="flex items-center gap-4">
+              {onReferral && (
+                <button
+                  onClick={onReferral}
+                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors hidden sm:block"
+                >
+                  Parrainer un lieu
+                </button>
+              )}
               <button
                 onClick={onGetStarted}
-                className="px-4 py-2 bg-white backdrop-blur-xl rounded-full text-gray-900 hover:bg-white/90 hover:text-[#5a03cf] transition-all text-sm"
-                style={{ fontWeight: '600' }}
+                className="relative px-6 py-2.5 bg-white/70 dark:bg-white/10 backdrop-blur-xl rounded-full transition-all duration-300 hover:bg-white/80 dark:hover:bg-white/20 group gradient-border"
               >
-                Je me connecte
+                <span className="relative z-10 text-gray-900 dark:text-white">Connexion</span>
+              </button>
+              <button
+                onClick={toggleTheme}
+                className="relative p-2.5 bg-white/70 dark:bg-white/10 backdrop-blur-xl rounded-full transition-all duration-300 hover:bg-white/80 dark:hover:bg-white/20 group gradient-border"
+                aria-label="Toggle theme"
+              >
+                <span className="relative z-10 text-gray-900 dark:text-white">
+                  {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </span>
               </button>
             </div>
           </div>
@@ -140,45 +113,73 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation, onNav
       </header>
 
       {/* Hero Section */}
-      <section className="relative z-10 px-6 md:px-8 py-2 md:py-4 mb-2 mt-32">{/* mt-32 pour compenser le header fixe */}
-        <div className="max-w-6xl mx-auto">
-          {/* Wrapper avec bordure dégradée et fond blanc */}
-          <div className="relative p-[3px] rounded-3xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf] overflow-hidden shadow-2xl">
-            {/* Image de fond avec flou */}
-            <div className="absolute inset-0 rounded-3xl overflow-hidden">
-              <img 
-                src="https://images.unsplash.com/photo-1742415105376-43d3a5fd03fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYXAlMjB3b3JsZCUyMGdlb2dyYXBoeXxlbnwxfHx8fDE3NjcwODkwNjl8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                alt="Carte du monde"
-                className="w-full h-full object-cover opacity-100"
-                style={{ filter: 'blur(3px)' }}
-              />
-              {/* Overlay dégradé pour adoucir */}
-              <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-white/40 to-white/50"></div>
+      <section className="relative pt-24 pb-32 sm:pt-32 sm:pb-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="text-center max-w-5xl mx-auto">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2.5 px-5 py-2.5 glass-card rounded-full mb-10 backdrop-blur-2xl">
+              <div className="w-2 h-2 bg-[#9cff02] rounded-full animate-pulse shadow-lg shadow-[#9cff02]/50" />
+              <span className="text-sm text-gray-700 dark:text-gray-300">100+ établissements partenaires</span>
             </div>
             
-            <div className="relative bg-white/15 backdrop-blur-md rounded-3xl p-4 md:p-6">
-              <div className="relative py-6 md:py-8">
-                <div className="text-center px-4 w-full">
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl text-gray-900 mb-3 italic leading-tight drop-shadow-md" style={{ fontWeight: '800' }}>
-                    Donnez plus de visibilité à vos matchs<br /><span style={{ color: '#90d436' }}>et attirez plus de clients</span>
-                  </h1>
+            {/* Main heading */}
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl mb-8 leading-tight dark:text-white">
+              Remplissez votre bar<br className="hidden sm:block" /> lors des{' '}
+              <span className="relative inline-block">
+                <span className="text-gradient">matchs</span>
+                <svg className="absolute -bottom-2 left-0 w-full" height="12" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2 10C52 3 102 1 152 5C202 9 252 7 298 3" stroke="url(#gradient)" strokeWidth="3" strokeLinecap="round"/>
+                  <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#9cff02" stopOpacity="0.6"/>
+                      <stop offset="100%" stopColor="#5a03cf" stopOpacity="0.6"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </span>
+            </h1>
+            
+            <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed">
+              La plateforme de gestion de diffusions sportives qui connecte votre établissement avec des milliers de fans
+            </p>
+            
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+              <button
+                onClick={onGetStarted}
+                className="relative px-8 py-4 bg-[#5a03cf] text-white rounded-full hover:bg-[#4a02af] transition-all duration-300 shadow-2xl shadow-[#5a03cf]/30 flex items-center gap-2 group hover:scale-105"
+              >
+                Commencer gratuitement
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              {onAppPresentation && (
+                <button
+                  onClick={onAppPresentation}
+                  className="relative px-8 py-4 glass-card rounded-full text-gray-700 dark:text-gray-300 hover:scale-105 transition-all duration-300 backdrop-blur-2xl gradient-border"
+                >
+                  <span className="relative z-10">Voir une démo</span>
+                </button>
+              )}
+            </div>
 
-                  <p className="text-lg md:text-xl text-gray-800 mb-6 max-w-2xl mx-auto leading-relaxed drop-shadow-md" style={{ fontWeight: '600' }}>
-                    Rejoignez des milliers de fans qui n'attendent que vous pour les meilleures soirées matchs possible ⚡️
-                  </p>
-
-                  <div className="flex justify-center">
-                    <div className="relative p-[2px] rounded-full bg-gradient-to-r from-[#9cff02] to-[#5a03cf]">
-                      <button
-                        onClick={onGetStarted}
-                        className="bg-white/90 backdrop-blur-xl rounded-full px-10 h-14 text-base text-gray-900 hover:bg-white hover:text-[#5a03cf] transition-all shadow-xl hover:shadow-2xl group flex items-center gap-3"
-                        style={{ fontWeight: '700' }}
-                      >
-                        Découvrir Match pour mon restaurant
-                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                      </button>
-                    </div>
-                  </div>
+            {/* Stats - More spaced and elegant */}
+            <div className="grid grid-cols-3 gap-12 max-w-4xl mx-auto">
+              <div className="relative group">
+                <div className="glass-card rounded-3xl p-8 backdrop-blur-2xl transition-all duration-300 group-hover:scale-105">
+                  <div className="text-5xl mb-3 text-gradient">100+</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Établissements</div>
+                </div>
+              </div>
+              <div className="relative group">
+                <div className="glass-card rounded-3xl p-8 backdrop-blur-2xl transition-all duration-300 group-hover:scale-105">
+                  <div className="text-5xl mb-3 text-gradient">5K+</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Utilisateurs actifs</div>
+                </div>
+              </div>
+              <div className="relative group">
+                <div className="glass-card rounded-3xl p-8 backdrop-blur-2xl transition-all duration-300 group-hover:scale-105">
+                  <div className="text-5xl mb-3 text-gradient">10+</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Villes</div>
                 </div>
               </div>
             </div>
@@ -186,237 +187,178 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation, onNav
         </div>
       </section>
 
-      {/* Avantages */}
-      <section id="avantages" className="relative z-10 px-6 md:px-8 py-8 md:py-16 overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          {/* Flèche indicatrice de scroll */}
-          <div className="flex justify-center mb-12 -mt-4">
-            <button 
-              onClick={() => {
-                document.getElementById('avantages-content')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="animate-bounce hover:scale-110 transition-transform cursor-pointer bg-gradient-to-r from-[#9cff02] to-[#5a03cf] p-3 rounded-full shadow-xl"
+      {/* Features Section - Liquid glass design */}
+      <section className="relative py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl sm:text-5xl mb-6 dark:text-white">
+              Une plateforme complète pour{' '}
+              <span className="text-gradient">votre succès</span>
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+              Tout ce dont vous avez besoin pour gérer vos diffusions sportives et développer votre activité
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {features.map((feature, index) => (
+              <div 
+                key={index}
+                className="relative group"
+              >
+                <div className="glass-card rounded-3xl p-10 backdrop-blur-2xl transition-all duration-500 group-hover:scale-[1.02] gradient-border h-full">
+                  <h3 className="text-2xl mb-4 text-gray-900 dark:text-white">{feature.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{feature.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Benefits Section - Clean and minimal */}
+      <section className="relative py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div>
+              <h2 className="text-4xl sm:text-5xl mb-6 dark:text-white">
+                Pourquoi choisir{' '}
+                <span className="text-gradient">Match ?</span>
+              </h2>
+              <p className="text-xl text-gray-600 dark:text-gray-400 mb-10 leading-relaxed">
+                Une solution pensée pour les restaurateurs, avec des fonctionnalités adaptées à vos besoins réels.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-5">
+                {benefits.map((benefit, index) => (
+                  <div key={index} className="flex items-center gap-3 glass-card rounded-2xl p-4 backdrop-blur-xl">
+                    <div className="w-1.5 h-1.5 bg-[#9cff02] rounded-full flex-shrink-0 shadow-lg shadow-[#9cff02]/50" />
+                    <span className="text-gray-700 dark:text-gray-300">{benefit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="relative">
+              <div className="glass-card rounded-3xl overflow-hidden backdrop-blur-2xl gradient-border">
+                <img 
+                  src="https://images.unsplash.com/photo-1759694282882-5e9f4e1ad26e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBiYXIlMjByZXN0YXVyYW50JTIwYXRtb3NwaGVyZXxlbnwxfHx8fDE3Njc0Mzk3MzB8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                  alt="Sports bar"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section - Glassmorphism cards */}
+      <section className="relative py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl sm:text-5xl mb-6 dark:text-white">
+              Tarification{' '}
+              <span className="text-gradient">simple et transparente</span>
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400">
+              1 établissement = 1 abonnement. Sans engagement.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {pricing.map((plan, index) => (
+              <div 
+                key={index}
+                className={`relative group ${plan.popular ? 'md:-translate-y-4' : ''}`}
+              >
+                <div className={`glass-card rounded-3xl p-10 backdrop-blur-2xl transition-all duration-500 group-hover:scale-[1.02] h-full flex flex-col ${
+                  plan.popular ? 'gradient-border bg-white/80 dark:bg-white/5' : ''
+                }`}>
+                  {plan.popular && (
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white text-sm rounded-full mb-6 self-start">
+                      <span>Le plus populaire</span>
+                    </div>
+                  )}
+                  <h3 className="text-3xl mb-3 text-gray-900 dark:text-white">{plan.name}</h3>
+                  <div className="mb-8">
+                    <span className="text-5xl text-gray-900 dark:text-white">{plan.price}</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">{plan.period}</span>
+                  </div>
+                  <ul className="space-y-4 mb-10 flex-grow">
+                    {plan.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-3">
+                        <div className="w-1.5 h-1.5 bg-[#9cff02] rounded-full flex-shrink-0 shadow-lg shadow-[#9cff02]/50" />
+                        <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={onGetStarted}
+                    className={`w-full py-4 rounded-full transition-all duration-300 hover:scale-[1.02] ${
+                      plan.popular
+                        ? 'bg-[#5a03cf] text-white hover:bg-[#4a02af] shadow-xl shadow-[#5a03cf]/30'
+                        : 'glass-card text-gray-900 dark:text-white gradient-border backdrop-blur-xl'
+                    }`}
+                  >
+                    Commencer
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section - Liquid glass hero */}
+      <section className="relative py-32 my-24 overflow-hidden">
+        {/* Background gradient orbs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-gradient-to-r from-[#5a03cf]/20 via-[#7a23ef]/20 to-[#9cff02]/20 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
+          <div className="glass-card-strong rounded-[3rem] p-16 backdrop-blur-2xl gradient-border">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl mb-8 text-gray-900 dark:text-white">
+              Prêt à transformer votre établissement ?
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+              Rejoignez les centaines de restaurateurs qui utilisent Match pour optimiser leurs diffusions sportives
+            </p>
+            <button
+              onClick={onGetStarted}
+              className="px-10 py-5 bg-[#5a03cf] text-white rounded-full hover:bg-[#4a02af] transition-all duration-300 shadow-2xl shadow-[#5a03cf]/30 flex items-center gap-3 mx-auto group hover:scale-105"
             >
-              <ChevronDown className="w-12 h-12 text-white" strokeWidth={3} />
+              <span className="text-lg">Commencer maintenant</span>
+              <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-          
-          <div id="avantages-content" className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl text-[#5a03cf] mb-4 italic" style={{ fontWeight: '800' }}>
-              Pourquoi les restaurateurs utilisent Match ?
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Une plateforme déjà utilisée par des fans et des établissements partout en France
-            </p>
-          </div>
-
-          {/* Grid des statistiques */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {avantages.map((avantage, index) => {
-              return (
-                <div
-                  key={index}
-                  className="bg-white/80 backdrop-blur-xl rounded-2xl p-8 shadow-xl border-2 border-[#9cff02] hover:border-[#5a03cf] transition-all group hover:scale-105 text-center"
-                >
-                  <div className="mb-4">
-                    <h3 
-                      className="text-6xl md:text-7xl italic mb-2 bg-gradient-to-r from-[#9cff02] to-[#5a03cf] bg-clip-text text-transparent" 
-                      style={{ fontWeight: '800' }}
-                    >
-                      {avantage.chiffre}
-                    </h3>
-                  </div>
-                  <p className="text-gray-700 text-lg" style={{ fontWeight: '600' }}>
-                    {avantage.label}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </section>
 
-      {/* Cas d'utilisation */}
-      <section className="relative z-10 px-6 md:px-8 py-12 md:py-20">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl text-[#5a03cf] mb-4 italic" style={{ fontWeight: '800' }}>
-              Comment les restaurateurs utilisent Match
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Des usages simples pour rendre les matchs visibles et attirer plus de fans.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
-            {casUsage.map((cas, index) => {
-              const IconeComponent = cas.icone;
-              return (
-                <div
-                  key={index}
-                  className="bg-white/80 backdrop-blur-xl rounded-2xl p-8 shadow-xl border-2 border-gray-200 hover:border-[#5a03cf] transition-all hover:scale-105"
-                >
-                  <div className="flex items-start gap-6">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#9cff02] to-[#5a03cf] flex items-center justify-center flex-shrink-0">
-                      <IconeComponent className="w-8 h-8 text-white" strokeWidth={2.5} />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-gray-900 text-2xl mb-3 italic" style={{ fontWeight: '700' }}>
-                        {cas.titre}
-                      </h3>
-                      <p className="text-gray-700 text-lg leading-relaxed">
-                        {cas.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Final */}
-      <section className="relative z-10 px-6 md:px-8 py-12 md:py-20">
-        <div className="max-w-4xl mx-auto">
-          {/* Wrapper avec bordure dégradée */}
-          <div className="relative p-[3px] rounded-3xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf] overflow-hidden shadow-lg">
-            {/* Conteneur principal avec fond blanc */}
-            <div className="relative bg-white rounded-3xl p-12 md:p-16 overflow-hidden">
-              {/* Éléments décoratifs doux */}
-              <div className="absolute inset-0 opacity-5">
-                <div className="absolute top-10 right-10 w-32 h-32 border border-[#5a03cf]/30 rounded-full"></div>
-                <div className="absolute bottom-10 left-10 w-48 h-48 border border-[#9cff02]/30 rounded-full"></div>
-              </div>
-
-              {/* Contenu */}
-              <div className="relative z-10 text-center">
-                <h2 className="text-3xl md:text-4xl mb-4 italic text-[#5a03cf]/90" style={{ fontWeight: '700' }}>
-                  Prêt à attirer plus de fans les soirs de match ?
-                </h2>
-                
-                <p className="text-lg md:text-xl mb-8 text-gray-700/80 leading-relaxed max-w-2xl mx-auto">
-                  Publiez vos matchs en quelques minutes et gagnez en visibilité.
-                </p>
-
-                {/* Bouton avec style liquid glass */}
-                <div className="flex flex-col items-center gap-3">
-                  <div className="relative p-[1.5px] rounded-full bg-gradient-to-r from-[#9cff02]/40 to-[#5a03cf]/40">
-                    <button
-                      onClick={onGetStarted}
-                      className="bg-white/90 backdrop-blur-xl rounded-full px-10 py-4 text-gray-900 hover:bg-white hover:shadow-xl transition-all group flex items-center gap-3"
-                      style={{ fontWeight: '600' }}
-                    >
-                      Créer mon compte restaurateur
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                  </div>
-                  
-                  {/* Pricing discret */}
-                  <p className="text-sm text-gray-500/80">
-                    30 € / mois – sans engagement
-                  </p>
-                </div>
-              </div>
+      {/* Footer - Minimal and clean */}
+      <footer className="relative backdrop-blur-2xl bg-white/40 dark:bg-black/40 border-t border-white/20 dark:border-white/10 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <img 
+                src={logo} 
+                alt="Match" 
+                className="h-6 dark:brightness-150" 
+                style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
+              />
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer
-        ref={footerRef}
-        className="relative z-10 px-6 md:px-8 py-12 border-t border-gray-300/60 bg-white/20 backdrop-blur-sm"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center">
-            <p className="text-gray-700 mb-4" style={{ fontWeight: '600' }}>
-              Copyright © 2025 Match SAS • Tous droits réservés.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-sm text-gray-600">
-              <button
-                onClick={() => onNavigateLegal?.('confidentialite')}
-                className="hover:text-[#5a03cf] transition-colors"
-              >
-                Engagement de confidentialité
-              </button>
-              <span className="hidden md:inline text-gray-400">•</span>
-              <button
-                onClick={() => onNavigateLegal?.('cookies')}
-                className="hover:text-[#5a03cf] transition-colors"
-              >
-                Utilisation des cookies
-              </button>
-              <span className="hidden md:inline text-gray-400">•</span>
-              <button
-                onClick={() => onNavigateLegal?.('conditions')}
-                className="hover:text-[#5a03cf] transition-colors"
-              >
-                Conditions d'utilisation
-              </button>
-              <span className="hidden md:inline text-gray-400">•</span>
-              <button
-                onClick={() => onNavigateLegal?.('ventes-remboursements')}
-                className="hover:text-[#5a03cf] transition-colors"
-              >
-                Ventes et remboursements
-              </button>
-              <span className="hidden md:inline text-gray-400">•</span>
-              <button
-                onClick={() => onNavigateLegal?.('mentions-legales')}
-                className="hover:text-[#5a03cf] transition-colors"
-              >
-                Mentions légales
-              </button>
-              <span className="hidden md:inline text-gray-400">•</span>
-              <button
-                onClick={() => onNavigateLegal?.('plan-du-site')}
-                className="hover:text-[#5a03cf] transition-colors"
-              >
-                Plan du site
-              </button>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              © 2026 Match. Tous droits réservés.
+            </div>
+            <div className="flex items-center gap-8">
+              <a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
+                Conditions
+              </a>
+              <a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
+                Confidentialité
+              </a>
             </div>
           </div>
         </div>
       </footer>
-
-      {/* Bouton flottant installation app */}
-      <div
-        className={
-          dockAboveFooter
-            ? "absolute right-6 z-50" 
-            : "fixed bottom-6 right-6 z-50"
-        }
-        style={
-          dockAboveFooter
-            ? { bottom: 180 }
-            : undefined
-        }
-      >
-        <div className="relative p-[2px] rounded-2xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf] shadow-2xl">
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 0 });
-              if (onAppPresentation) {
-                onAppPresentation();
-              } else {
-                alert("Installation de l'application Match");
-              }
-            }}
-            className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 hover:bg-white/95 transition-all group cursor-pointer"
-          >
-            <div className="bg-gradient-to-r from-[#9cff02] to-[#5a03cf] p-2 rounded-full">
-              <Smartphone className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-left">
-              <p className="text-xs text-gray-500">Cliquez ici pour</p>
-              <p className="text-sm text-gray-900" style={{ fontWeight: '700' }}>
-                Installer l'application
-              </p>
-            </div>
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -1,44 +1,31 @@
-import { ArrowLeft, Check, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import { useState } from 'react';
 import { PageType } from '../App';
-import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface FacturationProps {
   onBack: () => void;
   onNavigate: (page: PageType) => void;
   isOnboarding?: boolean;
-  venueId?: string;
 }
 
-export function Facturation({ onBack, onNavigate, isOnboarding = false, venueId }: FacturationProps) {
+export function Facturation({ onBack, onNavigate, isOnboarding = false }: FacturationProps) {
+  const { completeOnboarding } = useAuth();
   const [selectedFormule, setSelectedFormule] = useState<'mensuel' | 'annuel' | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleChooseFormule = async (formule: 'mensuel' | 'annuel') => {
+  const handleChooseFormule = (formule: 'mensuel' | 'annuel') => {
     setSelectedFormule(formule);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Map formule to plan_id
-      const planId = formule === 'mensuel' ? 'monthly' : 'annual';
-      
-      // Create Stripe Checkout session
-      const response = await api.createCheckout(planId, venueId);
-      
-      if (response.checkout_url) {
-        // Redirect to Stripe Checkout
-        window.location.href = response.checkout_url;
+    
+    // Simuler la validation de la formule
+    setTimeout(() => {
+      if (isOnboarding) {
+        completeOnboarding();
+        onNavigate('dashboard');
       } else {
-        throw new Error('No checkout URL received');
+        alert(`Formule ${formule} sélectionnée !`);
+        onNavigate('mes-restaurants');
       }
-    } catch (err: any) {
-      console.error('Checkout error:', err);
-      setError(err.message || 'Une erreur est survenue lors de la création du paiement');
-      setSelectedFormule(null);
-      setIsLoading(false);
-    }
+    }, 800);
   };
 
   return (
@@ -69,14 +56,6 @@ export function Facturation({ onBack, onNavigate, isOnboarding = false, venueId 
           </p>
         </div>
 
-        {/* Error message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <p className="text-red-700">{error}</p>
-          </div>
-        )}
-
         {/* 2️⃣ Choix de la formule - Cartes Mensuel / Annuel */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* 🟣 Carte Mensuel */}
@@ -91,7 +70,7 @@ export function Facturation({ onBack, onNavigate, isOnboarding = false, venueId 
                 </span>
                 <span className="text-gray-600 text-lg"> / mois</span>
               </div>
-              <p className="text-sm text-gray-500">Sans Engagement</p>
+              <p className="text-sm text-gray-500">Engagement 12 mois</p>
             </div>
 
             <div className="space-y-3 mb-8">
@@ -118,14 +97,14 @@ export function Facturation({ onBack, onNavigate, isOnboarding = false, venueId 
             {/* CTA secondaire (outline) */}
             <button
               onClick={() => handleChooseFormule('mensuel')}
-              disabled={isLoading}
+              disabled={selectedFormule !== null}
               className="w-full py-4 rounded-xl border-2 border-[#5a03cf]/30 text-[#5a03cf] hover:bg-[#5a03cf]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontWeight: '600' }}
             >
-              {selectedFormule === 'mensuel' && isLoading ? (
+              {selectedFormule === 'mensuel' ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-[#5a03cf]/30 border-t-[#5a03cf] rounded-full animate-spin"></div>
-                  Redirection vers le paiement...
+                  Validation...
                 </span>
               ) : (
                 'Choisir cette formule'
@@ -181,14 +160,14 @@ export function Facturation({ onBack, onNavigate, isOnboarding = false, venueId 
             {/* CTA principal avec dégradé Match */}
             <button
               onClick={() => handleChooseFormule('annuel')}
-              disabled={isLoading}
+              disabled={selectedFormule !== null}
               className="w-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontWeight: '600' }}
             >
-              {selectedFormule === 'annuel' && isLoading ? (
+              {selectedFormule === 'annuel' ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Redirection vers le paiement...
+                  Validation...
                 </span>
               ) : (
                 'Choisir cette formule'
