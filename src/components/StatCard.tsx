@@ -1,4 +1,5 @@
 import { LucideIcon } from 'lucide-react';
+import { memo } from 'react';
 
 interface StatCardProps {
   title: string;
@@ -12,22 +13,19 @@ interface StatCardProps {
   onClick: () => void;
 }
 
-export function StatCard({ title, value, subtitle, icon: Icon, color, textColor = 'text-white', iconBg = 'bg-white/20', iconColor = 'text-white', onClick }: StatCardProps) {
+export const StatCard = memo(function StatCard({ title, value, subtitle, icon: Icon, color, textColor = 'text-white', iconBg = 'bg-white/20', iconColor = 'text-white', onClick }: StatCardProps) {
   return (
-    <button
-      onClick={onClick}
-      className={`${color} rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-8 border-2 border-gray-100 hover:border-[#9cff02] transition-all hover:scale-105 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] text-left w-full backdrop-blur-sm`}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className={`${textColor} opacity-80 mb-3 text-base`} style={{ fontWeight: '500' }}>{title}</p>
-          <p className={`${textColor} mb-2 italic text-5xl`} style={{ fontWeight: '800' }}>{value}</p>
-          <p className={`${textColor} opacity-60 text-sm`}>{subtitle}</p>
+    <div className="relative p-[3px] rounded-3xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf]">
+      <button
+        onClick={onClick}
+        className="bg-white rounded-3xl p-8 hover:shadow-2xl text-left w-full shadow-xl transition-all hover:scale-105"
+      >
+        <div className="flex flex-col">
+          <p className="text-gray-700 mb-4 text-base" style={{ fontWeight: '600' }}>{title}</p>
+          <p className="mb-3 italic text-6xl bg-gradient-to-r from-[#9cff02] to-[#5a03cf] bg-clip-text text-transparent" style={{ fontWeight: '800' }}>{value}</p>
+          <p className="text-gray-600 text-sm">{subtitle}</p>
         </div>
-        <div className={`${iconBg} p-4 rounded-2xl backdrop-blur-sm shadow-lg`}>
-          <Icon className={`w-8 h-8 ${iconColor}`} />
-        </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
-}
+});

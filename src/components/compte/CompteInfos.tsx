@@ -1,116 +1,113 @@
-import { ArrowLeft, User, Mail, Phone, Building } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { ArrowLeft } from 'lucide-react';
 
 interface CompteInfosProps {
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export function CompteInfos({ onBack }: CompteInfosProps) {
+  const { currentUser } = useAuth();
+
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        Retour au compte
-      </button>
+      {/* Bouton retour aux paramètres */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="mb-6 flex items-center gap-2 px-4 py-2 bg-white/70 backdrop-blur-sm border border-gray-200/50 text-gray-700 rounded-xl hover:bg-white/90 transition-all"
+          style={{ fontWeight: '600' }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Retourner aux paramètres du compte
+        </button>
+      )}
 
-      <div className="mb-8">
-        <h1 className="text-gray-900 italic text-4xl mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
+      {/* Header de la page */}
+      <div className="mb-12">
+        <h1 className="text-5xl italic mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
           Informations personnelles
         </h1>
-        <p className="text-gray-600 text-lg">Gérez vos informations de compte</p>
+        <p className="text-lg text-gray-700">Gérez vos informations de compte</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
+      {/* Carte principale - liquid glass */}
+      <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 p-8 mb-6">
         <form className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="w-4 h-4 text-[#5a03cf]" />
-                  Prénom
-                </div>
+                Prénom
               </label>
               <input
                 type="text"
-                defaultValue="Jean"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
+                defaultValue={currentUser?.prenom || 'Jean'}
+                className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
               />
             </div>
 
             <div>
               <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="w-4 h-4 text-[#5a03cf]" />
-                  Nom
-                </div>
+                Nom
               </label>
               <input
                 type="text"
-                defaultValue="Restaurateur"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
+                defaultValue={currentUser?.nom || 'Restaurateur'}
+                className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
               />
             </div>
           </div>
 
           <div>
             <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Mail className="w-4 h-4 text-[#5a03cf]" />
-                Email
-              </div>
+              Email
             </label>
             <input
               type="email"
-              defaultValue="jean.restaurateur@match.fr"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
+              defaultValue={currentUser?.email || 'jean.restaurateur@match.fr'}
+              className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
             />
           </div>
 
           <div>
             <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Phone className="w-4 h-4 text-[#5a03cf]" />
-                Téléphone
-              </div>
+              Téléphone
             </label>
             <input
               type="tel"
-              defaultValue="06 12 34 56 78"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
+              defaultValue={currentUser?.telephone || '06 12 34 56 78'}
+              className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
             />
           </div>
 
           <div>
             <label className="block text-gray-700 mb-2" style={{ fontWeight: '600' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Building className="w-4 h-4 text-[#5a03cf]" />
-                Société
-              </div>
+              Société
             </label>
             <input
               type="text"
               defaultValue="Le Sport Bar SARL"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent"
+              className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
             />
           </div>
 
           <div className="flex gap-4 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white py-4 rounded-xl hover:shadow-lg transition-all italic text-lg"
+              className="flex-1 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm"
               style={{ fontWeight: '600' }}
             >
               Enregistrer les modifications
             </button>
-            <button
-              type="button"
-              onClick={onBack}
-              className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              Annuler
-            </button>
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="px-8 py-4 bg-white/50 backdrop-blur-sm border border-gray-200/50 text-gray-700 rounded-xl hover:bg-white/70 transition-all"
+                style={{ fontWeight: '600' }}
+              >
+                Annuler
+              </button>
+            )}
           </div>
         </form>
       </div>

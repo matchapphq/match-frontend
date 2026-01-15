@@ -1,11 +1,11 @@
 // Données mockées unifiées pour toute l'application
 
 export const STATS = {
-  clients30Jours: 247,
-  clientsTotal: 1247,
-  ageMoyen: 32,
-  sportFavori: 'Football',
-  moyenneClientsParMatch: 28,
+  clients30Jours: 0,
+  clientsTotal: 0,
+  ageMoyen: 0,
+  sportFavori: '-',
+  moyenneClientsParMatch: 0,
   
   matchsDiffuses30Jours: 18,
   matchsAVenir: 12,

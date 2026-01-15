@@ -23,7 +23,7 @@ export function OnboardingWelcome({ onContinue, currentStep, userName }: Onboard
       case 'facturation':
         return {
           title: 'Finalisez votre inscription',
-          description: 'Choisissez votre formule d\'abonnement pour activer votre compte',
+          description: "Choisissez votre formule d'abonnement pour activer votre compte",
           buttonText: 'Choisir ma formule',
           page: 'facturation' as PageType,
           progress: 66
