@@ -1,11 +1,10 @@
 
   {
-      "name": "moderne-match",
+      "name": "match-frontend",
       "version": "0.1.0",
       "private": true,
-      "dependencies": {
-          "@app/App": "*",
-          "@radix-ui/react-accordion": "^1.2.3",
+    "dependencies": {
+        "@radix-ui/react-accordion": "^1.2.3",
           "@radix-ui/react-alert-dialog": "^1.1.6",
           "@radix-ui/react-aspect-ratio": "^1.1.2",
           "@radix-ui/react-avatar": "^1.1.3",
@@ -48,10 +47,9 @@
           "react-resizable-panels": "^2.1.7",
           "recharts": "^2.15.2",
           "sonner": "^2.0.3",
-          "tailwind-merge": "*",
-          "vaul": "^1.1.2",
-          "vite": "*"
-      },
+        "tailwind-merge": "*",
+        "vaul": "^1.1.2"
+    },
       "devDependencies": {
           "@types/node": "^20.10.0",
           "@vitejs/plugin-react-swc": "^3.10.2",
