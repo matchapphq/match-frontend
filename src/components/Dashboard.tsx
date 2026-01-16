@@ -3,8 +3,12 @@ import { PageType } from '../App';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ParrainageWidget } from './ParrainageWidget';
-import { usePartnerVenueMatches, usePartnerCustomerStats, usePartnerAnalyticsSummary } from '../hooks/api';
-import { useBoostSummary } from '../hooks/api';
+import { 
+  usePartnerVenueMatches, 
+  usePartnerAnalyticsDashboard,
+  usePartnerCustomerStats,
+  useBoostSummary 
+} from '../hooks/api';
 
 interface DashboardProps {
   onNavigate: (page: PageType, matchId?: number, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
@@ -14,33 +18,39 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const { currentUser } = useAuth();
   const [periodFilter, setPeriodFilter] = useState<'7j' | '30j' | '90j'>('30j');
 
-  // Fetch real data from API
+  // API hooks for real data
   const { data: matchesData, isLoading: matchesLoading } = usePartnerVenueMatches();
-  const { data: customerStats, isLoading: statsLoading } = usePartnerCustomerStats();
-  const { data: analyticsData, isLoading: analyticsLoading } = usePartnerAnalyticsSummary();
+  const { data: analyticsData, isLoading: analyticsLoading } = usePartnerAnalyticsDashboard();
+  const { data: customerStats, isLoading: customerLoading } = usePartnerCustomerStats();
   const { data: boostData, isLoading: boostLoading } = useBoostSummary();
 
-  const isLoading = matchesLoading || statsLoading || analyticsLoading || boostLoading;
+  // Extract matches from API response
+  const matches = matchesData?.data || [];
+  const matchsAVenir = matches.filter((m: any) => m.status === 'upcoming');
+  const matchsTermines = matches.filter((m: any) => m.status === 'finished');
+  
+  // Get stats from API or fallback
+  const totalClients = customerStats?.total_customers || 0;
+  const totalViews = analyticsData?.views?.total || 0;
+  const boostsDisponibles = boostData?.available_boosts || 0;
 
-  // Transform API data to match component expectations
-  const matches = matchesData?.matches || matchesData || [];
-  const matchsAVenir = matches.filter((m: any) => {
-    const matchDate = new Date(m.scheduled_at || m.date);
-    return matchDate > new Date();
-  });
-  const matchsTermines = matches.filter((m: any) => {
-    const matchDate = new Date(m.scheduled_at || m.date);
-    return matchDate <= new Date();
-  });
-  const allClients = customerStats?.clients || [];
-  const boostsDisponibles = boostData?.available_boosts || boostData?.boosts_available || 0;
+  // Loading state
+  const isLoading = matchesLoading || analyticsLoading || customerLoading || boostLoading;
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
+      </div>
+    );
+  }
 
   const stats = [
     {
       id: 'clients-detail' as PageType,
       title: 'Total clients',
-      value: allClients.length.toString(),
-      change: '+12.5%',
+      value: totalClients.toString(),
+      change: analyticsData?.customers?.change || '+0%',
       changeType: 'increase' as const,
       icon: Users,
       color: 'purple' as const,
@@ -68,8 +78,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     {
       id: 'vues-detail' as PageType,
       title: 'Vues totales',
-      value: '1,453',
-      change: '+23.4%',
+      value: totalViews.toLocaleString(),
+      change: analyticsData?.views?.change || '+0%',
       changeType: 'increase' as const,
       icon: Eye,
       color: 'orange' as const,
@@ -84,17 +94,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   ];
 
   const upcomingMatches = matchsAVenir.slice(0, 4);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">

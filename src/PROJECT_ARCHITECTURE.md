@@ -638,48 +638,1280 @@ export const ROUTES = {
 
 ---
 
-## 🔌 API Integration (Future)
+## 🔌 API Integration
+
+### **Base URL & Configuration**
+
+```typescript
+// /services/api.ts
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: process.env.VITE_API_URL || '/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Auth interceptor
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Error interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+---
 
 ### **Structure Hooks API** (`/hooks/api/`)
 
 ```
 hooks/api/
-├── index.ts
-├── useAuth.ts               # Auth endpoints
+├── index.ts                 # Exports centralisés
+├── useAuth.ts               # Authentication & user
 ├── useVenues.ts             # Venues/restaurants
-├── useMatches.ts            # Matches
+├── useMatches.ts            # Matches & sports
 ├── useReservations.ts       # Réservations
-├── usePartner.ts            # Partner-specific
+├── usePartner.ts            # Partner dashboard
 ├── useReferrals.ts          # Parrainage
-└── useOther.ts              # Autres
+├── useBoosts.ts             # Boosts & promotions
+└── useOther.ts              # Reviews, notifications, etc.
 ```
 
-**Pattern recommandé :**
+---
+
+### **📋 API Routes Overview**
+
+| Catégorie | Base Path | Description | Protected |
+|-----------|-----------|-------------|-----------|
+| **Authentication** | `/api/auth` | Login, register, logout, profile | Partial |
+| **Users** | `/api/users` | User profile, addresses, preferences | ✅ |
+| **Venues** | `/api/venues` | Venue CRUD, photos, hours, amenities | Partial |
+| **Matches** | `/api/matches` | Matches, sports, leagues, teams | Public |
+| **Reservations** | `/api/reservations` | Book, cancel, check-in, QR verify | ✅ |
+| **Partners** | `/api/partners` | Dashboard, stats, venue management | ✅ |
+| **Subscriptions** | `/api/subscriptions` | Plans, checkout, billing | ✅ |
+| **Boosts** | `/api/boosts` | Purchase, activate, analytics | ✅ |
+| **Referrals** | `/api/referral` | Code, stats, rewards | ✅ |
+| **Analytics** | `/api/venues/:id/analytics` | Revenue, reservations, occupancy | ✅ |
+| **Reviews** | `/api/venues/:id/reviews` | Create, read, update reviews | Partial |
+| **Notifications** | `/api/notifications` | User notifications | ✅ |
+
+---
+
+### **🔐 1. Authentication Routes** (`useAuth.ts`)
+
+#### **POST /api/auth/register**
 ```typescript
-// useVenues.ts
-export function useVenues() {
-  return useQuery({
-    queryKey: ['venues'],
-    queryFn: async () => {
-      const { data } = await axios.get('/api/partners/venues');
-      return data;
-    }
-  });
+interface RegisterData {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  role: 'user' | 'venue_owner' | 'admin';
 }
 
-export function useCreateVenue() {
+export function useRegister() {
+  return useMutation({
+    mutationFn: async (data: RegisterData) => {
+      const response = await api.post('/auth/register', data);
+      return response.data; // { user, token, refresh_token }
+    },
+    onSuccess: (data) => {
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('refreshToken', data.refresh_token);
+    },
+  });
+}
+```
+
+#### **POST /api/auth/login**
+```typescript
+export function useLogin() {
+  return useMutation({
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      const response = await api.post('/auth/login', { email, password });
+      return response.data; // { user, token, refresh_token }
+    },
+    onSuccess: (data) => {
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('refreshToken', data.refresh_token);
+    },
+  });
+}
+```
+
+#### **GET /api/auth/me**
+```typescript
+export function useCurrentUser() {
+  return useQuery({
+    queryKey: ['currentUser'],
+    queryFn: async () => {
+      const { data } = await api.get('/auth/me');
+      return data.user;
+    },
+    retry: false,
+  });
+}
+```
+
+#### **POST /api/auth/logout**
+```typescript
+export function useLogout() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (venueData) => {
-      const { data } = await axios.post('/api/partners/venues', venueData);
-      return data;
+    mutationFn: async () => {
+      await api.post('/auth/logout');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['venues']);
-    }
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      queryClient.clear();
+    },
   });
 }
+```
+
+---
+
+### **👤 2. User Routes** (`useAuth.ts`)
+
+#### **PUT /api/users/me**
+```typescript
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: Partial<User>) => {
+      const response = await api.put('/users/me', data);
+      return response.data.user;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['currentUser']);
+    },
+  });
+}
+```
+
+#### **PUT /api/users/me/notification-preferences**
+```typescript
+export function useUpdateNotificationPreferences() {
+  return useMutation({
+    mutationFn: async (preferences: NotificationPreferences) => {
+      const response = await api.put('/users/me/notification-preferences', preferences);
+      return response.data.notification_preferences;
+    },
+  });
+}
+```
+
+---
+
+### **🏟️ 3. Venue Routes** (`useVenues.ts`)
+
+#### **GET /api/venues** (Public)
+```typescript
+interface VenueFilters {
+  limit?: number;
+  offset?: number;
+  city?: string;
+  type?: string;
+  search?: string;
+  lat?: number;
+  lng?: number;
+  distance_km?: number;
+}
+
+export function useVenues(filters?: VenueFilters) {
+  return useQuery({
+    queryKey: ['venues', filters],
+    queryFn: async () => {
+      const { data } = await api.get('/venues', { params: filters });
+      return data; // { venues, total }
+    },
+  });
+}
+```
+
+#### **GET /api/venues/:venueId** (Public)
+```typescript
+export function useVenue(venueId: string) {
+  return useQuery({
+    queryKey: ['venue', venueId],
+    queryFn: async () => {
+      const { data } = await api.get(`/venues/${venueId}`);
+      return data; // { venue, photos, rating }
+    },
+    enabled: !!venueId,
+  });
+}
+```
+
+#### **PUT /api/venues/:venueId** (Owner only)
+```typescript
+export function useUpdateVenue() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ venueId, data }: { venueId: string; data: Partial<Venue> }) => {
+      const response = await api.put(`/venues/${venueId}`, data);
+      return response.data.venue;
+    },
+    onSuccess: (venue) => {
+      queryClient.invalidateQueries(['venue', venue.id]);
+      queryClient.invalidateQueries(['partnerVenues']);
+    },
+  });
+}
+```
+
+#### **PUT /api/venues/:venueId/booking-mode** (Owner only)
+```typescript
+export function useUpdateBookingMode() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      venueId, 
+      bookingMode 
+    }: { 
+      venueId: string; 
+      bookingMode: 'INSTANT' | 'REQUEST' 
+    }) => {
+      const response = await api.put(`/venues/${venueId}/booking-mode`, { booking_mode: bookingMode });
+      return response.data.venue;
+    },
+    onSuccess: (venue) => {
+      queryClient.invalidateQueries(['venue', venue.id]);
+    },
+  });
+}
+```
+
+#### **POST /api/venues/:venueId/photos** (Owner only)
+```typescript
+export function useUploadVenuePhoto() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      venueId, 
+      photoData 
+    }: { 
+      venueId: string; 
+      photoData: { photo_url: string; is_primary?: boolean } 
+    }) => {
+      const response = await api.post(`/venues/${venueId}/photos`, photoData);
+      return response.data.photo;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries(['venue', variables.venueId]);
+    },
+  });
+}
+```
+
+#### **PUT /api/venues/:venueId/opening-hours** (Owner only)
+```typescript
+export function useUpdateOpeningHours() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      venueId, 
+      hours 
+    }: { 
+      venueId: string; 
+      hours: OpeningHours 
+    }) => {
+      const response = await api.put(`/venues/${venueId}/opening-hours`, { opening_hours: hours });
+      return response.data.venue;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries(['venue', variables.venueId]);
+    },
+  });
+}
+```
+
+#### **GET /api/amenities** (Public)
+```typescript
+export function useAmenities() {
+  return useQuery({
+    queryKey: ['amenities'],
+    queryFn: async () => {
+      const { data } = await api.get('/amenities');
+      return data; // { amenities, categories }
+    },
+    staleTime: Infinity, // Amenities rarely change
+  });
+}
+```
+
+#### **PUT /api/venues/:venueId/amenities** (Owner only)
+```typescript
+export function useUpdateVenueAmenities() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      venueId, 
+      amenities 
+    }: { 
+      venueId: string; 
+      amenities: string[] 
+    }) => {
+      const response = await api.put(`/venues/${venueId}/amenities`, { amenities });
+      return response.data.venue;
+    },
+    onSuccess: (venue) => {
+      queryClient.invalidateQueries(['venue', venue.id]);
+    },
+  });
+}
+```
+
+---
+
+### **⚽ 4. Match Routes** (`useMatches.ts`)
+
+#### **GET /api/matches**
+```typescript
+interface MatchFilters {
+  limit?: number;
+  offset?: number;
+  status?: 'upcoming' | 'live' | 'finished';
+  league_id?: string;
+  scheduled_from?: string;
+  scheduled_to?: string;
+}
+
+export function useMatches(filters?: MatchFilters) {
+  return useQuery({
+    queryKey: ['matches', filters],
+    queryFn: async () => {
+      const { data } = await api.get('/matches', { params: filters });
+      return data; // { matches, total }
+    },
+  });
+}
+```
+
+#### **GET /api/matches/upcoming**
+```typescript
+export function useUpcomingMatches(sport_id?: string, limit?: number) {
+  return useQuery({
+    queryKey: ['matches', 'upcoming', sport_id, limit],
+    queryFn: async () => {
+      const { data } = await api.get('/matches/upcoming', { 
+        params: { sport_id, limit } 
+      });
+      return data.matches;
+    },
+  });
+}
+```
+
+#### **GET /api/matches/:matchId**
+```typescript
+export function useMatch(matchId: string) {
+  return useQuery({
+    queryKey: ['match', matchId],
+    queryFn: async () => {
+      const { data } = await api.get(`/matches/${matchId}`);
+      return data; // { match, teams: { home, away } }
+    },
+    enabled: !!matchId,
+  });
+}
+```
+
+#### **GET /api/matches/:matchId/venues**
+```typescript
+export function useMatchVenues(matchId: string) {
+  return useQuery({
+    queryKey: ['match', matchId, 'venues'],
+    queryFn: async () => {
+      const { data } = await api.get(`/matches/${matchId}/venues`);
+      return data.venues; // VenueMatch[]
+    },
+    enabled: !!matchId,
+  });
+}
+```
+
+#### **GET /api/sports**
+```typescript
+export function useSports() {
+  return useQuery({
+    queryKey: ['sports'],
+    queryFn: async () => {
+      const { data } = await api.get('/sports');
+      return data.sports;
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+}
+```
+
+---
+
+### **🎟️ 5. Reservation Routes** (`useReservations.ts`)
+
+#### **GET /api/reservations**
+```typescript
+export function useReservations(status?: string) {
+  return useQuery({
+    queryKey: ['reservations', status],
+    queryFn: async () => {
+      const { data } = await api.get('/reservations', { params: { status } });
+      return data; // { reservations, total }
+    },
+  });
+}
+```
+
+#### **GET /api/reservations/:reservationId**
+```typescript
+export function useReservation(reservationId: string) {
+  return useQuery({
+    queryKey: ['reservation', reservationId],
+    queryFn: async () => {
+      const { data } = await api.get(`/reservations/${reservationId}`);
+      return data; // { reservation, qr_code, venue, match }
+    },
+    enabled: !!reservationId,
+  });
+}
+```
+
+#### **POST /api/reservations** (Create - INSTANT or REQUEST mode)
+```typescript
+interface CreateReservationData {
+  venue_match_id: string;
+  party_size: number;
+  requires_accessibility?: boolean;
+  special_requests?: string;
+}
+
+export function useCreateReservation() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: CreateReservationData) => {
+      const response = await api.post('/reservations', data);
+      return response.data; // { reservation, qr_code? }
+      // status: 'PENDING' (REQUEST mode) or 'CONFIRMED' (INSTANT mode)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['reservations']);
+    },
+  });
+}
+```
+
+#### **POST /api/reservations/:reservationId/cancel**
+```typescript
+export function useCancelReservation() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      reservationId, 
+      reason 
+    }: { 
+      reservationId: string; 
+      reason?: string 
+    }) => {
+      const response = await api.post(`/reservations/${reservationId}/cancel`, { reason });
+      return response.data.reservation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['reservations']);
+    },
+  });
+}
+```
+
+#### **POST /api/reservations/verify-qr** (Venue owner scans)
+```typescript
+export function useVerifyQR() {
+  return useMutation({
+    mutationFn: async (qrCode: string) => {
+      const response = await api.post('/reservations/verify-qr', { qr_code: qrCode });
+      return response.data; // { valid, reservation }
+    },
+  });
+}
+```
+
+#### **POST /api/reservations/:reservationId/check-in**
+```typescript
+export function useCheckInReservation() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (reservationId: string) => {
+      const response = await api.post(`/reservations/${reservationId}/check-in`);
+      return response.data.reservation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['reservations']);
+    },
+  });
+}
+```
+
+---
+
+### **💼 6. Partner Routes** (`usePartner.ts`)
+
+#### **GET /api/partners/venues**
+```typescript
+export function usePartnerVenues() {
+  return useQuery({
+    queryKey: ['partnerVenues'],
+    queryFn: async () => {
+      const { data } = await api.get('/partners/venues');
+      return data.venues;
+    },
+  });
+}
+```
+
+#### **POST /api/partners/venues**
+```typescript
+export function useCreatePartnerVenue() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (venueData: any) => {
+      const response = await api.post('/partners/venues', venueData);
+      return response.data.venue;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['partnerVenues']);
+    },
+  });
+}
+```
+
+#### **GET /api/partners/venues/:venueId/reservations**
+```typescript
+export function usePartnerReservations(
+  venueId: string, 
+  params?: { page?: number; limit?: number; status?: string }
+) {
+  return useQuery({
+    queryKey: ['partnerReservations', venueId, params],
+    queryFn: async () => {
+      const { data } = await api.get(`/partners/venues/${venueId}/reservations`, { params });
+      return data; // { reservations, total, page, limit }
+    },
+    enabled: !!venueId,
+  });
+}
+```
+
+#### **GET /api/partners/venues/:venueId/reservations/stats**
+```typescript
+export function useReservationStats(
+  venueId: string, 
+  params?: { from?: string; to?: string }
+) {
+  return useQuery({
+    queryKey: ['reservationStats', venueId, params],
+    queryFn: async () => {
+      const { data } = await api.get(`/partners/venues/${venueId}/reservations/stats`, { params });
+      return data.stats;
+    },
+    enabled: !!venueId,
+  });
+}
+```
+
+#### **PATCH /api/partners/reservations/:reservationId** (Full update)
+```typescript
+export function useUpdateReservation() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      reservationId, 
+      data 
+    }: { 
+      reservationId: string; 
+      data: Partial<Reservation> 
+    }) => {
+      const response = await api.patch(`/partners/reservations/${reservationId}`, data);
+      return response.data.reservation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['partnerReservations']);
+      queryClient.invalidateQueries(['reservations']);
+    },
+  });
+}
+```
+
+#### **PATCH /api/partners/reservations/:reservationId/status** (Accept/Decline)
+```typescript
+export function useUpdateReservationStatus() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      reservationId, 
+      status 
+    }: { 
+      reservationId: string; 
+      status: 'CONFIRMED' | 'DECLINED' 
+    }) => {
+      const response = await api.patch(`/partners/reservations/${reservationId}/status`, { status });
+      return response.data.reservation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['partnerReservations']);
+    },
+  });
+}
+```
+
+#### **POST /api/partners/reservations/:reservationId/mark-no-show**
+```typescript
+export function useMarkNoShow() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      reservationId, 
+      reason 
+    }: { 
+      reservationId: string; 
+      reason?: string 
+    }) => {
+      const response = await api.post(`/partners/reservations/${reservationId}/mark-no-show`, { reason });
+      return response.data; // { reservation, seats_released }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['partnerReservations']);
+    },
+  });
+}
+```
+
+#### **POST /api/partners/venues/:venueId/matches** (Schedule match)
+```typescript
+export function useScheduleMatch() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      venueId, 
+      matchData 
+    }: { 
+      venueId: string; 
+      matchData: { match_id: string; total_seats: number } 
+    }) => {
+      const response = await api.post(`/partners/venues/${venueId}/matches`, matchData);
+      return response.data.venueMatch;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['partnerMatches']);
+    },
+  });
+}
+```
+
+#### **GET /api/partners/venues/:venueId/matches/calendar**
+```typescript
+export function useMatchesCalendar(venueId: string, month?: string) {
+  return useQuery({
+    queryKey: ['matchesCalendar', venueId, month],
+    queryFn: async () => {
+      const { data } = await api.get(`/partners/venues/${venueId}/matches/calendar`, {
+        params: { month }
+      });
+      return data; // { matches, summary, days_with_matches }
+    },
+    enabled: !!venueId,
+  });
+}
+```
+
+#### **GET /api/partners/analytics/dashboard**
+```typescript
+export function usePartnerAnalytics(params?: { start_date?: string; end_date?: string }) {
+  return useQuery({
+    queryKey: ['partnerAnalytics', params],
+    queryFn: async () => {
+      const { data } = await api.get('/partners/analytics/dashboard', { params });
+      return data; // { overview, reservations_by_status, capacity_utilization }
+    },
+  });
+}
+```
+
+---
+
+### **💳 7. Subscription Routes** (`usePartner.ts`)
+
+#### **GET /api/subscriptions/plans**
+```typescript
+export function useSubscriptionPlans() {
+  return useQuery({
+    queryKey: ['subscriptionPlans'],
+    queryFn: async () => {
+      const { data } = await api.get('/subscriptions/plans');
+      return data.plans;
+    },
+    staleTime: Infinity,
+  });
+}
+```
+
+#### **POST /api/subscriptions/create-checkout**
+```typescript
+export function useCreateCheckout() {
+  return useMutation({
+    mutationFn: async ({ 
+      plan, 
+      billing_period 
+    }: { 
+      plan: 'basic' | 'pro' | 'enterprise'; 
+      billing_period?: 'monthly' | 'yearly' 
+    }) => {
+      const response = await api.post('/subscriptions/create-checkout', { plan, billing_period });
+      return response.data; // { checkout_url, session_id }
+    },
+  });
+}
+```
+
+#### **GET /api/subscriptions/me**
+```typescript
+export function useMySubscription() {
+  return useQuery({
+    queryKey: ['mySubscription'],
+    queryFn: async () => {
+      const { data } = await api.get('/subscriptions/me');
+      return data; // { subscription, next_billing_date, payment_method }
+    },
+  });
+}
+```
+
+#### **POST /api/subscriptions/me/cancel**
+```typescript
+export function useCancelSubscription() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/subscriptions/me/cancel');
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['mySubscription']);
+    },
+  });
+}
+```
+
+#### **POST /api/subscriptions/mock** (Dev/Testing only)
+```typescript
+export function useToggleMockSubscription() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (params?: { plan?: string; active?: boolean }) => {
+      const response = await api.post('/subscriptions/mock', params);
+      return response.data; // { subscription, message }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['mySubscription']);
+    },
+  });
+}
+```
+
+---
+
+### **⚡ 8. Boost Routes** (`useBoosts.ts`)
+
+#### **GET /api/boosts/prices** (Public)
+```typescript
+export function useBoostPrices() {
+  return useQuery({
+    queryKey: ['boostPrices'],
+    queryFn: async () => {
+      const { data } = await api.get('/boosts/prices');
+      return data.prices;
+    },
+    staleTime: Infinity,
+  });
+}
+```
+
+#### **GET /api/boosts/available**
+```typescript
+export function useAvailableBoosts() {
+  return useQuery({
+    queryKey: ['availableBoosts'],
+    queryFn: async () => {
+      const { data } = await api.get('/boosts/available');
+      return data; // { count, boosts }
+    },
+  });
+}
+```
+
+#### **GET /api/boosts/stats**
+```typescript
+export function useBoostStats() {
+  return useQuery({
+    queryKey: ['boostStats'],
+    queryFn: async () => {
+      const { data } = await api.get('/boosts/stats');
+      return data; // { boosts, purchases, performance }
+    },
+  });
+}
+```
+
+#### **POST /api/boosts/purchase/create-checkout**
+```typescript
+export function useCreateBoostCheckout() {
+  return useMutation({
+    mutationFn: async ({ 
+      pack_type 
+    }: { 
+      pack_type: 'single' | 'pack_3' | 'pack_10' 
+    }) => {
+      const response = await api.post('/boosts/purchase/create-checkout', { pack_type });
+      return response.data; // { checkout_url, session_id, purchase_id }
+    },
+  });
+}
+```
+
+#### **POST /api/boosts/purchase/verify**
+```typescript
+export function useVerifyBoostPurchase() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (session_id: string) => {
+      const response = await api.post('/boosts/purchase/verify', { session_id });
+      return response.data; // { success, purchase }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['availableBoosts']);
+      queryClient.invalidateQueries(['boostStats']);
+    },
+  });
+}
+```
+
+#### **GET /api/boosts/boostable/:venueId**
+```typescript
+export function useBoostableMatches(venueId: string) {
+  return useQuery({
+    queryKey: ['boostableMatches', venueId],
+    queryFn: async () => {
+      const { data } = await api.get(`/boosts/boostable/${venueId}`);
+      return data.matches;
+    },
+    enabled: !!venueId,
+  });
+}
+```
+
+#### **POST /api/boosts/activate**
+```typescript
+export function useActivateBoost() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      boost_id, 
+      venue_match_id 
+    }: { 
+      boost_id: string; 
+      venue_match_id: string 
+    }) => {
+      const response = await api.post('/boosts/activate', { boost_id, venue_match_id });
+      return response.data; // { success, boost_id, venue_match_id, expires_at }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['availableBoosts']);
+      queryClient.invalidateQueries(['partnerMatches']);
+    },
+  });
+}
+```
+
+#### **GET /api/boosts/history**
+```typescript
+export function useBoostHistory(params?: { page?: number; limit?: number; status?: string }) {
+  return useQuery({
+    queryKey: ['boostHistory', params],
+    queryFn: async () => {
+      const { data } = await api.get('/boosts/history', { params });
+      return data; // { boosts, total, page, limit }
+    },
+  });
+}
+```
+
+#### **GET /api/boosts/analytics/:boostId**
+```typescript
+export function useBoostAnalytics(boostId: string) {
+  return useQuery({
+    queryKey: ['boostAnalytics', boostId],
+    queryFn: async () => {
+      const { data } = await api.get(`/boosts/analytics/${boostId}`);
+      return data; // { views_before, views_during, bookings_during, performance_score, roi }
+    },
+    enabled: !!boostId,
+  });
+}
+```
+
+---
+
+### **🎁 9. Referral Routes** (`useReferrals.ts`)
+
+#### **GET /api/referral/code**
+```typescript
+export function useReferralCode() {
+  return useQuery({
+    queryKey: ['referralCode'],
+    queryFn: async () => {
+      const { data } = await api.get('/referral/code');
+      return data; // { referral_code, referral_link, created_at }
+    },
+  });
+}
+```
+
+#### **GET /api/referral/stats**
+```typescript
+export function useReferralStats() {
+  return useQuery({
+    queryKey: ['referralStats'],
+    queryFn: async () => {
+      const { data } = await api.get('/referral/stats');
+      return data; // { total_invited, total_converted, rewards_earned, conversion_rate }
+    },
+  });
+}
+```
+
+#### **GET /api/referral/history**
+```typescript
+export function useReferralHistory(params?: { page?: number; limit?: number; status?: string }) {
+  return useQuery({
+    queryKey: ['referralHistory', params],
+    queryFn: async () => {
+      const { data } = await api.get('/referral/history', { params });
+      return data; // { referred_users, total, page, limit }
+    },
+  });
+}
+```
+
+#### **POST /api/referral/validate** (Public)
+```typescript
+export function useValidateReferralCode() {
+  return useMutation({
+    mutationFn: async (referral_code: string) => {
+      const response = await api.post('/referral/validate', { referral_code });
+      return response.data; // { valid, referrer_name?, message }
+    },
+  });
+}
+```
+
+---
+
+### **⭐ 10. Reviews Routes** (`useOther.ts`)
+
+#### **POST /api/venues/:venueId/reviews**
+```typescript
+interface ReviewData {
+  rating: number; // 1-5
+  title: string;
+  content: string;
+  atmosphere_rating?: number;
+  food_rating?: number;
+  service_rating?: number;
+  value_rating?: number;
+}
+
+export function useCreateReview() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ venueId, reviewData }: { venueId: string; reviewData: ReviewData }) => {
+      const response = await api.post(`/venues/${venueId}/reviews`, reviewData);
+      return response.data.review;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries(['venue', variables.venueId]);
+    },
+  });
+}
+```
+
+#### **GET /api/venues/:venueId/reviews**
+```typescript
+export function useVenueReviews(venueId: string, params?: { limit?: number; offset?: number; sort?: string }) {
+  return useQuery({
+    queryKey: ['venueReviews', venueId, params],
+    queryFn: async () => {
+      const { data } = await api.get(`/venues/${venueId}/reviews`, { params });
+      return data; // { reviews, total, average_rating }
+    },
+    enabled: !!venueId,
+  });
+}
+```
+
+---
+
+### **🔔 11. Notifications Routes** (`useOther.ts`)
+
+#### **GET /api/notifications**
+```typescript
+export function useNotifications(params?: { is_read?: boolean; type?: string }) {
+  return useQuery({
+    queryKey: ['notifications', params],
+    queryFn: async () => {
+      const { data } = await api.get('/notifications', { params });
+      return data; // { notifications, unread_count }
+    },
+  });
+}
+```
+
+#### **PUT /api/notifications/:notificationId/read**
+```typescript
+export function useMarkNotificationRead() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (notificationId: string) => {
+      const response = await api.put(`/notifications/${notificationId}/read`);
+      return response.data.notification;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['notifications']);
+    },
+  });
+}
+```
+
+#### **PUT /api/notifications/read-all**
+```typescript
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      await api.put('/notifications/read-all');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['notifications']);
+    },
+  });
+}
+```
+
+---
+
+### **📊 12. Analytics Routes** (`usePartner.ts`)
+
+#### **GET /api/venues/:venueId/analytics/overview**
+```typescript
+export function useVenueAnalytics(
+  venueId: string, 
+  params?: { from?: string; to?: string }
+) {
+  return useQuery({
+    queryKey: ['venueAnalytics', venueId, params],
+    queryFn: async () => {
+      const { data } = await api.get(`/venues/${venueId}/analytics/overview`, { params });
+      return data.analytics; // { total_reservations, total_revenue, average_occupancy, top_matches }
+    },
+    enabled: !!venueId,
+  });
+}
+```
+
+#### **GET /api/venues/:venueId/analytics/reservations**
+```typescript
+export function useReservationAnalytics(
+  venueId: string,
+  params?: { from?: string; to?: string; group_by?: 'day' | 'week' | 'month' }
+) {
+  return useQuery({
+    queryKey: ['reservationAnalytics', venueId, params],
+    queryFn: async () => {
+      const { data } = await api.get(`/venues/${venueId}/analytics/reservations`, { params });
+      return data.data; // Array of { date, count, revenue }
+    },
+    enabled: !!venueId,
+  });
+}
+```
+
+---
+
+### **🎯 Pattern d'Utilisation dans les Composants**
+
+```typescript
+// Example: Dashboard.tsx
+import { usePartnerVenues, usePartnerAnalytics } from '@/hooks/api';
+
+export function Dashboard() {
+  const { data: venues, isLoading: venuesLoading } = usePartnerVenues();
+  const { data: analytics, isLoading: analyticsLoading } = usePartnerAnalytics();
+  
+  if (venuesLoading || analyticsLoading) {
+    return <div>Chargement...</div>;
+  }
+  
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <div>Total venues: {venues?.length}</div>
+      <div>Total reservations: {analytics?.overview.total_reservations}</div>
+    </div>
+  );
+}
+```
+
+```typescript
+// Example: CreateReservation.tsx
+import { useCreateReservation } from '@/hooks/api';
+import { toast } from 'sonner';
+
+export function CreateReservation({ venueMatchId }: { venueMatchId: string }) {
+  const createReservation = useCreateReservation();
+  
+  const handleSubmit = async (partySize: number) => {
+    try {
+      const result = await createReservation.mutateAsync({
+        venue_match_id: venueMatchId,
+        party_size: partySize,
+      });
+      
+      if (result.reservation.status === 'CONFIRMED') {
+        toast.success('Réservation confirmée ! Voici votre QR code.');
+      } else if (result.reservation.status === 'PENDING') {
+        toast.info('Demande envoyée ! En attente de confirmation du restaurant.');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la réservation');
+    }
+  };
+  
+  return (
+    <button onClick={() => handleSubmit(4)}>
+      Réserver pour 4 personnes
+    </button>
+  );
+}
+```
+
+---
+
+### **🎨 Query Client Setup**
+
+```typescript
+// main.tsx or App.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
+
+export function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/* ... */}
+    </QueryClientProvider>
+  );
+}
+```
+
+---
+
+### **📝 Notes d'Implémentation**
+
+**Booking Mode Logic:**
+- `INSTANT` → Réservation confirmée immédiatement si capacité disponible
+- `REQUEST` → Réservation créée avec statut `PENDING`, venue owner doit accepter/refuser
+
+**Pagination Standard:**
+- `limit` (default: 20)
+- `offset` (default: 0)
+- ou `page` + `limit`
+
+**Authentication:**
+- JWT token stocké dans `localStorage`
+- Refresh token pour renouveler le JWT
+- Interceptor Axios ajoute automatiquement le Bearer token
+
+**Optimistic Updates:**
+- Utiliser `onMutate` dans useMutation pour update UI immédiat
+- Rollback en cas d'erreur avec `onError`
+
+**Query Keys Convention:**
+```typescript
+// Simple entity
+['venues']
+['venues', venueId]
+
+// With filters
+['venues', filters]
+['matches', { status: 'upcoming', sport_id: '123' }]
+
+// Nested resources
+['venue', venueId, 'reviews']
+['venue', venueId, 'analytics', params]
+
+// User-specific
+['partnerVenues']
+['mySubscription']
+['availableBoosts']
 ```
 
 ---

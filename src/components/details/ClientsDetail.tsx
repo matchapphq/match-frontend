@@ -1,6 +1,6 @@
 import { ArrowLeft, Users, Calendar, Trophy, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { useState } from 'react';
-import { STATS, CLIENTS_RECENTS } from '../../data/mockData';
+import { useState, useEffect } from 'react';
+import { usePartnerCustomerStats } from '../../hooks/api';
 
 interface ClientsDetailProps {
   onBack: () => void;
@@ -12,7 +12,33 @@ type SortOrder = 'asc' | 'desc' | null;
 export function ClientsDetail({ onBack }: ClientsDetailProps) {
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
-  const [clientsData, setClientsData] = useState(CLIENTS_RECENTS);
+  
+  const { data: customerData, isLoading } = usePartnerCustomerStats();
+  
+  // Transform API data to component format
+  const initialClients = (customerData?.recent_customers || []).map((c: any) => ({
+    id: c.id,
+    nom: c.last_name || 'Client',
+    prenom: c.first_name || '',
+    match: c.last_reservation?.match_name || 'N/A',
+    date: c.last_reservation?.date ? new Date(c.last_reservation.date).toLocaleDateString('fr-FR') : 'N/A',
+  }));
+  
+  const [clientsData, setClientsData] = useState<any[]>([]);
+  
+  useEffect(() => {
+    if (initialClients.length > 0) {
+      setClientsData(initialClients);
+    }
+  }, [customerData]);
+
+  if (isLoading) {
+    return (
+      <div className="p-8 max-w-6xl mx-auto flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
+      </div>
+    );
+  }
 
   const handleSort = (field: SortField) => {
     let newOrder: SortOrder = 'asc';
@@ -29,7 +55,7 @@ export function ClientsDetail({ onBack }: ClientsDetailProps) {
     setSortOrder(newOrder);
 
     if (newOrder === null) {
-      setClientsData(CLIENTS_RECENTS);
+      setClientsData(initialClients);
     } else {
       const sorted = [...clientsData].sort((a, b) => {
         const aVal = a[field as keyof typeof a];
@@ -82,25 +108,25 @@ export function ClientsDetail({ onBack }: ClientsDetailProps) {
         <div className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white p-6 rounded-xl shadow-lg">
           <Calendar className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-white/80 text-sm mb-1">Âge moyen</p>
-          <p className="italic text-2xl">{STATS.ageMoyen} ans</p>
+          <p className="italic text-2xl">{customerData?.average_age || 32} ans</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] p-6 rounded-xl shadow-lg">
           <Trophy className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-[#5a03cf]/80 text-sm mb-1">Sport favori</p>
-          <p className="italic text-2xl">{STATS.sportFavori}</p>
+          <p className="italic text-2xl">{customerData?.favorite_sport || 'Football'}</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white p-6 rounded-xl shadow-lg">
           <Users className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-white/80 text-sm mb-1">Total clients</p>
-          <p className="italic text-2xl">{STATS.clientsTotal.toLocaleString()}</p>
+          <p className="italic text-2xl">{(customerData?.total_customers || 0).toLocaleString()}</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] p-6 rounded-xl shadow-lg">
           <TrendingUp className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-[#5a03cf]/80 text-sm mb-1">Moyenne/match</p>
-          <p className="italic text-2xl">{STATS.moyenneClientsParMatch}</p>
+          <p className="italic text-2xl">{customerData?.average_per_match || 0}</p>
         </div>
       </div>
 

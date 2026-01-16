@@ -1,6 +1,5 @@
 import { Zap, Sparkles, Check, ShoppingCart, TrendingUp, Gift, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { useBoostPrices, useCreateBoostCheckout } from '../hooks/api';
 
 interface AcheterBoostsProps {
   onBack: () => void;
@@ -19,7 +18,7 @@ interface BoostPack {
   popular?: boolean;
 }
 
-const defaultBoostPacks: BoostPack[] = [
+const boostPacks: BoostPack[] = [
   {
     id: 'single',
     name: '1 Boost',
@@ -59,41 +58,13 @@ const benefits = [
 
 export function AcheterBoosts({ onBack }: AcheterBoostsProps) {
   const [selectedPack, setSelectedPack] = useState<PackType>('pack_3');
-  
-  // Fetch boost prices from API
-  const { data: pricesData } = useBoostPrices();
-  const createCheckoutMutation = useCreateBoostCheckout();
-  
-  // Use API prices or fallback to defaults
-  const boostPacks: BoostPack[] = pricesData?.packs ? pricesData.packs.map((p: any) => ({
-    id: p.pack_type || p.id,
-    name: p.name,
-    quantity: p.quantity,
-    price: p.price / 100, // Convert cents to euros
-    unitPrice: p.unit_price / 100,
-    discount: p.discount_percent || p.discount || 0,
-    badge: p.badge,
-    popular: p.popular,
-  })) : defaultBoostPacks;
 
   const handlePurchase = () => {
     const pack = boostPacks.find(p => p.id === selectedPack);
     if (pack) {
-      createCheckoutMutation.mutate(
-        { pack_type: selectedPack },
-        {
-          onSuccess: (data) => {
-            if (data.checkout_url) {
-              window.location.href = data.checkout_url;
-            } else {
-              alert(`Redirection vers le paiement pour ${pack.name} - ${pack.price}€`);
-            }
-          },
-          onError: () => {
-            alert('Erreur lors de la création du paiement');
-          }
-        }
-      );
+      // TODO: Intégrer Stripe Checkout
+      console.log('Achat du pack:', pack);
+      alert(`Redirection vers le paiement pour ${pack.name} - ${pack.price}€`);
     }
   };
 

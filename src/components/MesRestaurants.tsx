@@ -10,25 +10,48 @@ interface MesRestaurantsProps {
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   const { currentUser } = useAuth();
   
-  // Fetch venues from API
-  const { data: venuesData, isLoading } = usePartnerVenues();
+  // API hook for real venue data
+  const { data: venuesData, isLoading, error } = usePartnerVenues();
   
-  // Transform API data to match component expectations
-  const restaurants = (venuesData?.venues || venuesData || []).map((v: any) => ({
-    id: v.id,
-    nom: v.name || v.nom,
-    adresse: v.street_address || v.adresse,
-    telephone: v.phone || v.telephone,
-    email: v.email,
-    capaciteMax: v.capacity || v.capaciteMax || 50,
-    note: v.average_rating || v.note || 4.5,
-    totalAvis: v.review_count || v.totalAvis || 0,
-    image: v.photo_url || v.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
-    horaires: v.opening_hours || v.horaires || 'Non spécifié',
-    tarif: v.subscription_plan || v.tarif || '30€/mois',
-    matchsOrganises: v.matches_count || v.matchsOrganises || 0,
-    bookingMode: v.booking_mode || v.bookingMode || 'INSTANT',
+  // Extract venues from API response
+  const venues = venuesData?.data || venuesData?.venues || [];
+  
+  // Map API venue data to component format
+  const restaurants = venues.map((venue: any) => ({
+    id: venue.id,
+    nom: venue.name,
+    adresse: `${venue.street_address}, ${venue.city}`,
+    image: venue.photo_url || venue.photos?.[0]?.url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+    note: venue.average_rating || 0,
+    totalAvis: venue.review_count || 0,
+    capaciteMax: venue.capacity || 0,
+    matchsOrganises: venue.matches_count || 0,
+    bookingMode: venue.booking_mode || 'INSTANT',
   }));
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">Erreur lors du chargement des établissements</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-[#5a03cf] text-white rounded-lg"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleAddRestaurant = () => {
     if (onNavigate) {

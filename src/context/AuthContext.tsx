@@ -1,15 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authAPI } from '../services/api';
 
+// User interface matching backend snake_case format
 export interface User {
   id: string;
   email: string;
-  nom: string;
-  prenom: string;
-  telephone?: string;
-  hasCompletedOnboarding: boolean;
-  onboardingStep: 'restaurant' | 'facturation' | 'complete';
-  role?: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  avatar_url?: string;
+  role: 'user' | 'venue_owner' | 'admin';
+  onboarding_complete: boolean;
+  created_at: string;
+  // Legacy support for frontend components that use French names
+  nom?: string;
+  prenom?: string;
+  hasCompletedOnboarding?: boolean;
+  onboardingStep?: 'restaurant' | 'facturation' | 'complete';
 }
 
 interface AuthContextType {
@@ -21,25 +28,40 @@ interface AuthContextType {
   currentUser: User | null;
   completeOnboarding: () => void;
   updateOnboardingStep: (step: 'restaurant' | 'facturation' | 'complete') => void;
-  error: string | null;
+  refreshUser: () => Promise<void>;
 }
 
 export interface RegisterData {
   email: string;
   password: string;
-  nom: string;
-  prenom: string;
-  telephone: string;
-  referralCode?: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  role?: 'user' | 'venue_owner';
+  // Legacy support
+  nom?: string;
+  prenom?: string;
+  telephone?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper to normalize user data for legacy component support
+const normalizeUser = (apiUser: any): User => {
+  return {
+    ...apiUser,
+    // Map backend fields to legacy frontend fields
+    nom: apiUser.last_name,
+    prenom: apiUser.first_name,
+    hasCompletedOnboarding: apiUser.onboarding_complete ?? true,
+    onboardingStep: apiUser.onboarding_complete ? 'complete' : 'restaurant',
+  };
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   // Check for existing auth token on mount
   useEffect(() => {
@@ -48,155 +70,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (token) {
         try {
           const response = await authAPI.getMe();
-          const userData = response.data.user || response.data;
-          
-          if (userData && userData.id) {
-            setCurrentUser({
-              id: userData.id,
-              email: userData.email || '',
-              nom: userData.last_name || userData.nom || '',
-              prenom: userData.first_name || userData.prenom || '',
-              telephone: userData.phone || userData.telephone,
-              hasCompletedOnboarding: userData.onboarding_completed ?? true,
-              onboardingStep: userData.onboarding_completed ? 'complete' : 'restaurant',
-              role: userData.role,
-            });
-            setIsAuthenticated(true);
-          } else {
-            // Invalid user data, clear tokens
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('refreshToken');
-          }
-        } catch (err: any) {
-          console.error('Auth check failed:', err);
-          // Only clear tokens if it's a 401 error (unauthorized)
-          // Keep tokens for network errors to allow retry
-          if (err.response?.status === 401) {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('refreshToken');
-          } else {
-            // For other errors (network, etc.), try to use cached user data
-            const cachedUser = localStorage.getItem('cachedUser');
-            if (cachedUser) {
-              try {
-                const userData = JSON.parse(cachedUser);
-                setCurrentUser(userData);
-                setIsAuthenticated(true);
-              } catch {
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('refreshToken');
-              }
-            }
-          }
+          const user = normalizeUser(response.data.user);
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        } catch (error) {
+          // Token invalid or expired
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
+          setIsAuthenticated(false);
+          setCurrentUser(null);
         }
       }
       setIsLoading(false);
     };
+
     checkAuth();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    setError(null);
     try {
       const response = await authAPI.login(email, password);
-      const data = response.data;
+      const { user, token, refresh_token } = response.data;
       
-      // Handle different API response formats
-      const token = data.token || data.access_token;
-      const refresh_token = data.refresh_token;
-      const user = data.user || data;
-      
-      if (!token) {
-        setError('Erreur de connexion: token non reçu');
-        return false;
-      }
-      
+      // Store tokens
       localStorage.setItem('authToken', token);
-      if (refresh_token) {
-        localStorage.setItem('refreshToken', refresh_token);
-      }
-
-      const userData: User = {
-        id: user.id || '',
-        email: user.email || email,
-        nom: user.last_name || user.nom || '',
-        prenom: user.first_name || user.prenom || '',
-        telephone: user.phone || user.telephone,
-        hasCompletedOnboarding: user.onboarding_completed ?? true,
-        onboardingStep: user.onboarding_completed ? 'complete' : 'restaurant',
-        role: user.role,
-      };
+      localStorage.setItem('refreshToken', refresh_token);
       
-      // Cache user data for offline/network error recovery
-      localStorage.setItem('cachedUser', JSON.stringify(userData));
-      
-      setCurrentUser(userData);
+      // Set user state
+      const normalizedUser = normalizeUser(user);
+      setCurrentUser(normalizedUser);
       setIsAuthenticated(true);
+      
       return true;
-    } catch (err: any) {
-      console.error('Login error:', err);
-      const message = err.response?.data?.error || err.response?.data?.message || 'Email ou mot de passe incorrect';
-      setError(message);
+    } catch (error) {
+      console.error('Login failed:', error);
       return false;
     }
   };
 
   const register = async (data: RegisterData): Promise<boolean> => {
-    setError(null);
     try {
-      const response = await authAPI.register({
+      // Map legacy field names to backend format
+      const registerData = {
         email: data.email,
         password: data.password,
-        first_name: data.prenom,
-        last_name: data.nom,
-        role: 'venue_owner',
-      });
-      
-      const responseData = response.data;
-      const token = responseData.token || responseData.access_token;
-      const refresh_token = responseData.refresh_token;
-      const user = responseData.user || responseData;
-      
-      if (!token) {
-        setError('Erreur d\'inscription: token non reçu');
-        return false;
-      }
-      
-      localStorage.setItem('authToken', token);
-      if (refresh_token) {
-        localStorage.setItem('refreshToken', refresh_token);
-      }
-
-      const userData: User = {
-        id: user.id || '',
-        email: user.email || data.email,
-        nom: user.last_name || data.nom,
-        prenom: user.first_name || data.prenom,
-        telephone: data.telephone,
-        hasCompletedOnboarding: false,
-        onboardingStep: 'restaurant',
-        role: user.role,
+        first_name: data.first_name || data.prenom || '',
+        last_name: data.last_name || data.nom || '',
+        role: data.role || 'venue_owner' as const,
       };
+
+      const response = await authAPI.register(registerData);
+      const { user, token, refresh_token } = response.data;
       
-      // Cache user data
-      localStorage.setItem('cachedUser', JSON.stringify(userData));
+      // Store tokens
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('refreshToken', refresh_token);
       
-      setCurrentUser(userData);
+      // Set user state with onboarding not complete
+      const normalizedUser = normalizeUser({
+        ...user,
+        onboarding_complete: false,
+      });
+      setCurrentUser(normalizedUser);
       setIsAuthenticated(true);
+      
       return true;
-    } catch (err: any) {
-      console.error('Register error:', err);
-      const message = err.response?.data?.error || err.response?.data?.message || 'Une erreur est survenue lors de l\'inscription';
-      setError(message);
+    } catch (error) {
+      console.error('Registration failed:', error);
       return false;
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      // Ignore logout API errors
+    } finally {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+    }
+  };
+
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const response = await authAPI.getMe();
+      const user = normalizeUser(response.data.user);
+      setCurrentUser(user);
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
     }
   };
 
   const completeOnboarding = () => {
     if (currentUser) {
-      const updatedUser = { ...currentUser, hasCompletedOnboarding: true, onboardingStep: 'complete' as const };
+      const updatedUser = { 
+        ...currentUser, 
+        hasCompletedOnboarding: true, 
+        onboarding_complete: true,
+        onboardingStep: 'complete' as const 
+      };
       setCurrentUser(updatedUser);
-      localStorage.setItem('cachedUser', JSON.stringify(updatedUser));
+      
+      // Also update on backend
+      authAPI.updateMe({ onboarding_complete: true } as any).catch(console.error);
     }
   };
 
@@ -205,29 +184,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedUser = { 
         ...currentUser, 
         onboardingStep: step,
-        hasCompletedOnboarding: step === 'complete'
+        hasCompletedOnboarding: step === 'complete',
+        onboarding_complete: step === 'complete',
       };
       setCurrentUser(updatedUser);
-      localStorage.setItem('cachedUser', JSON.stringify(updatedUser));
     }
   };
 
-  const logout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (err) {
-      // Continue with local logout even if API call fails
-    }
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('cachedUser');
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-  };
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#5a03cf]/10 via-gray-50 to-[#9cff02]/10">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ 
-      isAuthenticated,
+      isAuthenticated, 
       isLoading,
       login, 
       register, 
@@ -235,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentUser,
       completeOnboarding,
       updateOnboardingStep,
-      error,
+      refreshUser,
     }}>
       {children}
     </AuthContext.Provider>

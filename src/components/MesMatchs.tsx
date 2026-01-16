@@ -14,28 +14,65 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
   const [filtre, setFiltre] = useState<'tous' | 'à venir' | 'terminé'>(defaultFilter);
 
   // Fetch matches from API
-  const { data: matchesData, isLoading } = usePartnerVenueMatches();
+  const { data: matchesData, isLoading, error } = usePartnerVenueMatches();
   
-  // Transform API data to match component expectations
-  const matchs = (matchesData?.matches || matchesData || []).map((m: any) => {
-    const matchDate = new Date(m.scheduled_at || m.match?.scheduled_at || m.date);
+  // Return loading UI immediately - before any data processing
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Log errors for debugging
+  if (error) console.error('Matches error:', error);
+  
+  // Transform API data to match component expectations (safe - loading is done)
+  const normalizeMatchesResponse = (() => {
+    if (Array.isArray(matchesData?.data)) return matchesData.data;
+    if (Array.isArray(matchesData?.matches)) return matchesData.matches;
+    if (Array.isArray(matchesData)) return matchesData;
+    return [];
+  })();
+
+  const matchs = normalizeMatchesResponse.map((m: any) => {
+    const scheduledAt = m.match?.scheduled_at || m.scheduled_at || m.match?.scheduledAt;
+    const matchDate = scheduledAt ? new Date(scheduledAt) : null;
     const now = new Date();
-    const statut = matchDate > now ? 'à venir' : 'terminé';
-    
+    const statut = matchDate && matchDate < now && (m.status === 'finished' || m.status === 'live' || true)
+      ? 'terminé'
+      : (m.status === 'finished' ? 'terminé' : 'à venir');
+
+    const equipe1 = m.match?.homeTeam || m.match?.home_team || m.equipe1 || 'Équipe 1';
+    const equipe2 = m.match?.awayTeam || m.match?.away_team || m.equipe2 || 'Équipe 2';
+    const sportNom = typeof m.match?.league === 'string'
+      ? m.match.league
+      : m.match?.league?.name || m.league?.name || 'Compétition';
+    const sport = m.match?.sport?.emoji || m.match?.sport_emoji || '⚽';
+
+    const reservees = m.reserved_seats ?? m.reservations_count ?? m.reservees ?? 0;
+    const total = m.total_capacity ?? m.total_seats ?? m.total ?? 0;
+    const available = m.available_capacity ?? m.available_seats ?? total - reservees;
+
     return {
       id: m.id,
-      equipes: m.match?.home_team?.name && m.match?.away_team?.name 
-        ? `${m.match.home_team.name} vs ${m.match.away_team.name}`
-        : m.equipes || 'Match',
-      date: matchDate.toISOString().split('T')[0],
-      heure: m.scheduled_at ? new Date(m.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : m.heure || '20:00',
+      equipe1,
+      equipe2,
+      sport,
+      sportNom,
+      date: matchDate ? matchDate.toLocaleDateString('fr-FR') : 'Date à confirmer',
+      heure: matchDate ? matchDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '20:00',
       statut,
-      reservees: m.reservations_count || m.reservees || 0,
-      total: m.total_seats || m.total || 50,
+      reservees,
+      total: total || (reservees + available),
       vues: m.views_count || m.vues || 0,
-      placesDisponibles: m.available_seats || m.placesDisponibles || 50,
-      reservations: m.reservations_count || m.reservations || 0,
-      competition: m.match?.league?.name || m.competition || 'Compétition',
+      placesDisponibles: Math.max(available, 0),
+      reservations: reservees,
+      competition: sportNom,
       boosted: m.is_boosted || m.boosted || false,
     };
   });
@@ -85,17 +122,6 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
   const getPercentage = (reservees: number, total: number) => {
     return Math.round((reservees / total) * 100);
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">

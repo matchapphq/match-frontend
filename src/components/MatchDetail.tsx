@@ -1,8 +1,8 @@
 import { ArrowLeft, Calendar, Users, MapPin, TrendingUp, Eye, Check, X, Clock, Edit, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { PageType } from '../App';
-import { mockMatchInfo, mockMatchDetailReservations } from '../data/mockData';
+import { useMatch, useVenueReservations } from '../hooks/api';
 
 interface MatchDetailProps {
   matchId: number | null;
@@ -12,11 +12,53 @@ interface MatchDetailProps {
 }
 
 export function MatchDetail({ matchId, onBack, onEditMatch, onNavigate }: MatchDetailProps) {
-  const [reservations, setReservations] = useState(mockMatchDetailReservations);
+  const { data: matchData, isLoading: matchLoading } = useMatch(matchId?.toString() || '');
+  const { data: reservationsData, isLoading: reservationsLoading } = useVenueReservations(matchId?.toString() || '');
+  
   const [activeTab, setActiveTab] = useState<'en-attente' | 'confirmees' | 'refusees'>('en-attente');
   const { handleReservationAction } = useAppContext();
 
-  const matchInfo = mockMatchInfo;
+  // Transform API data
+  const matchInfo = matchData ? {
+    sport: matchData.league?.sport?.emoji || '⚽',
+    equipe1: matchData.home_team?.name || 'Équipe 1',
+    equipe2: matchData.away_team?.name || 'Équipe 2',
+    date: matchData.scheduled_at ? new Date(matchData.scheduled_at).toLocaleDateString('fr-FR') : 'N/A',
+    heure: matchData.scheduled_at ? new Date(matchData.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '20:00',
+    lieu: matchData.venue?.name || 'Lieu',
+    adresse: matchData.venue?.address || 'Adresse',
+    places: matchData.total_seats || 50,
+    reservees: matchData.reservations_count || 0,
+    vues: matchData.views_count || 0,
+    competition: matchData.league?.name || 'Compétition',
+  } : {
+    sport: '⚽', equipe1: 'Équipe 1', equipe2: 'Équipe 2', date: 'N/A', heure: '20:00',
+    lieu: 'Lieu', adresse: 'Adresse', places: 50, reservees: 0, vues: 0, competition: 'Compétition'
+  };
+
+  const [reservations, setReservations] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (reservationsData?.reservations) {
+      setReservations(reservationsData.reservations.map((r: any) => ({
+        id: r.id,
+        client: r.user?.first_name ? `${r.user.first_name} ${r.user.last_name || ''}`.trim() : 'Client',
+        email: r.user?.email || 'email@example.com',
+        telephone: r.user?.phone || '06 00 00 00 00',
+        places: r.party_size || 1,
+        statut: r.status === 'CONFIRMED' ? 'confirmé' : r.status === 'PENDING' ? 'en attente' : r.status === 'DECLINED' ? 'refusé' : 'en attente',
+        heureReservation: r.created_at ? new Date(r.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      })));
+    }
+  }, [reservationsData]);
+
+  if (matchLoading || reservationsLoading) {
+    return (
+      <div className="p-8 max-w-6xl mx-auto flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
+      </div>
+    );
+  }
   const percentage = Math.round((matchInfo.reservees / matchInfo.places) * 100);
 
   // Filtrer les réservations par statut

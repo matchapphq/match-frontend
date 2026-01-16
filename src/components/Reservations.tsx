@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Users, Search, Mail, Phone, X, CheckCircle, Clock, Filter, Download, MessageCircle, Calendar, MapPin, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
 import { PageType } from '../App';
-import { usePartnerVenues, useVenueReservations, usePartnerUpdateReservationStatus } from '../hooks/api';
+import { 
+  usePartnerVenueMatches, 
+  usePartnerVenues,
+  usePartnerUpdateReservationStatus,
+} from '../hooks/api';
+import { reservationsAPI } from '../services/api';
 
 interface ReservationsProps {
   onNavigate?: (page: PageType) => void;
@@ -14,41 +19,127 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
   const [filterLieu, setFilterLieu] = useState<string>('tous');
   const [filterPeriode, setFilterPeriode] = useState<'tous' | 'aujourdhui' | 'semaine' | 'avenir' | 'passes'>('tous');
   const [viewMode, setViewMode] = useState<'grouped' | 'list'>('grouped');
-  const [expandedMatches, setExpandedMatches] = useState<number[]>([1]);
-  
-  // Fetch venues and reservations from API
-  const { data: venuesData } = usePartnerVenues();
-  const venues = venuesData?.venues || venuesData || [];
-  const firstVenueId = venues[0]?.id || '';
-  const { data: reservationsData, isLoading } = useVenueReservations(firstVenueId, { status: filterStatut === 'tous' ? undefined : filterStatut });
-  const updateStatusMutation = usePartnerUpdateReservationStatus();
-  
-  // Transform API data
-  const mockReservations = (reservationsData?.reservations || reservationsData || []).map((r: any) => ({
-    id: r.id,
-    clientNom: r.user?.first_name && r.user?.last_name ? `${r.user.first_name} ${r.user.last_name}` : r.clientNom || 'Client',
-    email: r.user?.email || r.email || '',
-    telephone: r.user?.phone || r.telephone || '',
-    nombrePlaces: r.party_size || r.nombrePlaces || 2,
-    statut: r.status === 'CONFIRMED' ? 'confirmée' : r.status === 'PENDING' ? 'en attente' : r.status === 'CANCELLED' ? 'annulée' : r.statut || 'en attente',
-    dateReservation: r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : r.dateReservation || '',
-    matchId: r.venue_match_id || r.matchId || 1,
-    notes: r.special_requests || r.notes || '',
-  }));
-  
-  const mockMatchesWithReservations = venues.map((v: any) => ({
-    id: v.id,
-    equipes: v.name || 'Venue',
-    lieu: v.name || v.street_address || 'Lieu',
-    date: new Date().toLocaleDateString('fr-FR'),
-    heure: '20:00',
-    placesMax: v.capacity || 50,
-  }));
+  const [expandedMatches, setExpandedMatches] = useState<string[]>([]);
+  const [matchReservations, setMatchReservations] = useState<Record<string, any[]>>({});
+  const [reservationsLoading, setReservationsLoading] = useState(false);
 
-  const toggleMatchExpand = (matchId: number) => {
-    setExpandedMatches(prev => 
-      prev.includes(matchId) 
-        ? prev.filter(id => id !== matchId)
+  // API hooks for real data
+  const { data: matchesData, isLoading: matchesLoading } = usePartnerVenueMatches();
+  const { data: venuesData, isLoading: venuesLoading } = usePartnerVenues();
+  const updateReservationStatus = usePartnerUpdateReservationStatus();
+
+  // Transform API data (must run before any conditional returns to keep hook order stable)
+  const rawMatches = useMemo(() => {
+    const list = matchesData?.matches || matchesData?.data || matchesData || [];
+    return Array.isArray(list) ? list : [];
+  }, [matchesData]);
+  const venues = useMemo(() => {
+    const list = venuesData?.venues || venuesData?.data || venuesData || [];
+    return Array.isArray(list) ? list : [];
+  }, [venuesData]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadReservations = async () => {
+      if (!rawMatches.length) {
+        if (isMounted) {
+          setMatchReservations({});
+          setReservationsLoading(false);
+        }
+        return;
+      }
+
+      setReservationsLoading(true);
+      try {
+        const entries = await Promise.all(
+          rawMatches.map(async (match: any) => {
+            try {
+              const response = await reservationsAPI.getByVenueMatch(match.id);
+              const reservations = response.data?.reservations || response.data?.data || response.data || [];
+              return [match.id, reservations];
+            } catch (err) {
+              console.error('Erreur lors du chargement des réservations du match', match.id, err);
+              return [match.id, []];
+            }
+          })
+        );
+
+        if (isMounted) {
+          setMatchReservations(Object.fromEntries(entries));
+        }
+      } finally {
+        if (isMounted) {
+          setReservationsLoading(false);
+        }
+      }
+    };
+
+    loadReservations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rawMatches]);
+
+  // Loading state (after hook declarations)
+  const isLoading = matchesLoading || venuesLoading || (reservationsLoading && rawMatches.length === 0);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
+      </div>
+    );
+  }
+
+  // Build matches with reservations from API data
+  const matchesWithReservations = rawMatches.map((m: any) => {
+    const venue = venues.find((v: any) => v.id === (m.venue_id || m.venue?.id));
+    const reservations = matchReservations[m.id] || [];
+    const scheduledAt = m.match?.scheduled_at || m.scheduled_at;
+    return {
+      id: m.id,
+      equipe1: m.match?.homeTeam || m.match?.home_team?.name || m.match?.home_team || 'Équipe 1',
+      equipe2: m.match?.awayTeam || m.match?.away_team?.name || m.match?.away_team || 'Équipe 2',
+      date: scheduledAt ? new Date(scheduledAt).toLocaleDateString('fr-FR') : 'N/A',
+      heure: scheduledAt ? new Date(scheduledAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '20:00',
+      sport: m.match?.league?.sport?.emoji || m.match?.sport?.emoji || '⚽',
+      competition: m.match?.league?.name || 'Compétition',
+      lieu: venue?.name || m.venue?.name || 'Lieu inconnu',
+      capacite: m.total_capacity ?? m.total_seats ?? 50,
+      reservations,
+    };
+  });
+
+  // Flatten all reservations from matches
+  const reservationsList = matchesWithReservations.flatMap((match: any) =>
+    (match.reservations || []).map((r: any) => ({
+      id: r.id,
+      matchId: match.id,
+      clientNom: `${r.user?.first_name || 'Client'} ${r.user?.last_name || ''}`.trim(),
+      email: r.user?.email || 'email@exemple.com',
+      telephone: r.user?.phone || '06 00 00 00 00',
+      nombrePlaces: r.party_size || r.quantity || 1,
+      statut:
+        r.status === 'CONFIRMED'
+          ? 'confirmée'
+          : r.status === 'PENDING'
+          ? 'en attente'
+          : ['DECLINED', 'CANCELED_BY_USER', 'CANCELED_BY_VENUE'].includes(r.status || '')
+          ? 'annulée'
+          : 'en attente',
+      dateReservation: r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : 'N/A',
+      heureReservation: r.created_at ? new Date(r.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      notes: r.special_requests || r.notes || '',
+      qrCode: r.qr_code || `QR-${r.id}`,
+    }))
+  );
+
+  const toggleMatchExpand = (matchId: string) => {
+    setExpandedMatches((prev) =>
+      prev.includes(matchId)
+        ? prev.filter((id) => id !== matchId)
         : [...prev, matchId]
     );
   };
@@ -77,13 +168,13 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
   };
 
   // Filtrer les réservations
-  const reservationsFiltrees = mockReservations.filter(res => {
+  const reservationsFiltrees = reservationsList.filter(res => {
     const matchSearch = res.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        res.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        res.telephone.includes(searchTerm);
     const matchStatut = filterStatut === 'tous' || res.statut === filterStatut;
     
-    const match = mockMatchesWithReservations.find(m => m.id === res.matchId);
+    const match = matchesWithReservations.find(m => m.id === res.matchId);
     const matchLieu = filterLieu === 'tous' || match?.lieu === filterLieu;
     
     // Filtre de période (simplifié pour la démo)
@@ -98,28 +189,28 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
   });
 
   // Grouper par match
-  const reservationsParMatch = mockMatchesWithReservations.map(match => ({
+  const reservationsParMatch = matchesWithReservations.map(match => ({
     match,
     reservations: reservationsFiltrees.filter(r => r.matchId === match.id),
     stats: {
-      total: mockReservations.filter(r => r.matchId === match.id && r.statut !== 'annulée').length,
-      confirmees: mockReservations.filter(r => r.matchId === match.id && r.statut === 'confirmée').length,
-      enAttente: mockReservations.filter(r => r.matchId === match.id && r.statut === 'en attente').length,
-      placesReservees: mockReservations.filter(r => r.matchId === match.id && r.statut !== 'annulée').reduce((acc, r) => acc + r.nombrePlaces, 0),
+      total: reservationsList.filter(r => r.matchId === match.id && r.statut !== 'annulée').length,
+      confirmees: reservationsList.filter(r => r.matchId === match.id && r.statut === 'confirmée').length,
+      enAttente: reservationsList.filter(r => r.matchId === match.id && r.statut === 'en attente').length,
+      placesReservees: reservationsList.filter(r => r.matchId === match.id && r.statut !== 'annulée').reduce((acc, r) => acc + r.nombrePlaces, 0),
     }
   })).filter(item => item.reservations.length > 0); // Ne montrer que les matchs avec réservations filtrées
 
   // Stats globales
   const statsGlobales = {
-    total: mockReservations.length,
-    confirmees: mockReservations.filter(r => r.statut === 'confirmée').length,
-    enAttente: mockReservations.filter(r => r.statut === 'en attente').length,
-    annulees: mockReservations.filter(r => r.statut === 'annulée').length,
-    totalPlaces: mockReservations.filter(r => r.statut !== 'annulée').reduce((acc, r) => acc + r.nombrePlaces, 0),
-    matchsProgram: mockMatchesWithReservations.length,
+    total: reservationsList.length,
+    confirmees: reservationsList.filter(r => r.statut === 'confirmée').length,
+    enAttente: reservationsList.filter(r => r.statut === 'en attente').length,
+    annulees: reservationsList.filter(r => r.statut === 'annulée').length,
+    totalPlaces: reservationsList.filter(r => r.statut !== 'annulée').reduce((acc, r) => acc + r.nombrePlaces, 0),
+    matchsProgram: matchesWithReservations.length,
   };
 
-  const lieux = Array.from(new Set(mockMatchesWithReservations.map(m => m.lieu)));
+  const lieux = Array.from(new Set(matchesWithReservations.map(m => m.lieu)));
 
   const getStatutColor = (statut: string) => {
     switch (statut) {
@@ -493,7 +584,7 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
               </div>
             ) : (
               reservationsFiltrees.map((reservation) => {
-                const match = mockMatchesWithReservations.find(m => m.id === reservation.matchId);
+                const match = matchesWithReservations.find(m => m.id === reservation.matchId);
                 return (
                   <div
                     key={reservation.id}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, List, Calendar, Eye } from 'lucide-react';
-import { mockAllMatches } from '../data/mockData';
+import { useUpcomingMatches } from '../hooks/api';
 
 interface ListeMatchsProps {
   onBack: () => void;
@@ -9,7 +9,30 @@ interface ListeMatchsProps {
 export function ListeMatchs({ onBack }: ListeMatchsProps) {
   const [filtre, setFiltre] = useState<'tous' | 'à venir' | 'terminé'>('tous');
   
-  const tousLesMatchs = mockAllMatches;
+  const { data: matchesData, isLoading } = useUpcomingMatches();
+  
+  // Transform API data to component format
+  const tousLesMatchs = (matchesData?.matches || []).map((m: any) => {
+    const matchDate = new Date(m.scheduled_at);
+    const now = new Date();
+    return {
+      id: m.id,
+      equipes: m.home_team?.name && m.away_team?.name ? `${m.home_team.name} vs ${m.away_team.name}` : 'Match',
+      date: matchDate.toLocaleDateString('fr-FR'),
+      heure: matchDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      statut: matchDate > now ? 'à venir' : 'terminé',
+      sport: m.league?.sport?.emoji || '⚽',
+      competition: m.league?.name || 'Compétition',
+    };
+  });
+
+  if (isLoading) {
+    return (
+      <div className="p-8 max-w-6xl mx-auto flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
+      </div>
+    );
+  }
 
   const matchsFiltres = filtre === 'tous' 
     ? tousLesMatchs 

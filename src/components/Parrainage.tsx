@@ -10,20 +10,21 @@ export function Parrainage({ onBack }: ParrainageProps) {
   const [email, setEmail] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // Fetch referral data from API
-  const { data: referralCodeData } = useMyReferralCode();
-  const { data: referralStats } = useReferralStats();
-  const { data: referralHistoryData } = useReferralHistory();
+  // API hooks for referral data
+  const { data: referralCodeData, isLoading: codeLoading } = useMyReferralCode();
+  const { data: statsData, isLoading: statsLoading } = useReferralStats();
+  const { data: historyData, isLoading: historyLoading } = useReferralHistory();
 
-  const referralCode = referralCodeData?.code || 'MATCH-XXXXX';
-  const referralLink = `https://match-app.fr/parrainage/${referralCode}`;
+  const isLoading = codeLoading || statsLoading || historyLoading;
 
   const handleSendInvitation = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real implementation, this would call an API to send email
     alert(`Invitation envoyée à ${email}`);
     setEmail('');
   };
+
+  const referralCode = referralCodeData?.code || 'XXXXXX';
+  const referralLink = `https://match-app.fr/parrainage/${referralCode}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -31,18 +32,26 @@ export function Parrainage({ onBack }: ParrainageProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Transform API data
-  const parrainages = (referralHistoryData?.referrals || referralHistoryData || []).map((r: any) => ({
+  // Transform API data to component format
+  const parrainages = (historyData?.referrals || []).map((r: any) => ({
     id: r.id,
-    nom: r.referred_user?.business_name || r.nom || 'Établissement',
-    statut: r.status === 'COMPLETED' ? 'Accepté' : r.status === 'PENDING' ? 'En attente' : r.statut || 'En attente',
-    date: r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : r.date || '',
-    boosts: r.reward_amount || r.boosts || 0,
-    email: r.referred_email || r.email || '',
+    nom: r.referred_user?.first_name ? `${r.referred_user.first_name} ${r.referred_user.last_name}` : 'Utilisateur',
+    statut: r.status === 'COMPLETED' ? 'Accepté' : r.status === 'PENDING' ? 'En attente' : 'En attente',
+    date: r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : 'N/A',
+    boosts: r.status === 'COMPLETED' ? 5 : 0,
+    email: r.referred_user?.email || 'email@example.com',
   }));
 
-  const totalBoostsGagnes = referralStats?.total_boosts_earned || parrainages.filter((p: any) => p.statut === 'Accepté').reduce((acc: number, p: any) => acc + (p.boosts || 0), 0);
-  const parrainagesReussis = referralStats?.successful_referrals || parrainages.filter((p: any) => p.statut === 'Accepté').length;
+  const totalBoostsGagnes = statsData?.total_boosts_earned || parrainages.filter((p: any) => p.statut === 'Accepté').reduce((acc: number, p: any) => acc + (p.boosts || 0), 0);
+  const parrainagesReussis = statsData?.successful_referrals || parrainages.filter((p: any) => p.statut === 'Accepté').length;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">

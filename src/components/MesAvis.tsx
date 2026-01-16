@@ -1,13 +1,33 @@
 import { ArrowLeft, Star } from 'lucide-react';
-import { mockAvis } from '../data/mockData';
+import { useVenueReviews } from '../hooks/api';
 
 interface MesAvisProps {
   onBack: () => void;
 }
 
 export function MesAvis({ onBack }: MesAvisProps) {
-  const avisData = mockAvis;
-  const noteMoyenne = (avisData.reduce((sum, avis) => sum + avis.note, 0) / avisData.length).toFixed(1);
+  const { data: reviewsData, isLoading } = useVenueReviews('all'); // Get reviews for all venues
+  
+  // Transform API data to component format
+  const avisData = (reviewsData?.reviews || []).map((r: any) => ({
+    id: r.id,
+    client: r.user?.first_name ? `${r.user.first_name} ${r.user.last_name || ''}`.trim() : 'Client',
+    note: r.rating || 0,
+    commentaire: r.comment || '',
+    date: r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : 'N/A',
+  }));
+
+  const noteMoyenne = avisData.length > 0 
+    ? (avisData.reduce((sum: number, avis: any) => sum + avis.note, 0) / avisData.length).toFixed(1)
+    : '0.0';
+
+  if (isLoading) {
+    return (
+      <div className="p-8 max-w-6xl mx-auto flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto">

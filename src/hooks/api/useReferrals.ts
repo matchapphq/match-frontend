@@ -8,7 +8,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
-import { referralAPI } from '../../services/api';
+import { referralsAPI } from '../../services/api';
 
 // ============================================================================
 // REFERRALS QUERY HOOKS
@@ -20,7 +20,7 @@ import { referralAPI } from '../../services/api';
 export const useMyReferralCode = (options?: UseQueryOptions<any, Error>) => {
   return useQuery({
     queryKey: ['referrals', 'my-code'],
-    queryFn: () => referralAPI.getCode().then((res) => res.data),
+    queryFn: () => referralsAPI.getMyCode().then((res) => res.data),
     staleTime: 10 * 60 * 1000, // 10 minutes
     ...options,
   });
@@ -32,7 +32,7 @@ export const useMyReferralCode = (options?: UseQueryOptions<any, Error>) => {
 export const useReferralStats = (options?: UseQueryOptions<any, Error>) => {
   return useQuery({
     queryKey: ['referrals', 'stats'],
-    queryFn: () => referralAPI.getStats().then((res) => res.data),
+    queryFn: () => referralsAPI.getStats().then((res) => res.data),
     staleTime: 1 * 60 * 1000, // 1 minute
     ...options,
   });
@@ -47,7 +47,7 @@ export const useReferralHistory = (
 ) => {
   return useQuery({
     queryKey: ['referrals', 'history', params],
-    queryFn: () => referralAPI.getHistory(params).then((res) => res.data),
+    queryFn: () => referralsAPI.getHistory(params).then((res) => res.data),
     staleTime: 1 * 60 * 1000,
     ...options,
   });
@@ -63,7 +63,7 @@ export const useReferralHistory = (
  */
 export const useValidateReferralCode = (options?: UseMutationOptions<any, Error, string>) => {
   return useMutation({
-    mutationFn: (code: string) => referralAPI.validateCode(code).then((res) => res.data),
+    mutationFn: (code: string) => referralsAPI.validate(code).then((res) => res.data),
     ...options,
   });
 };
@@ -75,7 +75,7 @@ export const useClaimReferralReward = (options?: UseMutationOptions<any, Error, 
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (referralId: string) => referralAPI.useBoost(referralId, '').then((res) => res.data),
+    mutationFn: (referralId: string) => referralsAPI.claimReward(referralId).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['referrals', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['referrals', 'history'] });
