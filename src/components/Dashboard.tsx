@@ -1,24 +1,39 @@
 import { Calendar, TrendingUp, Users, Eye, MapPin, Zap, Clock, ArrowUpRight, Star, MessageSquare, CheckCircle, Plus, MoreVertical, QrCode } from 'lucide-react';
 import { PageType } from '../App';
 import { useState } from 'react';
-import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { ParrainageWidget } from './ParrainageWidget';
+import { usePartnerVenueMatches, usePartnerCustomerStats, usePartnerAnalyticsSummary } from '../hooks/api';
+import { useBoostSummary } from '../hooks/api';
 
 interface DashboardProps {
   onNavigate: (page: PageType, matchId?: number, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { getUserMatchs, getUserClients, boostsDisponibles } = useAppContext();
   const { currentUser } = useAuth();
   const [periodFilter, setPeriodFilter] = useState<'7j' | '30j' | '90j'>('30j');
 
-  const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
-  const allClients = currentUser ? getUserClients(currentUser.id) : [];
+  // Fetch real data from API
+  const { data: matchesData, isLoading: matchesLoading } = usePartnerVenueMatches();
+  const { data: customerStats, isLoading: statsLoading } = usePartnerCustomerStats();
+  const { data: analyticsData, isLoading: analyticsLoading } = usePartnerAnalyticsSummary();
+  const { data: boostData, isLoading: boostLoading } = useBoostSummary();
 
-  const matchsAVenir = matchs.filter(m => m.statut === 'à venir');
-  const matchsTermines = matchs.filter(m => m.statut === 'terminé');
+  const isLoading = matchesLoading || statsLoading || analyticsLoading || boostLoading;
+
+  // Transform API data to match component expectations
+  const matches = matchesData?.matches || matchesData || [];
+  const matchsAVenir = matches.filter((m: any) => {
+    const matchDate = new Date(m.scheduled_at || m.date);
+    return matchDate > new Date();
+  });
+  const matchsTermines = matches.filter((m: any) => {
+    const matchDate = new Date(m.scheduled_at || m.date);
+    return matchDate <= new Date();
+  });
+  const allClients = customerStats?.clients || [];
+  const boostsDisponibles = boostData?.available_boosts || boostData?.boosts_available || 0;
 
   const stats = [
     {
@@ -69,6 +84,17 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   ];
 
   const upcomingMatches = matchsAVenir.slice(0, 4);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">

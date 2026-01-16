@@ -646,6 +646,203 @@ export const webhooksAPI = {
 };
 
 // ============================================================================
+// PARTNER API (Venue Owner Dashboard)
+// ============================================================================
+
+export const partnerAPI = {
+  // Venues
+  getVenues: () => api.get('/partners/venues'),
+
+  createVenue: (data: {
+    name: string;
+    street_address: string;
+    city: string;
+    postal_code: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  }) => api.post('/partners/venues', data),
+
+  verifyCheckout: (sessionId: string) =>
+    api.post('/partners/venues/verify-checkout', { session_id: sessionId }),
+
+  // Venue Matches
+  getVenueMatches: () => api.get('/partners/venues/matches'),
+
+  scheduleMatch: (
+    venueId: string,
+    data: { match_id: string; total_seats: number }
+  ) => api.post(`/partners/venues/${venueId}/matches`, data),
+
+  updateVenueMatch: (
+    venueId: string,
+    matchId: string,
+    data: {
+      total_capacity?: number;
+      available_capacity?: number;
+      is_active?: boolean;
+      is_featured?: boolean;
+      allows_reservations?: boolean;
+      max_group_size?: number;
+      notes?: string;
+    }
+  ) => api.put(`/partners/venues/${venueId}/matches/${matchId}`, data),
+
+  cancelMatch: (venueId: string, matchId: string) =>
+    api.delete(`/partners/venues/${venueId}/matches/${matchId}`),
+
+  // Venue Reservations
+  getVenueReservations: (
+    venueId: string,
+    params?: { page?: number; limit?: number; status?: string }
+  ) => api.get(`/partners/venues/${venueId}/reservations`, { params }),
+
+  getReservationStats: (
+    venueId: string,
+    params?: { from?: string; to?: string }
+  ) => api.get(`/partners/venues/${venueId}/reservations/stats`, { params }),
+
+  // Venue Matches Calendar
+  getMatchesCalendar: (
+    venueId: string,
+    params?: { month?: string; status?: string }
+  ) => api.get(`/partners/venues/${venueId}/matches/calendar`, { params }),
+
+  // Venue Clients
+  getVenueClients: (venueId: string) =>
+    api.get(`/partners/venues/${venueId}/clients`),
+
+  // Venue Subscription
+  getVenueSubscription: (venueId: string) =>
+    api.get(`/partners/venues/${venueId}/subscription`),
+
+  // Payment Portal
+  getPaymentPortalURL: (venueId: string) =>
+    api.post(`/partners/venues/${venueId}/payment-portal`),
+
+  // Stats & Analytics
+  getCustomerStats: () => api.get('/partners/stats/customers'),
+
+  getAnalyticsSummary: () => api.get('/partners/analytics/summary'),
+
+  getAnalyticsDashboard: (params?: { start_date?: string; end_date?: string }) =>
+    api.get('/partners/analytics/dashboard', { params }),
+
+  // Reservation Management
+  updateReservationStatus: (
+    reservationId: string,
+    status: 'CONFIRMED' | 'DECLINED'
+  ) => api.patch(`/partners/reservations/${reservationId}/status`, { status }),
+
+  updateReservation: (
+    reservationId: string,
+    data: {
+      status?: string;
+      table_number?: string;
+      notes?: string;
+      party_size?: number;
+      special_requests?: string;
+    }
+  ) => api.patch(`/partners/reservations/${reservationId}`, data),
+
+  markNoShow: (reservationId: string, reason?: string) =>
+    api.post(`/partners/reservations/${reservationId}/mark-no-show`, { reason }),
+
+  // Waitlist
+  getVenueMatchWaitlist: (
+    venueId: string,
+    matchId: string,
+    params?: { status?: string }
+  ) => api.get(`/partners/venues/${venueId}/matches/${matchId}/waitlist`, { params }),
+
+  notifyWaitlistCustomer: (
+    entryId: string,
+    data?: { message?: string; expiry_minutes?: number }
+  ) => api.post(`/partners/waitlist/${entryId}/notify`, data),
+};
+
+// ============================================================================
+// BOOST API
+// ============================================================================
+
+export const boostAPI = {
+  // Prices (public)
+  getPrices: () => api.get('/boosts/prices'),
+
+  // Available boosts
+  getAvailable: () => api.get('/boosts/available'),
+
+  // Stats
+  getStats: () => api.get('/boosts/stats'),
+
+  getSummary: () => api.get('/boosts/summary'),
+
+  // Purchase
+  createCheckout: (data: {
+    pack_type: 'single' | 'pack_3' | 'pack_10';
+    success_url?: string;
+    cancel_url?: string;
+  }) => api.post('/boosts/purchase/create-checkout', data),
+
+  verifyPurchase: (sessionId: string) =>
+    api.post('/boosts/purchase/verify', { session_id: sessionId }),
+
+  getPurchaseHistory: (params?: { page?: number; limit?: number }) =>
+    api.get('/boosts/purchases', { params }),
+
+  // Boostable matches
+  getBoostableMatches: (venueId: string) =>
+    api.get(`/boosts/boostable/${venueId}`),
+
+  // Activation
+  activateBoost: (data: { boost_id: string; venue_match_id: string }) =>
+    api.post('/boosts/activate', data),
+
+  deactivateBoost: (boostId: string) =>
+    api.post('/boosts/deactivate', { boost_id: boostId }),
+
+  // History & Analytics
+  getHistory: (params?: { page?: number; limit?: number; status?: string }) =>
+    api.get('/boosts/history', { params }),
+
+  getAnalytics: (boostId: string) => api.get(`/boosts/analytics/${boostId}`),
+};
+
+// ============================================================================
+// REFERRALS API (Updated to match backend routes)
+// ============================================================================
+
+export const referralAPI = {
+  // Get referral code
+  getCode: () => api.get('/referral/code'),
+
+  // Get stats
+  getStats: () => api.get('/referral/stats'),
+
+  // Get history
+  getHistory: (params?: { page?: number; limit?: number; status?: string }) =>
+    api.get('/referral/history', { params }),
+
+  // Validate code (public)
+  validateCode: (referralCode: string) =>
+    api.post('/referral/validate', { referral_code: referralCode }),
+
+  // Register referral
+  registerReferral: (data: { referral_code: string; referred_user_id: string }) =>
+    api.post('/referral/register', data),
+
+  // Convert referral
+  convertReferral: (referredUserId: string) =>
+    api.post('/referral/convert', { referred_user_id: referredUserId }),
+
+  // Boosts from referrals
+  getBoosts: () => api.get('/referral/boosts'),
+
+  useBoost: (boostId: string, venueMatchId: string) =>
+    api.post(`/referral/boosts/${boostId}/use`, { venue_match_id: venueMatchId }),
+};
+
+// ============================================================================
 // HEALTH CHECK
 // ============================================================================
 

@@ -1,8 +1,8 @@
 import { Calendar, Eye, Plus, Zap, Edit, TrendingUp, Users, Clock, ChevronRight, Filter } from 'lucide-react';
 import { useState } from 'react';
 import { PageType } from '../App';
-import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { usePartnerVenueMatches } from '../hooks/api';
 
 interface MesMatchsProps {
   onNavigate?: (page: PageType, matchId?: number) => void;
@@ -10,11 +10,35 @@ interface MesMatchsProps {
 }
 
 export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsProps) {
-  const { getUserMatchs } = useAppContext();
   const { currentUser } = useAuth();
   const [filtre, setFiltre] = useState<'tous' | 'à venir' | 'terminé'>(defaultFilter);
 
-  const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
+  // Fetch matches from API
+  const { data: matchesData, isLoading } = usePartnerVenueMatches();
+  
+  // Transform API data to match component expectations
+  const matchs = (matchesData?.matches || matchesData || []).map((m: any) => {
+    const matchDate = new Date(m.scheduled_at || m.match?.scheduled_at || m.date);
+    const now = new Date();
+    const statut = matchDate > now ? 'à venir' : 'terminé';
+    
+    return {
+      id: m.id,
+      equipes: m.match?.home_team?.name && m.match?.away_team?.name 
+        ? `${m.match.home_team.name} vs ${m.match.away_team.name}`
+        : m.equipes || 'Match',
+      date: matchDate.toISOString().split('T')[0],
+      heure: m.scheduled_at ? new Date(m.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : m.heure || '20:00',
+      statut,
+      reservees: m.reservations_count || m.reservees || 0,
+      total: m.total_seats || m.total || 50,
+      vues: m.views_count || m.vues || 0,
+      placesDisponibles: m.available_seats || m.placesDisponibles || 50,
+      reservations: m.reservations_count || m.reservations || 0,
+      competition: m.match?.league?.name || m.competition || 'Compétition',
+      boosted: m.is_boosted || m.boosted || false,
+    };
+  });
 
   const handleProgrammerMatch = () => {
     if (onNavigate) {
@@ -61,6 +85,17 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
   const getPercentage = (reservees: number, total: number) => {
     return Math.round((reservees / total) * 100);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">

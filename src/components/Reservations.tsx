@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Users, Search, Mail, Phone, X, CheckCircle, Clock, Filter, Download, MessageCircle, Calendar, MapPin, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
 import { PageType } from '../App';
-import { mockMatchesWithReservations, mockReservations } from '../data/mockData';
+import { usePartnerVenues, useVenueReservations, usePartnerUpdateReservationStatus } from '../hooks/api';
 
 interface ReservationsProps {
   onNavigate?: (page: PageType) => void;
@@ -14,7 +14,36 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
   const [filterLieu, setFilterLieu] = useState<string>('tous');
   const [filterPeriode, setFilterPeriode] = useState<'tous' | 'aujourdhui' | 'semaine' | 'avenir' | 'passes'>('tous');
   const [viewMode, setViewMode] = useState<'grouped' | 'list'>('grouped');
-  const [expandedMatches, setExpandedMatches] = useState<number[]>([1]); // Premier match ouvert par défaut
+  const [expandedMatches, setExpandedMatches] = useState<number[]>([1]);
+  
+  // Fetch venues and reservations from API
+  const { data: venuesData } = usePartnerVenues();
+  const venues = venuesData?.venues || venuesData || [];
+  const firstVenueId = venues[0]?.id || '';
+  const { data: reservationsData, isLoading } = useVenueReservations(firstVenueId, { status: filterStatut === 'tous' ? undefined : filterStatut });
+  const updateStatusMutation = usePartnerUpdateReservationStatus();
+  
+  // Transform API data
+  const mockReservations = (reservationsData?.reservations || reservationsData || []).map((r: any) => ({
+    id: r.id,
+    clientNom: r.user?.first_name && r.user?.last_name ? `${r.user.first_name} ${r.user.last_name}` : r.clientNom || 'Client',
+    email: r.user?.email || r.email || '',
+    telephone: r.user?.phone || r.telephone || '',
+    nombrePlaces: r.party_size || r.nombrePlaces || 2,
+    statut: r.status === 'CONFIRMED' ? 'confirmée' : r.status === 'PENDING' ? 'en attente' : r.status === 'CANCELLED' ? 'annulée' : r.statut || 'en attente',
+    dateReservation: r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : r.dateReservation || '',
+    matchId: r.venue_match_id || r.matchId || 1,
+    notes: r.special_requests || r.notes || '',
+  }));
+  
+  const mockMatchesWithReservations = venues.map((v: any) => ({
+    id: v.id,
+    equipes: v.name || 'Venue',
+    lieu: v.name || v.street_address || 'Lieu',
+    date: new Date().toLocaleDateString('fr-FR'),
+    heure: '20:00',
+    placesMax: v.capacity || 50,
+  }));
 
   const toggleMatchExpand = (matchId: number) => {
     setExpandedMatches(prev => 

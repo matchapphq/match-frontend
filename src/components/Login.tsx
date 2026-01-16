@@ -3,7 +3,7 @@ import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => boolean;
+  onLogin: (email: string, password: string) => Promise<boolean>;
   onSwitchToRegister: () => void;
   onBackToLanding?: () => void;
 }
@@ -15,18 +15,21 @@ export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginPro
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = onLogin(email, password);
+    try {
+      const success = await onLogin(email, password);
       if (!success) {
         setError('Email ou mot de passe incorrect');
       }
+    } catch (err) {
+      setError('Une erreur est survenue lors de la connexion');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

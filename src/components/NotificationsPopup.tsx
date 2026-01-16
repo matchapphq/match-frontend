@@ -1,7 +1,7 @@
 import { Bell, Check, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications, useMarkAllNotificationsAsRead, useMarkNotificationAsRead } from '../hooks/api';
 
 interface NotificationsPopupProps {
   onClose?: () => void;
@@ -9,20 +9,34 @@ interface NotificationsPopupProps {
 
 export function NotificationsPopup({ onClose }: NotificationsPopupProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, handleReservationAction, markAllAsRead } = useAppContext();
   const { currentUser } = useAuth();
   const popupRef = useRef<HTMLDivElement>(null);
 
-  const userNotifications = currentUser 
-    ? notifications.filter(n => n.userId === currentUser.id)
-    : [];
+  // Fetch notifications from API
+  const { data: notificationsData } = useNotifications();
+  const markAllAsReadMutation = useMarkAllNotificationsAsRead();
+  const markAsReadMutation = useMarkNotificationAsRead();
+
+  // Transform API data
+  const notifications = (notificationsData?.notifications || notificationsData || []).map((n: any) => ({
+    id: n.id,
+    userId: n.user_id || currentUser?.id,
+    type: n.type || 'info',
+    title: n.title,
+    message: n.message || n.body,
+    read: n.is_read || n.read || false,
+    createdAt: n.created_at,
+    reservationId: n.metadata?.reservation_id,
+  }));
+
+  const userNotifications = notifications;
 
   // Séparer les notifications par priorité
-  const prioritaires = userNotifications.filter(n => !n.read && n.type === 'reservation');
-  const informatives = userNotifications.filter(n => !n.read && n.type !== 'reservation');
-  const historisees = userNotifications.filter(n => n.read);
+  const prioritaires = userNotifications.filter((n: any) => !n.read && n.type === 'reservation');
+  const informatives = userNotifications.filter((n: any) => !n.read && n.type !== 'reservation');
+  const historisees = userNotifications.filter((n: any) => n.read);
 
-  const unreadCount = userNotifications.filter(n => !n.read).length;
+  const unreadCount = userNotifications.filter((n: any) => !n.read).length;
 
   // Fermer le popup quand on clique à l'extérieur
   useEffect(() => {
@@ -42,17 +56,17 @@ export function NotificationsPopup({ onClose }: NotificationsPopupProps) {
   }, [isOpen]);
 
   const handleAccept = (notificationId: number, reservationId: number) => {
-    handleReservationAction(reservationId, 'acceptée');
+    // Mark notification as read when accepting
+    markAsReadMutation.mutate(notificationId.toString());
   };
 
   const handleReject = (notificationId: number, reservationId: number) => {
-    handleReservationAction(reservationId, 'refusée');
+    // Mark notification as read when rejecting
+    markAsReadMutation.mutate(notificationId.toString());
   };
 
   const handleMarkAllAsRead = () => {
-    if (markAllAsRead && currentUser) {
-      markAllAsRead(currentUser.id);
-    }
+    markAllAsReadMutation.mutate();
   };
 
   return (

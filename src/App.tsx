@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { QRScanner } from './components/QRScanner';
 import { QrCode } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { healthAPI } from './services/api';
 import { AppProvider } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -86,12 +87,13 @@ export default function App() {
 }
 
 function AppContent() {
-  const { isAuthenticated, login, register, currentUser } = useAuth();
+  const { isAuthenticated, isLoading, login, register, currentUser } = useAuth();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('à venir');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
   const [authView, setAuthView] = useState<'landing' | 'login' | 'register' | 'referral'>('landing');
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   
   // États pour le parcours de souscription
   const [selectedFormule, setSelectedFormule] = useState<'mensuel' | 'annuel'>('mensuel');
@@ -100,15 +102,42 @@ function AppContent() {
   // État pour la navigation non authentifiée
   const [unauthPage, setUnauthPage] = useState<'landing' | 'app-presentation' | null>(null);
 
+  // Health check on app load
+  useEffect(() => {
+    const checkBackendHealth = async () => {
+      try {
+        await healthAPI.check();
+        setBackendStatus('online');
+        console.log('✅ Backend API is online');
+      } catch (error) {
+        setBackendStatus('offline');
+        console.error('❌ Backend API is offline:', error);
+      }
+    };
+    checkBackendHealth();
+  }, []);
+
   // Gestion de l'inscription avec redirection vers "ajouter-restaurant"
-  const handleRegister = (data: any) => {
-    const success = register(data);
+  const handleRegister = async (data: any) => {
+    const success = await register(data);
     if (success) {
       // L'utilisateur sera redirigé vers l'écran d'onboarding automatiquement
       setCurrentPage('ajouter-restaurant');
     }
     return success;
   };
+
+  // Show loading screen while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf] mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Si l'utilisateur n'est pas authentifié, afficher la landing page, connexion ou inscription
   if (!isAuthenticated) {

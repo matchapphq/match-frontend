@@ -1,6 +1,6 @@
 import { ArrowLeft, Calendar, ChevronRight, MapPin, Check, Search, Trophy, Clock, Users } from 'lucide-react';
 import { useState } from 'react';
-import { mockSports, mockAvailableMatches, mockRestaurants } from '../data/mockData';
+import { usePartnerVenues, useSports, useUpcomingMatches } from '../hooks/api';
 
 interface ProgrammerMatchProps {
   onBack: () => void;
@@ -23,9 +23,6 @@ interface Match {
   venue?: string;
 };
 
-const SPORTS = mockSports;
-const MOCK_MATCHES = mockAvailableMatches;
-
 export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const [step, setStep] = useState<'sport' | 'date' | 'search' | 'configure'>('sport');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
@@ -35,7 +32,30 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const [placesDisponibles, setPlacesDisponibles] = useState(30);
   const maxPlaces = 50;
 
-  const restaurants = mockRestaurants.map(r => ({ id: r.id, nom: r.nom }));
+  // Fetch data from API
+  const { data: venuesData } = usePartnerVenues();
+  const { data: sportsData } = useSports();
+  const { data: matchesData } = useUpcomingMatches({ sport_id: selectedSport || undefined });
+  
+  // Transform API data
+  const restaurants = (venuesData?.venues || venuesData || []).map((r: any) => ({ id: r.id, nom: r.name || r.nom }));
+  
+  const SPORTS: Sport[] = (sportsData?.sports || sportsData || []).map((s: any) => ({
+    id: s.id?.toString() || s.slug,
+    name: s.name,
+    emoji: s.emoji || '⚽',
+  }));
+  
+  const MOCK_MATCHES: Match[] = (matchesData?.matches || matchesData || []).map((m: any) => ({
+    id: m.id?.toString(),
+    sport: m.sport_id?.toString() || m.sport?.id?.toString() || selectedSport || '',
+    team1: m.home_team?.name || m.team1 || 'Team 1',
+    team2: m.away_team?.name || m.team2 || 'Team 2',
+    league: m.league?.name || m.league || 'League',
+    date: m.scheduled_at ? new Date(m.scheduled_at).toISOString().split('T')[0] : m.date || '',
+    time: m.scheduled_at ? new Date(m.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : m.time || '20:00',
+    venue: m.venue?.name || m.venue || '',
+  }));
 
   const handleSportSelect = (sportId: string) => {
     setSelectedSport(sportId);

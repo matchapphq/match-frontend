@@ -10,3 +10,5 @@ export * from './useMatches';
 export * from './useReservations';
 export * from './usePartner';
 export * from './useReferrals';
+export * from './useBoosts';
+export * from './useOther';

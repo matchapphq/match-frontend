@@ -1,5 +1,6 @@
 import { Gift, Users, Zap, Share2, CheckCircle, Copy, Mail, Send, Award, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
+import { useMyReferralCode, useReferralStats, useReferralHistory } from '../hooks/api';
 
 interface ParrainageProps {
   onBack?: () => void;
@@ -9,26 +10,39 @@ export function Parrainage({ onBack }: ParrainageProps) {
   const [email, setEmail] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Fetch referral data from API
+  const { data: referralCodeData } = useMyReferralCode();
+  const { data: referralStats } = useReferralStats();
+  const { data: referralHistoryData } = useReferralHistory();
+
+  const referralCode = referralCodeData?.code || 'MATCH-XXXXX';
+  const referralLink = `https://match-app.fr/parrainage/${referralCode}`;
+
   const handleSendInvitation = (e: React.FormEvent) => {
     e.preventDefault();
+    // In a real implementation, this would call an API to send email
     alert(`Invitation envoyée à ${email}`);
     setEmail('');
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText('https://match-app.fr/parrainage/jean-restaurateur-xyz123');
+    navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const parrainages = [
-    { id: 1, nom: 'Le Comptoir Sport', statut: 'En attente', date: '05/12/2024', email: 'contact@comptoirsport.fr' },
-    { id: 2, nom: 'Bar des Amis', statut: 'Accepté', date: '28/11/2024', boosts: 5, email: 'bar@desamis.fr' },
-    { id: 3, nom: 'La Taverne', statut: 'Accepté', date: '15/11/2024', boosts: 5, email: 'contact@lataverne.fr' },
-  ];
+  // Transform API data
+  const parrainages = (referralHistoryData?.referrals || referralHistoryData || []).map((r: any) => ({
+    id: r.id,
+    nom: r.referred_user?.business_name || r.nom || 'Établissement',
+    statut: r.status === 'COMPLETED' ? 'Accepté' : r.status === 'PENDING' ? 'En attente' : r.statut || 'En attente',
+    date: r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : r.date || '',
+    boosts: r.reward_amount || r.boosts || 0,
+    email: r.referred_email || r.email || '',
+  }));
 
-  const totalBoostsGagnes = parrainages.filter(p => p.statut === 'Accepté').reduce((acc, p) => acc + (p.boosts || 0), 0);
-  const parrainagesReussis = parrainages.filter(p => p.statut === 'Accepté').length;
+  const totalBoostsGagnes = referralStats?.total_boosts_earned || parrainages.filter((p: any) => p.statut === 'Accepté').reduce((acc: number, p: any) => acc + (p.boosts || 0), 0);
+  const parrainagesReussis = referralStats?.successful_referrals || parrainages.filter((p: any) => p.statut === 'Accepté').length;
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">

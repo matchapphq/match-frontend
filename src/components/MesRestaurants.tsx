@@ -1,17 +1,34 @@
 import { Plus, MapPin, Star, Users, Edit, Building2, TrendingUp, Eye, MoreVertical, ChevronRight } from 'lucide-react';
 import { PageType } from '../App';
-import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { usePartnerVenues } from '../hooks/api';
 
 interface MesRestaurantsProps {
   onNavigate?: (page: PageType, matchId?: number, restaurantId?: number) => void;
 }
 
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
-  const { getUserRestaurants } = useAppContext();
   const { currentUser } = useAuth();
-
-  const restaurants = currentUser ? getUserRestaurants(currentUser.id) : [];
+  
+  // Fetch venues from API
+  const { data: venuesData, isLoading } = usePartnerVenues();
+  
+  // Transform API data to match component expectations
+  const restaurants = (venuesData?.venues || venuesData || []).map((v: any) => ({
+    id: v.id,
+    nom: v.name || v.nom,
+    adresse: v.street_address || v.adresse,
+    telephone: v.phone || v.telephone,
+    email: v.email,
+    capaciteMax: v.capacity || v.capaciteMax || 50,
+    note: v.average_rating || v.note || 4.5,
+    totalAvis: v.review_count || v.totalAvis || 0,
+    image: v.photo_url || v.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+    horaires: v.opening_hours || v.horaires || 'Non spécifié',
+    tarif: v.subscription_plan || v.tarif || '30€/mois',
+    matchsOrganises: v.matches_count || v.matchsOrganises || 0,
+    bookingMode: v.booking_mode || v.bookingMode || 'INSTANT',
+  }));
 
   const handleAddRestaurant = () => {
     if (onNavigate) {

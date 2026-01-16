@@ -1,22 +1,32 @@
 import { TrendingUp, Zap, Eye, Users, Target, Gift, Sparkles, ChevronRight, CheckCircle2, ArrowUpRight, ShoppingCart } from 'lucide-react';
 import { PageType } from '../App';
-import { useAppContext } from '../context/AppContext';
 import { useState } from 'react';
+import { useBoostSummary, useBoostHistory } from '../hooks/api';
 
 interface BoosterProps {
   onBack: () => void;
   onNavigate?: (page: PageType) => void;
 }
 
-const matchsBoostes = [
-  { id: 1, equipe1: 'PSG', equipe2: 'OM', date: '15/11/2024', heure: '21:00', vuesGagnees: 87, reservations: 24 },
-  { id: 2, equipe1: 'Real Madrid', equipe2: 'Barcelona', date: '10/11/2024', heure: '20:00', vuesGagnees: 142, reservations: 31 },
-  { id: 3, equipe1: 'Bayern', equipe2: 'Dortmund', date: '05/11/2024', heure: '18:45', vuesGagnees: 95, reservations: 18 },
-];
-
 export function Booster({ onBack, onNavigate }: BoosterProps) {
-  const { boostsDisponibles } = useAppContext();
   const [selectedMatch, setSelectedMatch] = useState<number | null>(null);
+
+  // Fetch boost data from API
+  const { data: boostData } = useBoostSummary();
+  const { data: boostHistoryData } = useBoostHistory();
+  
+  const boostsDisponibles = boostData?.available_boosts || boostData?.boosts_available || 0;
+  
+  // Transform API data for boosted matches
+  const matchsBoostes = (boostHistoryData?.boosts || boostHistoryData || []).map((b: any) => ({
+    id: b.id,
+    equipe1: b.venue_match?.match?.home_team?.name || b.equipe1 || 'Team 1',
+    equipe2: b.venue_match?.match?.away_team?.name || b.equipe2 || 'Team 2',
+    date: b.created_at ? new Date(b.created_at).toLocaleDateString('fr-FR') : b.date || '',
+    heure: b.venue_match?.match?.scheduled_at ? new Date(b.venue_match.match.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : b.heure || '20:00',
+    vuesGagnees: b.views_gained || b.vuesGagnees || 0,
+    reservations: b.reservations_gained || b.reservations || 0,
+  }));
 
   const handleParrainer = () => {
     if (onNavigate) {
