@@ -1,7 +1,11 @@
-import { Plus, MapPin, Star, Users, Edit, Building2, TrendingUp, Eye, MoreVertical, ChevronRight } from 'lucide-react';
+import { Plus, MapPin, Star, Users, Edit, Building2, TrendingUp, Eye, MoreVertical, ChevronRight, Loader2 } from 'lucide-react';
 import { PageType } from '../../App';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { usePartnerVenues } from '../../hooks/api';
+
+// Check if we're using API or mock data
+const USE_API = import.meta.env.VITE_USE_API === 'true';
 
 interface MesRestaurantsProps {
   onNavigate?: (page: PageType, matchId?: number, restaurantId?: number) => void;
@@ -11,7 +15,24 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   const { getUserRestaurants } = useAppContext();
   const { currentUser } = useAuth();
 
-  const restaurants = currentUser ? getUserRestaurants(currentUser.id) : [];
+  // API hook for venues
+  const { data: venuesData, isLoading, error } = usePartnerVenues(
+    { enabled: USE_API }
+  );
+
+  // Use API data or fall back to mock data
+  const restaurants = USE_API
+    ? (venuesData?.venues || []).map((venue: any) => ({
+        id: venue.id,
+        nom: venue.name,
+        adresse: `${venue.street_address}, ${venue.postal_code} ${venue.city}`,
+        image: venue.photos?.[0]?.url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+        note: venue.rating?.average || 4.5,
+        capaciteMax: venue.capacity || 50,
+        matchsOrganises: venue.matches_count || 0,
+        subscription: venue.subscription,
+      }))
+    : (currentUser ? getUserRestaurants(currentUser.id) : []);
 
   const handleAddRestaurant = () => {
     if (onNavigate) {
@@ -41,10 +62,45 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
 
   const totalRestaurants = restaurants.length;
   const noteMoyenne = restaurants.length > 0
-    ? (restaurants.reduce((acc, r) => acc + r.note, 0) / restaurants.length).toFixed(1)
+    ? (restaurants.reduce((acc: number, r: any) => acc + r.note, 0) / restaurants.length).toFixed(1)
     : '0.0';
-  const totalCapacite = restaurants.reduce((acc, r) => acc + r.capaciteMax, 0);
-  const totalMatchs = restaurants.reduce((acc, r) => acc + (r.matchsOrganises || 0), 0);
+  const totalCapacite = restaurants.reduce((acc: number, r: any) => acc + r.capaciteMax, 0);
+  const totalMatchs = restaurants.reduce((acc: number, r: any) => acc + (r.matchsOrganises || 0), 0);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf] mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Chargement des établissements...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Building2 className="w-8 h-8 text-red-500" />
+          </div>
+          <h3 className="text-xl text-gray-900 dark:text-white mb-2">Erreur de chargement</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Impossible de charger vos établissements. Veuillez réessayer.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">

@@ -147,3 +147,73 @@ export const usePartnerAnalyticsSummary = (options?: UseQueryOptions<any, Error>
     ...options,
   });
 };
+
+export const usePartnerDashboard = (
+  params?: { start_date?: string; end_date?: string },
+  options?: UseQueryOptions<any, Error>
+) => {
+  return useQuery({
+    queryKey: ['partners', 'analytics', 'dashboard', params],
+    queryFn: () => partnerAPI.getDashboard(params).then((res) => res.data),
+    staleTime: 2 * 60 * 1000,
+    ...options,
+  });
+};
+
+export const useVenueReservations = (
+  venueId: string,
+  params?: { page?: number; limit?: number; status?: string },
+  options?: UseQueryOptions<any, Error>
+) => {
+  return useQuery({
+    queryKey: ['partners', 'venues', venueId, 'reservations', params],
+    queryFn: () => partnerAPI.getVenueReservations(venueId, params).then((res) => res.data),
+    enabled: !!venueId,
+    staleTime: 1 * 60 * 1000,
+    ...options,
+  });
+};
+
+export const useVenueReservationStats = (
+  venueId: string,
+  params?: { from?: string; to?: string },
+  options?: UseQueryOptions<any, Error>
+) => {
+  return useQuery({
+    queryKey: ['partners', 'venues', venueId, 'reservations', 'stats', params],
+    queryFn: () => partnerAPI.getVenueReservationStats(venueId, params).then((res) => res.data),
+    enabled: !!venueId,
+    staleTime: 2 * 60 * 1000,
+    ...options,
+  });
+};
+
+export const useUpdateReservationStatus = (
+  options?: UseMutationOptions<any, Error, { reservationId: string; status: 'CONFIRMED' | 'DECLINED' }>
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ reservationId, status }: { reservationId: string; status: 'CONFIRMED' | 'DECLINED' }) =>
+      partnerAPI.updateReservationStatus(reservationId, status).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partners', 'venues'] });
+    },
+    ...options,
+  });
+};
+
+export const useMarkNoShow = (
+  options?: UseMutationOptions<any, Error, { reservationId: string; reason?: string }>
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ reservationId, reason }: { reservationId: string; reason?: string }) =>
+      partnerAPI.markNoShow(reservationId, reason).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partners', 'venues'] });
+    },
+    ...options,
+  });
+};

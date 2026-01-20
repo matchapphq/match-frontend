@@ -4,7 +4,7 @@ import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import { ReferralCodeInput } from './ReferralCodeInput';
 
 interface RegisterProps {
-  onRegister: (data: any) => boolean;
+  onRegister: (data: any) => boolean | Promise<boolean>;
   onSwitchToLogin: () => void;
   onBackToLanding?: () => void;
 }
@@ -42,7 +42,7 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -58,13 +58,17 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = onRegister(formData);
+    try {
+      const success = await onRegister(formData);
       if (!success) {
-        setError('Une erreur est survenue lors de l\'inscription');
+        setError('Une erreur est survenue lors de l\'inscription. Cet email est peut-être déjà utilisé.');
       }
+    } catch (err) {
+      setError('Une erreur est survenue. Veuillez réessayer.');
+      console.error('Register error:', err);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

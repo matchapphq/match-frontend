@@ -1,4 +1,4 @@
-import { Calendar, TrendingUp, Users, Eye, MapPin, Zap, Clock, ArrowUpRight, Star, MessageSquare, CheckCircle, Plus, MoreVertical, QrCode } from 'lucide-react';
+import { Calendar, TrendingUp, Users, Eye, MapPin, Zap, Clock, ArrowUpRight, ArrowDownRight, Star, MessageSquare, CheckCircle, Plus, MoreVertical, QrCode, Loader2 } from 'lucide-react';
 import { PageType } from '../../App';
 import { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
@@ -6,6 +6,11 @@ import { useAuth } from '../../context/AuthContext';
 import { ParrainageWidget } from '../../components/ParrainageWidget';
 import { NotificationBanner } from '../../components/NotificationBanner';
 import { useToast } from '../../context/ToastContext';
+import { usePartnerDashboard, usePartnerVenues, usePartnerVenueMatches } from '../../hooks/api';
+import { useBoostSummary } from '../../hooks/api';
+
+// Check if we're using API or mock data
+const USE_API = import.meta.env.VITE_USE_API === 'true';
 
 interface DashboardProps {
   onNavigate: (page: PageType, matchId?: number, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
@@ -17,8 +22,40 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [periodFilter, setPeriodFilter] = useState<'7j' | '30j' | '90j'>('30j');
   const toast = useToast();
 
-  const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
-  const allClients = currentUser ? getUserClients(currentUser.id) : [];
+  // API hooks (only used when USE_API is true)
+  const { data: dashboardData, isLoading: isDashboardLoading } = usePartnerDashboard(
+    undefined,
+    { enabled: USE_API }
+  );
+  const { data: venuesData, isLoading: isVenuesLoading } = usePartnerVenues(
+    { enabled: USE_API }
+  );
+  const { data: venueMatchesData, isLoading: isMatchesLoading } = usePartnerVenueMatches(
+    { enabled: USE_API }
+  );
+  const { data: boostSummaryData } = useBoostSummary(
+    { enabled: USE_API }
+  );
+
+  // Use API data or fall back to mock data
+  const matchs = USE_API 
+    ? (venueMatchesData?.data || []).map((vm: any) => ({
+        id: vm.id,
+        equipes: vm.match ? `${vm.match.homeTeam} vs ${vm.match.awayTeam}` : 'Match inconnu',
+        date: vm.match?.scheduled_at || new Date().toISOString(),
+        heure: vm.match?.scheduled_at ? new Date(vm.match.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '20:00',
+        statut: vm.status === 'upcoming' ? 'à venir' : vm.status === 'live' ? 'en cours' : 'terminé',
+        reservations: vm.reserved_seats || 0,
+        placesDisponibles: vm.total_capacity || 50,
+        vues: 0,
+      }))
+    : (currentUser ? getUserMatchs(currentUser.id) : []);
+  
+  const allClients = USE_API
+    ? [] // Will be loaded separately if needed
+    : (currentUser ? getUserClients(currentUser.id) : []);
+
+  const isLoading = USE_API && (isDashboardLoading || isVenuesLoading || isMatchesLoading);
 
   const matchsAVenir = matchs.filter(m => m.statut === 'à venir');
   const matchsTermines = matchs.filter(m => m.statut === 'terminé');
@@ -72,6 +109,18 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   ];
 
   const upcomingMatches = matchsAVenir.slice(0, 4);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf] mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Chargement du tableau de bord...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
@@ -127,11 +176,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <button
                 key={period}
                 onClick={() => setPeriodFilter(period)}
-                className={`px-4 py-1.5 rounded-md text-sm transition-all duration-200 ${
-                  periodFilter === period
+                className={`px-4 py-1.5 rounded-md text-sm transition-all duration-200 ${periodFilter === period
                     ? 'bg-[#5a03cf] text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
+                  }`}
               >
                 {period}
               </button>
@@ -148,22 +196,20 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               className="group relative bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:border-[#5a03cf]/30 hover:shadow-xl hover:shadow-[#5a03cf]/5 transition-all duration-300 text-left"
             >
               <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  stat.color === 'purple' ? 'bg-[#5a03cf]/10' :
-                  stat.color === 'blue' ? 'bg-blue-50 dark:bg-blue-900/20' :
-                  stat.color === 'green' ? 'bg-green-50 dark:bg-green-900/20' :
-                  'bg-orange-50 dark:bg-orange-900/20'
-                }`}>
-                  <stat.icon className={`w-6 h-6 ${
-                    stat.color === 'purple' ? 'text-[#5a03cf]' :
-                    stat.color === 'blue' ? 'text-blue-600' :
-                    stat.color === 'green' ? 'text-green-600' :
-                    'text-orange-600'
-                  }`} />
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color === 'purple' ? 'bg-[#5a03cf]/10' :
+                    stat.color === 'blue' ? 'bg-blue-50 dark:bg-blue-900/20' :
+                      stat.color === 'green' ? 'bg-green-50 dark:bg-green-900/20' :
+                        'bg-orange-50 dark:bg-orange-900/20'
+                  }`}>
+                  <stat.icon className={`w-6 h-6 ${stat.color === 'purple' ? 'text-[#5a03cf]' :
+                      stat.color === 'blue' ? 'text-blue-600' :
+                        stat.color === 'green' ? 'text-green-600' :
+                          'text-orange-600'
+                    }`} />
                 </div>
                 <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-[#5a03cf] transition-colors" />
               </div>
-              
+
               <div className="space-y-2">
                 <div className="text-3xl text-gray-900 dark:text-white">{stat.value}</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">{stat.title}</div>
@@ -228,10 +274,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                         <div className="flex-1">
                           <div className="text-sm text-gray-900 dark:text-white mb-1">{match.equipes}</div>
                           <div className="text-xs text-gray-600 dark:text-gray-400">
-                            {new Date(match.date).toLocaleDateString('fr-FR', { 
-                              weekday: 'long', 
-                              day: 'numeric', 
-                              month: 'long' 
+                            {new Date(match.date).toLocaleDateString('fr-FR', {
+                              weekday: 'long',
+                              day: 'numeric',
+                              month: 'long'
                             })} • {match.heure}
                           </div>
                         </div>
@@ -244,7 +290,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                             <span className="text-gray-900 dark:text-white">{match.reservations || 0}/{match.placesDisponibles || 50}</span>
                           </div>
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                            <div 
+                            <div
                               className="bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] h-1.5 rounded-full transition-all duration-300"
                               style={{ width: `${((match.reservations || 0) / (match.placesDisponibles || 50)) * 100}%` }}
                             />
@@ -270,16 +316,15 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <div className="p-6">
               <div className="space-y-4">
                 {recentActivity.map((activity, index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className={`flex gap-3 ${activity.clickable ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 py-2 rounded-lg transition-colors' : ''}`}
                     onClick={() => activity.clickable && onNavigate('reservations', activity.matchId)}
                   >
-                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      activity.type === 'booking' ? 'bg-green-500' :
-                      activity.type === 'view' ? 'bg-blue-500' :
-                      'bg-purple-500'
-                    }`} />
+                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${activity.type === 'booking' ? 'bg-green-500' :
+                        activity.type === 'view' ? 'bg-blue-500' :
+                          'bg-purple-500'
+                      }`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-900 dark:text-white mb-1">{activity.text}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>

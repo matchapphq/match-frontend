@@ -593,6 +593,154 @@ export const analyticsAPI = {
 };
 
 // ============================================================================
+// PARTNER API (Venue Owners Dashboard)
+// ============================================================================
+
+export const partnerAPI = {
+  // Venues
+  getVenues: () => api.get('/partners/venues'),
+
+  createVenue: (data: {
+    name: string;
+    street_address: string;
+    city: string;
+    postal_code: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  }) => api.post('/partners/venues', data),
+
+  verifyCheckout: (sessionId: string) =>
+    api.post('/partners/venues/verify-checkout', { session_id: sessionId }),
+
+  // Venue Matches
+  getVenueMatches: () => api.get('/partners/venues/matches'),
+
+  scheduleMatch: (
+    venueId: string,
+    data: { match_id: string; total_capacity: number }
+  ) => api.post(`/partners/venues/${venueId}/matches`, data),
+
+  updateVenueMatch: (
+    venueId: string,
+    matchId: string,
+    data: {
+      total_capacity?: number;
+      available_capacity?: number;
+      is_active?: boolean;
+      is_featured?: boolean;
+      allows_reservations?: boolean;
+      max_group_size?: number;
+      notes?: string;
+    }
+  ) => api.put(`/partners/venues/${venueId}/matches/${matchId}`, data),
+
+  cancelMatch: (venueId: string, matchId: string) =>
+    api.delete(`/partners/venues/${venueId}/matches/${matchId}`),
+
+  getMatchCalendar: (venueId: string, params?: { month?: string; status?: string }) =>
+    api.get(`/partners/venues/${venueId}/matches/calendar`, { params }),
+
+  // Reservations
+  getVenueReservations: (
+    venueId: string,
+    params?: { page?: number; limit?: number; status?: string }
+  ) => api.get(`/partners/venues/${venueId}/reservations`, { params }),
+
+  getVenueReservationStats: (
+    venueId: string,
+    params?: { from?: string; to?: string }
+  ) => api.get(`/partners/venues/${venueId}/reservations/stats`, { params }),
+
+  updateReservationStatus: (
+    reservationId: string,
+    status: 'CONFIRMED' | 'DECLINED'
+  ) => api.patch(`/partners/reservations/${reservationId}/status`, { status }),
+
+  updateReservation: (
+    reservationId: string,
+    data: {
+      status?: string;
+      table_number?: string;
+      notes?: string;
+      party_size?: number;
+      special_requests?: string;
+    }
+  ) => api.patch(`/partners/reservations/${reservationId}`, data),
+
+  markNoShow: (reservationId: string, reason?: string) =>
+    api.post(`/partners/reservations/${reservationId}/mark-no-show`, { reason }),
+
+  // Clients
+  getVenueClients: (venueId: string) =>
+    api.get(`/partners/venues/${venueId}/clients`),
+
+  // Subscription
+  getVenueSubscription: (venueId: string) =>
+    api.get(`/partners/venues/${venueId}/subscription`),
+
+  getPaymentPortalURL: (venueId: string) =>
+    api.post(`/partners/venues/${venueId}/payment-portal`),
+
+  // Stats & Analytics
+  getCustomerStats: () => api.get('/partners/stats/customers'),
+
+  getAnalyticsSummary: () => api.get('/partners/analytics/summary'),
+
+  getDashboard: (params?: { start_date?: string; end_date?: string }) =>
+    api.get('/partners/analytics/dashboard', { params }),
+
+  // Waitlist
+  getWaitlist: (venueId: string, matchId: string, params?: { status?: string }) =>
+    api.get(`/partners/venues/${venueId}/matches/${matchId}/waitlist`, { params }),
+
+  notifyWaitlistCustomer: (
+    entryId: string,
+    data?: { message?: string; expiry_minutes?: number }
+  ) => api.post(`/partners/waitlist/${entryId}/notify`, data),
+};
+
+// ============================================================================
+// BOOSTS API
+// ============================================================================
+
+export const boostsAPI = {
+  getPrices: () => api.get('/boosts/prices'),
+
+  getAvailable: () => api.get('/boosts/available'),
+
+  getStats: () => api.get('/boosts/stats'),
+
+  getSummary: () => api.get('/boosts/summary'),
+
+  createCheckout: (data: {
+    pack_type: 'single' | 'pack_3' | 'pack_10';
+    success_url?: string;
+    cancel_url?: string;
+  }) => api.post('/boosts/purchase/create-checkout', data),
+
+  verifyPurchase: (sessionId: string) =>
+    api.post('/boosts/purchase/verify', { session_id: sessionId }),
+
+  getBoostableMatches: (venueId: string) =>
+    api.get(`/boosts/boostable/${venueId}`),
+
+  getPurchases: (params?: { page?: number; limit?: number }) =>
+    api.get('/boosts/purchases', { params }),
+
+  activate: (data: { boost_id: string; venue_match_id: string }) =>
+    api.post('/boosts/activate', data),
+
+  deactivate: (boostId: string) =>
+    api.post('/boosts/deactivate', { boost_id: boostId }),
+
+  getHistory: (params?: { page?: number; limit?: number; status?: string }) =>
+    api.get('/boosts/history', { params }),
+
+  getAnalytics: (boostId: string) => api.get(`/boosts/analytics/${boostId}`),
+};
+
+// ============================================================================
 // COUPONS API
 // ============================================================================
 
