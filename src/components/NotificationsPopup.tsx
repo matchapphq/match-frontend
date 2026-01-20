@@ -1,13 +1,15 @@
-import { Bell, Check, X } from 'lucide-react';
+import { Bell, Check, X, Settings, ExternalLink } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { PageType } from '../App';
 
 interface NotificationsPopupProps {
   onClose?: () => void;
+  onNavigate?: (page: PageType) => void;
 }
 
-export function NotificationsPopup({ onClose }: NotificationsPopupProps) {
+export function NotificationsPopup({ onClose, onNavigate }: NotificationsPopupProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { notifications, handleReservationAction, markAllAsRead } = useAppContext();
   const { currentUser } = useAuth();
@@ -55,6 +57,11 @@ export function NotificationsPopup({ onClose }: NotificationsPopupProps) {
     }
   };
 
+  const handleViewAll = () => {
+    setIsOpen(false);
+    onNavigate?.('notification-center' as PageType);
+  };
+
   return (
     <div className="relative" ref={popupRef}>
       {/* Bouton de notification */}
@@ -65,7 +72,7 @@ export function NotificationsPopup({ onClose }: NotificationsPopupProps) {
         <Bell className="w-5 h-5 text-[#5a03cf]" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-full flex items-center justify-center text-xs" style={{ fontWeight: '800' }}>
-            {unreadCount}
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
@@ -199,12 +206,12 @@ export function NotificationsPopup({ onClose }: NotificationsPopupProps) {
                 )}
 
                 {/* 3️⃣ Notifications historisées */}
-                {historisees.length > 0 && (
+                {historisees.length > 0 && historisees.length <= 3 && (
                   <div>
                     <p className="text-xs text-gray-500 mb-2 px-1" style={{ fontWeight: '600' }}>
                       PLUS ANCIENNES
                     </p>
-                    {historisees.map((notification) => (
+                    {historisees.slice(0, 3).map((notification) => (
                       <div
                         key={notification.id}
                         className="mb-2 bg-gray-50/50 backdrop-blur-sm rounded-xl p-4 border border-gray-200/30 opacity-60 hover:opacity-80 transition-opacity"
@@ -234,6 +241,30 @@ export function NotificationsPopup({ onClose }: NotificationsPopupProps) {
               </div>
             )}
           </div>
+
+          {/* Footer with actions */}
+          {userNotifications.length > 0 && (
+            <div className="px-4 py-3 border-t border-gray-200/50 flex items-center justify-between">
+              <button
+                onClick={handleViewAll}
+                className="flex items-center gap-2 text-sm text-[#5a03cf] hover:underline"
+                style={{ fontWeight: '600' }}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Voir toutes les notifications
+              </button>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  onNavigate?.('compte-notifications' as PageType);
+                }}
+                className="p-2 hover:bg-gray-100/50 rounded-lg transition-all"
+                title="Paramètres de notification"
+              >
+                <Settings className="w-4 h-4 text-gray-600" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

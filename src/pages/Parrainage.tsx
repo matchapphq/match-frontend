@@ -7,10 +7,16 @@
  */
 
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { ShareReferralModal } from '../components/ShareReferralModal';
 import { ArrowLeft, Copy, Share2, Users, TrendingUp, Gift } from 'lucide-react';
-import { useMyReferralCode, useReferralStats, useReferralHistory } from '../hooks/api';
+import {
+  mockUserReferralCode,
+  mockUserReferralStats,
+  mockReferralHistory,
+  mockVenueOwnerReferralCode,
+  mockVenueOwnerReferralStats,
+} from '../data/mockData';
 
 interface ParrainageProps {
   onBack?: () => void;
@@ -20,16 +26,10 @@ export default function Parrainage({ onBack }: ParrainageProps) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  // API hooks for referral data
-  const { data: codeData, isLoading: codeLoading } = useMyReferralCode();
-  const { data: statsData, isLoading: statsLoading } = useReferralStats();
-  const { data: historyData, isLoading: historyLoading } = useReferralHistory();
-
-  const isLoading = codeLoading || statsLoading || historyLoading;
-  const isVenueOwner = true; // Assume venue owner for partner dashboard
-
-  const referralCode = codeData?.code || 'XXXXXX';
-  const stats = statsData || { successful_referrals: 0, total_boosts_earned: 0, pending_referrals: 0 };
+  // Mock data
+  const isVenueOwner = true;
+  const referralCode = isVenueOwner ? mockVenueOwnerReferralCode.referral_code : mockUserReferralCode.referral_code;
+  const stats = isVenueOwner ? mockVenueOwnerReferralStats : mockUserReferralStats;
   const referralLink = `https://match.app/signup?ref=${referralCode}`;
 
   const copyToClipboard = (text: string) => {
@@ -37,20 +37,12 @@ export default function Parrainage({ onBack }: ParrainageProps) {
     toast.success('Code copié !');
   };
 
-  const filteredHistory = ((historyData?.referrals || []) as any[]).filter((referral: any) => {
+  const filteredHistory = (mockReferralHistory.referred_users || []).filter((referral) => {
     if (statusFilter === 'all') return true;
-    if (statusFilter === 'converted') return referral.status === 'COMPLETED';
-    if (statusFilter === 'pending') return referral.status === 'PENDING';
+    if (statusFilter === 'converted') return referral.status === 'converted';
+    if (statusFilter === 'pending') return referral.status === 'signed_up';
     return true;
   });
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a03cf]"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">

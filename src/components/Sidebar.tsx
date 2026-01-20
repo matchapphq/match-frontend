@@ -12,7 +12,8 @@ import {
   X,
   Moon,
   Sun,
-  CalendarCheck
+  CalendarCheck,
+  Bell
 } from 'lucide-react';
 import { PageType } from '../App';
 import { useState, useEffect } from 'react';
@@ -38,7 +39,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
 
   const navigation = [
     { name: 'Dashboard', icon: LayoutDashboard, page: 'dashboard' as PageType },
-    { name: 'Mes matchs', icon: Calendar, page: 'mes-matchs' as PageType, badge: 3 },
+    { name: 'Mes matchs', icon: Calendar, page: 'mes-matchs' as PageType },
     { name: 'Réservations', icon: CalendarCheck, page: 'reservations' as PageType },
     { name: 'Mes lieux', icon: MapPin, page: 'mes-restaurants' as PageType },
     { name: 'Booster', icon: TrendingUp, page: 'booster' as PageType },
@@ -126,11 +127,6 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                   }`} />
                   {!isCollapsed && (
                     <span className="text-sm font-medium">{item.name}</span>
-                  )}
-                  {item.badge && !isCollapsed && (
-                    <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                      {item.badge}
-                    </span>
                   )}
                 </button>
               );

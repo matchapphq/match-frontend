@@ -84,16 +84,7 @@ export function Header({ onNavigate, currentPage }: HeaderProps) {
             {/* Language Toggle */}
             <LanguageToggle />
 
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="w-10 h-10 rounded-full bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-200 text-gray-700 dark:text-gray-300"
-              title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-            >
-              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-
-            <NotificationsPopup />
+            <NotificationsPopup onNavigate={onNavigate} />
             
             <div className="relative">
               <button 

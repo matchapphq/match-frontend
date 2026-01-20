@@ -1,47 +1,49 @@
 import { useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { QRScanner } from './components/QRScanner';
+import { QRScanner } from './pages/qr-scanner/QRScanner';
 import { QrCode } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
-
+import { ToastProvider } from './context/ToastContext';
 import { CompteInfos } from './components/compte/CompteInfos';
 import { CompteFacturation } from './components/compte/CompteFacturation';
-import { Dashboard } from './components/Dashboard';
+import { Dashboard } from './pages/dashboard/Dashboard';
 import { LandingPage } from './components/LandingPage';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
-import { ListeMatchs } from './components/ListeMatchs';
-import { MatchDetail } from './components/MatchDetail';
-import { MesMatchs } from './components/MesMatchs';
-import { MesRestaurants } from './components/MesRestaurants';
-import { RestaurantDetail } from './components/RestaurantDetail';
-import { ProgrammerMatch } from './components/ProgrammerMatch';
-import { ModifierMatch } from './components/ModifierMatch';
-import { AjouterRestaurant } from './components/AjouterRestaurant';
-import { ModifierRestaurant } from './components/ModifierRestaurant';
-import { Booster } from './components/Booster';
-import { AcheterBoosts } from './components/AcheterBoosts';
-import Parrainage from './pages/Parrainage';
-import { MesAvis } from './components/MesAvis';
-import { Compte } from './components/Compte';
-import { InfosEtablissement } from './components/InfosEtablissement';
-import { Facturation } from './components/Facturation';
-import { OnboardingWelcome } from './components/OnboardingWelcome';
-import { ConfirmationOnboarding } from './components/ConfirmationOnboarding';
-import { PaiementValidation } from './components/PaiementValidation';
-import { AppPresentation } from './components/AppPresentation';
-import { ReferralPage } from './components/ReferralPage';
+import { ListeMatchs } from './pages/liste-matchs/ListeMatchs';
+import { MatchDetail } from './pages/match-detail/MatchDetail';
+import { MesMatchs } from './pages/mes-matchs/MesMatchs';
+import { MesRestaurants } from './pages/mes-restaurants/MesRestaurants';
+import { RestaurantDetail } from './pages/restaurant-detail/RestaurantDetail';
+import { ProgrammerMatch } from './pages/programmer-match/ProgrammerMatch';
+import { ModifierMatch } from './pages/modifier-match/ModifierMatch';
+import { AjouterRestaurant } from './pages/ajouter-restaurant/AjouterRestaurant';
+import { ModifierRestaurant } from './pages/modifier-restaurant/ModifierRestaurant';
+import { Booster } from './pages/booster/Booster';
+import { AcheterBoosts } from './pages/acheter-boosts/AcheterBoosts';
+import { Parrainage } from './pages/parrainage/Parrainage';
+import { MesAvis } from './pages/mes-avis/MesAvis';
+import { Compte } from './pages/compte/Compte';
+import { InfosEtablissement } from './pages/infos-etablissement/InfosEtablissement';
+import { Facturation } from './pages/facturation/Facturation';
+import { OnboardingWelcome } from './pages/onboarding-welcome/OnboardingWelcome';
+import { ConfirmationOnboarding } from './pages/confirmation-onboarding/ConfirmationOnboarding';
+import { PaiementValidation } from './pages/paiement-validation/PaiementValidation';
+import { AppPresentation } from './pages/app-presentation/AppPresentation';
+import { ReferralPage } from './pages/referral/ReferralPage';
 import { Sidebar } from './components/Sidebar';
 import { CompteNotifications } from './components/compte/CompteNotifications';
 import { CompteSecurite } from './components/compte/CompteSecurite';
 import { CompteDonnees } from './components/compte/CompteDonnees';
 import { CompteAide } from './components/compte/CompteAide';
-import { Reservations } from './components/Reservations';
+import { Reservations } from './pages/reservations/Reservations';
+import { NotificationCenter } from './pages/notification-center/NotificationCenter';
+import { NotificationBell } from './components/NotificationBell';
+import { NotificationBanner } from './components/NotificationBanner';
 
-export type PageType = 
+export type PageType =
   | 'dashboard'
   | 'liste-matchs'
   | 'match-detail'
@@ -71,35 +73,22 @@ export type PageType =
   | 'app-presentation'
   | 'referral'
   | 'qr-scanner'
-  | 'reservations';
-
-// Create a React Query client with default options
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 2, // 2 minutes
-    },
-    mutations: {
-      retry: 0,
-    },
-  },
-});
+  | 'reservations'
+  | 'notification-center';
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <AppProvider>
-            <LanguageProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppProvider>
+          <LanguageProvider>
+            <ToastProvider>
               <AppContent />
-            </LanguageProvider>
-          </AppProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+            </ToastProvider>
+          </LanguageProvider>
+        </AppProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
@@ -379,6 +368,8 @@ function AppContent() {
         );
       case 'reservations':
         return <Reservations onNavigate={handleNavigate} matchId={selectedMatchId} />;
+      case 'notification-center':
+        return <NotificationCenter onNavigate={handleNavigate} />;
       default:
         return <Dashboard onNavigate={setCurrentPage} />;
     }
@@ -388,14 +379,29 @@ function AppContent() {
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
       <Sidebar onNavigate={setCurrentPage} currentPage={currentPage} />
       <div className="lg:ml-64 flex flex-col min-h-screen">
+        {/* Notification Banners - Always visible at the top */}
+        <NotificationBanner 
+          type="info"
+          message="🎉 Nouveau : Le système de réservations est maintenant disponible !"
+          action={{
+            label: "Découvrir",
+            onClick: () => setCurrentPage('reservations')
+          }}
+        />
+        
         {renderPage()}
       </div>
+      
+      {/* Notification Bell - Fixed top right */}
+      {isAuthenticated && (
+        <NotificationBell onNavigate={handleNavigate} unreadCount={3} />
+      )}
       
       {/* Floating QR Scanner Button - Only on mobile when authenticated */}
       {isAuthenticated && currentPage !== 'qr-scanner' && (
         <button
           onClick={() => setCurrentPage('qr-scanner')}
-          className="lg:hidden fixed bottom-6 right-6 z-40 w-16 h-16 bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white rounded-full shadow-2xl shadow-[#5a03cf]/40 hover:scale-110 transition-transform duration-300 flex items-center justify-center"
+          className="lg:hidden fixed bottom-6 right-24 z-40 w-16 h-16 bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white rounded-full shadow-2xl shadow-[#5a03cf]/40 hover:scale-110 transition-transform duration-300 flex items-center justify-center"
           style={{ 
             bottom: 'max(1.5rem, calc(1.5rem + env(safe-area-inset-bottom)))' 
           }}

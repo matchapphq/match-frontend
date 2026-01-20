@@ -8,13 +8,16 @@ Plateforme web permettant aux restaurateurs de gérer les réservations pour reg
 
 ### **Documentation Principale**
 
-- **[📊 Mock Data Inventory](./MOCK_DATA_INVENTORY.md)** - Inventaire complet de toutes les données mock
-- **[🏗️ Project Architecture](./PROJECT_ARCHITECTURE.md)** - Architecture complète du projet
+- **[📖 Documentation API](/doc/README_API.md)** - Documentation complète des APIs
+- **[🚀 Quick Start](/doc/QUICK_START.md)** - Guide de démarrage rapide
+- **[🏗️ Architecture API](/doc/API_IMPLEMENTATION_SUMMARY.md)** - Vue d'ensemble de l'implémentation API
+- **[📁 Index Documentation](/doc/INDEX.md)** - Index de toute la documentation
 
-### **Autres Documents**
+### **Guides Techniques**
 
 - **[📖 Guidelines](./guidelines/Guidelines.md)** - Conventions de code TypeScript/React strict
 - **[🎨 Attributions](./Attributions.md)** - Licences et crédits
+- **[🔌 API Documentation](./API_DOCUMENTATION.md)** - Point d'entrée vers la documentation API
 
 ---
 
@@ -189,9 +192,9 @@ npm run preview
 
 ## 📞 Contact
 
-Pour toute question sur l'architecture ou les données mock, consulter :
-- [Mock Data Inventory](./MOCK_DATA_INVENTORY.md)
-- [Project Architecture](./PROJECT_ARCHITECTURE.md)
+Pour toute question sur l'architecture ou la documentation, consulter :
+- [📁 Documentation complète](/doc/INDEX.md)
+- [🏗️ Architecture API](/doc/API_IMPLEMENTATION_SUMMARY.md)
 
 ---
 

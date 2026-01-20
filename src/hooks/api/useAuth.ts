@@ -6,7 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
-import { authAPI } from '../../services/api';
+import { authAPI } from '../services/api';
 
 // ============================================================================
 // AUTHENTICATION HOOKS

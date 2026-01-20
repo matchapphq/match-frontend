@@ -45,9 +45,9 @@ export function CompteParametres({ onBack }: CompteParametresProps) {
           className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all"
           style={{ fontWeight: '600' }}
         >
-          <option value="fr">Français</option>
-          <option value="en">English</option>
-          <option value="es">Español</option>
+          <option key="fr" value="fr">Français</option>
+          <option key="en" value="en">English</option>
+          <option key="es" value="es">Español</option>
         </select>
       </div>
 

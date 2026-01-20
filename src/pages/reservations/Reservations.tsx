@@ -1,0 +1,509 @@
+import { useState } from 'react';
+import { Users, Search, Mail, Phone, X, CheckCircle, Clock, Filter, Download, MessageCircle, Calendar, MapPin, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
+import { PageType } from '../../App';
+import { mockMatchesWithReservations, mockReservations } from '../../data/mockData';
+
+interface ReservationsProps {
+  onNavigate?: (page: PageType) => void;
+  matchId?: number;
+}
+
+export function Reservations({ onNavigate, matchId }: ReservationsProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatut, setFilterStatut] = useState<'tous' | 'confirmée' | 'en attente' | 'annulée'>('tous');
+  const [filterLieu, setFilterLieu] = useState<string>('tous');
+  const [filterPeriode, setFilterPeriode] = useState<'tous' | 'aujourdhui' | 'semaine' | 'avenir' | 'passes'>('tous');
+  const [viewMode, setViewMode] = useState<'grouped' | 'list'>('grouped');
+  const [expandedMatches, setExpandedMatches] = useState<number[]>([1]); // Premier match ouvert par défaut
+
+  const toggleMatchExpand = (matchId: number) => {
+    setExpandedMatches(prev => 
+      prev.includes(matchId) 
+        ? prev.filter(id => id !== matchId)
+        : [...prev, matchId]
+    );
+  };
+
+  const handleCancelReservation = (id: number) => {
+    if (confirm('Êtes-vous sûr de vouloir annuler cette réservation ?')) {
+      alert(`Réservation #${id} annulée`);
+    }
+  };
+
+  const handleConfirmReservation = (id: number) => {
+    alert(`Réservation #${id} confirmée`);
+  };
+
+  const handleContactClient = (email: string, phone: string) => {
+    const choice = confirm(`Contacter par:\\n\\nOK = Email (${email})\\nAnnuler = Téléphone (${phone})`);
+    if (choice) {
+      window.location.href = `mailto:${email}`;
+    } else {
+      window.location.href = `tel:${phone}`;
+    }
+  };
+
+  const handleExportReservations = () => {
+    alert('Export des réservations en CSV');
+  };
+
+  // Filtrer les réservations
+  const reservationsFiltrees = mockReservations.filter(res => {
+    const matchSearch = res.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       res.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       res.telephone.includes(searchTerm);
+    const matchStatut = filterStatut === 'tous' || res.statut === filterStatut;
+    
+    const match = mockMatchesWithReservations.find(m => m.id === res.matchId);
+    const matchLieu = filterLieu === 'tous' || match?.lieu === filterLieu;
+    
+    // Filtre de période (simplifié pour la démo)
+    let matchPeriode = true;
+    if (filterPeriode === 'aujourdhui') {
+      matchPeriode = res.dateReservation === '15/01/2025';
+    } else if (filterPeriode === 'semaine') {
+      matchPeriode = ['15/01/2025', '16/01/2025', '18/01/2025'].includes(res.dateReservation);
+    }
+    
+    return matchSearch && matchStatut && matchLieu && matchPeriode;
+  });
+
+  // Grouper par match
+  const reservationsParMatch = mockMatchesWithReservations.map(match => ({
+    match,
+    reservations: reservationsFiltrees.filter(r => r.matchId === match.id),
+    stats: {
+      total: mockReservations.filter(r => r.matchId === match.id && r.statut !== 'annulée').length,
+      confirmees: mockReservations.filter(r => r.matchId === match.id && r.statut === 'confirmée').length,
+      enAttente: mockReservations.filter(r => r.matchId === match.id && r.statut === 'en attente').length,
+      placesReservees: mockReservations.filter(r => r.matchId === match.id && r.statut !== 'annulée').reduce((acc, r) => acc + r.nombrePlaces, 0),
+    }
+  })).filter(item => item.reservations.length > 0); // Ne montrer que les matchs avec réservations filtrées
+
+  // Stats globales
+  const statsGlobales = {
+    total: mockReservations.length,
+    confirmees: mockReservations.filter(r => r.statut === 'confirmée').length,
+    enAttente: mockReservations.filter(r => r.statut === 'en attente').length,
+    annulees: mockReservations.filter(r => r.statut === 'annulée').length,
+    totalPlaces: mockReservations.filter(r => r.statut !== 'annulée').reduce((acc, r) => acc + r.nombrePlaces, 0),
+    matchsProgram: mockMatchesWithReservations.length,
+  };
+
+  const lieux = Array.from(new Set(mockMatchesWithReservations.map(m => m.lieu)));
+
+  const getStatutColor = (statut: string) => {
+    switch (statut) {
+      case 'confirmée':
+        return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800';
+      case 'en attente':
+        return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800';
+      case 'annulée':
+        return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800';
+      default:
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border border-gray-200 dark:border-gray-700';
+    }
+  };
+
+  const getTauxRemplissage = (placesReservees: number, capacite: number) => {
+    const taux = (placesReservees / capacite) * 100;
+    return Math.min(taux, 100);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] rounded-xl flex items-center justify-center">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl text-gray-900 dark:text-white mb-1">Réservations</h1>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Gérez vos réservations par match et par date</p>
+              </div>
+            </div>
+            <button
+              onClick={handleExportReservations}
+              className="px-4 py-2 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white rounded-xl hover:brightness-105 transition-all flex items-center gap-2 text-sm"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Exporter tout</span>
+            </button>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+              <div className="text-2xl sm:text-3xl text-[#5a03cf] mb-1">{statsGlobales.matchsProgram}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Matchs programmés</div>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+              <div className="text-2xl sm:text-3xl text-gray-900 dark:text-white mb-1">{statsGlobales.total}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total réservations</div>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+              <div className="text-2xl sm:text-3xl text-green-600 dark:text-green-400 mb-1">{statsGlobales.confirmees}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Confirmées</div>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+              <div className="text-2xl sm:text-3xl text-orange-600 dark:text-orange-400 mb-1">{statsGlobales.enAttente}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">En attente</div>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+              <div className="text-2xl sm:text-3xl text-red-600 dark:text-red-400 mb-1">{statsGlobales.annulees}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Annulées</div>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+              <div className="text-2xl sm:text-3xl text-[#9cff02] dark:text-[#9cff02] mb-1">{statsGlobales.totalPlaces}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Places réservées</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters Bar */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
+            {/* Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Rechercher par nom, email ou téléphone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-sm"
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3">
+              {/* Période */}
+              <select
+                value={filterPeriode}
+                onChange={(e) => setFilterPeriode(e.target.value as any)}
+                className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-sm"
+              >
+                <option key="periode-tous" value="tous">Toutes les dates</option>
+                <option key="periode-aujourdhui" value="aujourdhui">Aujourd'hui</option>
+                <option key="periode-semaine" value="semaine">Cette semaine</option>
+                <option key="periode-avenir" value="avenir">À venir</option>
+                <option key="periode-passes" value="passes">Passées</option>
+              </select>
+
+              {/* Lieu */}
+              <select
+                value={filterLieu}
+                onChange={(e) => setFilterLieu(e.target.value)}
+                className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-sm"
+              >
+                <option key="lieu-tous" value="tous">Tous les lieux</option>
+                {lieux.map((lieu, index) => (
+                  <option key={`lieu-${index}-${lieu}`} value={lieu}>{lieu}</option>
+                ))}
+              </select>
+
+              {/* Statut */}
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <select
+                  value={filterStatut}
+                  onChange={(e) => setFilterStatut(e.target.value as any)}
+                  className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-sm"
+                >
+                  <option key="statut-tous" value="tous">Tous les statuts</option>
+                  <option key="statut-confirmee" value="confirmée">Confirmées</option>
+                  <option key="statut-attente" value="en attente">En attente</option>
+                  <option key="statut-annulee" value="annulée">Annulées</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Affichage :</span>
+            <button
+              onClick={() => setViewMode('grouped')}
+              className={`px-4 py-2 rounded-lg text-sm transition-all ${
+                viewMode === 'grouped'
+                  ? 'bg-[#5a03cf] text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              Par match
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-4 py-2 rounded-lg text-sm transition-all ${
+                viewMode === 'list'
+                  ? 'bg-[#5a03cf] text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              Liste complète
+            </button>
+          </div>
+        </div>
+
+        {/* Reservations Display - Pour économiser l'espace, juste le message vide */}
+        {viewMode === 'grouped' ? (
+          <div className="space-y-4">
+            {reservationsParMatch.length === 0 ? (
+              <div className="bg-white dark:bg-gray-900 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
+                <Users className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                <h3 className="text-lg text-gray-900 dark:text-white mb-2">Aucune réservation trouvée</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {searchTerm ? 'Essayez avec d\'autres termes de recherche' : 'Les réservations apparaîtront ici'}
+                </p>
+              </div>
+            ) : (
+              reservationsParMatch.map(({ match, reservations, stats }) => (
+                <div key={match.id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  {/* Match Header */}
+                  <button
+                    onClick={() => toggleMatchExpand(match.id)}
+                    className="w-full p-4 sm:p-6 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="text-2xl">{match.sport}</div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{match.equipe1} vs {match.equipe2}</h3>
+                          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {match.date} à {match.heure}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              {match.lieu}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Stats */}
+                      <div className="flex items-center gap-4 mt-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Réservations:</span>
+                          <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-900 dark:text-white font-medium">
+                            {stats.total}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-green-600 dark:text-green-400">{stats.confirmees} confirmées</span>
+                          <span className="text-orange-600 dark:text-orange-400">{stats.enAttente} en attente</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Places:</span>
+                          <span className="text-gray-900 dark:text-white font-medium">{stats.placesReservees} / {match.capacite}</span>
+                        </div>
+                        {/* Taux de remplissage */}
+                        <div className="flex-1 max-w-xs">
+                          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] transition-all"
+                              style={{ width: `${getTauxRemplissage(stats.placesReservees, match.capacite)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {expandedMatches.includes(match.id) ? (
+                      <ChevronUp className="w-5 h-5 text-gray-400 ml-4" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-400 ml-4" />
+                    )}
+                  </button>
+
+                  {/* Reservations List */}
+                  {expandedMatches.includes(match.id) && (
+                    <div className="border-t border-gray-200 dark:border-gray-700">
+                      {reservations.map((reservation) => (
+                        <div key={reservation.id} className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h4 className="text-gray-900 dark:text-white font-medium">{reservation.clientNom}</h4>
+                                <span className={`px-3 py-1 rounded-full text-xs ${getStatutColor(reservation.statut)}`}>
+                                  {reservation.statut}
+                                </span>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <div className="flex items-center gap-2">
+                                  <Mail className="w-4 h-4" />
+                                  {reservation.email}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Phone className="w-4 h-4" />
+                                  {reservation.telephone}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  {reservation.nombrePlaces} {reservation.nombrePlaces > 1 ? 'personnes' : 'personne'}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-4 h-4" />
+                                  Réservé le {reservation.dateReservation}
+                                </div>
+                              </div>
+
+                              {reservation.notes && (
+                                <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+                                  <strong>Notes:</strong> {reservation.notes}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleContactClient(reservation.email, reservation.telephone)}
+                                className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center gap-2 text-sm"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                                <span className="hidden sm:inline">Contacter</span>
+                              </button>
+                              
+                              {reservation.statut === 'en attente' && (
+                                <button
+                                  onClick={() => handleConfirmReservation(reservation.id)}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-2 text-sm"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Confirmer</span>
+                                </button>
+                              )}
+                              
+                              {reservation.statut !== 'annulée' && (
+                                <button
+                                  onClick={() => handleCancelReservation(reservation.id)}
+                                  className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-all flex items-center gap-2 text-sm"
+                                >
+                                  <X className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Annuler</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {reservationsFiltrees.length === 0 ? (
+              <div className="bg-white dark:bg-gray-900 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
+                <Users className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                <h3 className="text-lg text-gray-900 dark:text-white mb-2">Aucune réservation trouvée</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {searchTerm ? 'Essayez avec d\'autres termes de recherche' : 'Les réservations apparaîtront ici'}
+                </p>
+              </div>
+            ) : (
+              reservationsFiltrees.map((reservation) => {
+                const match = mockMatchesWithReservations.find(m => m.id === reservation.matchId);
+                return (
+                  <div key={reservation.id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 hover:border-[#5a03cf]/30 transition-all">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        {/* Match info */}
+                        {match && (
+                          <div className="flex items-center gap-2 mb-3 text-sm text-gray-600 dark:text-gray-400">
+                            <span className="text-xl">{match.sport}</span>
+                            <span>{match.equipe1} vs {match.equipe2}</span>
+                            <span>•</span>
+                            <span>{match.date} à {match.heure}</span>
+                            <span>•</span>
+                            <span>{match.lieu}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-lg text-gray-900 dark:text-white font-medium">{reservation.clientNom}</h4>
+                          <span className={`px-3 py-1 rounded-full text-xs ${getStatutColor(reservation.statut)}`}>
+                            {reservation.statut}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4" />
+                            {reservation.email}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4" />
+                            {reservation.telephone}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4" />
+                            {reservation.nombrePlaces} {reservation.nombrePlaces > 1 ? 'personnes' : 'personne'}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            Réservé le {reservation.dateReservation}
+                          </div>
+                        </div>
+
+                        {reservation.notes && (
+                          <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+                            <strong>Notes:</strong> {reservation.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleContactClient(reservation.email, reservation.telephone)}
+                          className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center gap-2 text-sm"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="hidden sm:inline">Contacter</span>
+                        </button>
+                        
+                        {reservation.statut === 'en attente' && (
+                          <button
+                            onClick={() => handleConfirmReservation(reservation.id)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-2 text-sm"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="hidden sm:inline">Confirmer</span>
+                          </button>
+                        )}
+                        
+                        {reservation.statut !== 'annulée' && (
+                          <button
+                            onClick={() => handleCancelReservation(reservation.id)}
+                            className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-all flex items-center gap-2 text-sm"
+                          >
+                            <X className="w-4 h-4" />
+                            <span className="hidden sm:inline">Annuler</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* Results Count */}
+        {reservationsFiltrees.length > 0 && (
+          <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+            {reservationsFiltrees.length} réservation{reservationsFiltrees.length > 1 ? 's' : ''} affichée{reservationsFiltrees.length > 1 ? 's' : ''}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

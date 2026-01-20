@@ -5,20 +5,29 @@
  * Promo du système de parrainage
  */
 
-import { toast } from 'sonner';
-import { useMyReferralCode, useReferralStats } from '../hooks/api';
+import { toast } from 'sonner@2.0.3';
+import {
+  mockUserReferralCode,
+  mockUserReferralStats,
+  mockVenueOwnerReferralCode,
+  mockVenueOwnerReferralStats,
+} from '../data/mockData';
 
 interface ParrainageWidgetProps {
   onNavigate?: (page: string) => void;
 }
 
 export function ParrainageWidget({ onNavigate }: ParrainageWidgetProps) {
-  // API hooks for referral data
-  const { data: codeData } = useMyReferralCode();
-  const { data: statsData } = useReferralStats();
+  // Get user role (venue owner or regular user)
+  const userRole = localStorage.getItem('userRole') || 'venue_owner';
+  const isVenueOwner = userRole === 'venue_owner';
 
-  const referralCode = codeData?.code || 'XXXXXX';
-  const stats = statsData || { successful_referrals: 0, total_boosts_earned: 0 };
+  // Use mock data based on user role
+  const codeData = isVenueOwner ? mockVenueOwnerReferralCode : mockUserReferralCode;
+  const statsData = isVenueOwner ? mockVenueOwnerReferralStats : mockUserReferralStats;
+
+  const referralCode = codeData.referral_code;
+  const stats = statsData;
 
   const copyToClipboard = () => {
     if (referralCode) {
