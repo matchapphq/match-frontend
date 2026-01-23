@@ -17,6 +17,7 @@ export type PageType =
   | 'ajouter-restaurant'
   | 'modifier-restaurant'
   | 'booster'
+  | 'acheter-boosts'
   | 'parrainage'
   | 'mes-avis'
   | 'compte'
@@ -34,7 +35,8 @@ export type PageType =
   | 'app-presentation'
   | 'referral'
   | 'qr-scanner'
-  | 'reservations';
+  | 'reservations'
+  | 'notification-center';
 
 /**
  * Generic API response type

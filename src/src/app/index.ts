@@ -3,4 +3,4 @@
  */
 
 export { default } from './App';
-export type { PageType } from './App';
+export type { PageType } from '@/types';

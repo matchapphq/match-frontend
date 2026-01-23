@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { PageType } from '../../App';
-import { useAuth } from '../../context/AuthContext';
+import { PageType } from '../../src/types';
+import { useAuth } from '../../src/features/authentication/context/AuthContext';
 import { ArrowLeft, Plus, X, Building, MapPin, Mail, Phone, CreditCard } from 'lucide-react';
 
 interface CompteFacturationProps {

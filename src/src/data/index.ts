@@ -2,4 +2,4 @@
  * Mock data exports
  */
 
-export {};
+export * from './mockData';

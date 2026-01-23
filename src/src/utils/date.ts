@@ -135,3 +135,50 @@ export const addDays = (date: Date, days: number): Date => {
   result.setDate(result.getDate() + days);
   return result;
 };
+
+/**
+ * Parse French date and time to Date object
+ * @param dateStr - Date string in DD/MM/YYYY format
+ * @param timeStr - Time string in HH:MM format
+ * @returns Date object
+ * 
+ * @example
+ * parseDateAndTime('10/12/2024', '21:00') // Date object for Dec 10, 2024 at 21:00
+ */
+export const parseDateAndTime = (dateStr: string, timeStr: string): Date => {
+  const [day, month, year] = dateStr.split('/').map(Number);
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return new Date(year, month - 1, day, hours, minutes);
+};
+
+/**
+ * Check if a match is finished based on:
+ * 1. Explicit "terminé" status in database, OR
+ * 2. 48 hours have passed since the match date/time
+ * 
+ * @param matchDate - Match date in DD/MM/YYYY format
+ * @param matchTime - Match time in HH:MM format
+ * @param matchStatus - Current match status from database (optional)
+ * @returns True if match is finished
+ * 
+ * @example
+ * isMatchFinished('10/01/2026', '21:00', 'terminé') // true (explicit status)
+ * isMatchFinished('15/01/2026', '21:00') // true if > 48h have passed
+ */
+export const isMatchFinished = (
+  matchDate: string, 
+  matchTime: string, 
+  matchStatus?: 'à venir' | 'terminé'
+): boolean => {
+  // If database explicitly says "terminé", trust it
+  if (matchStatus === 'terminé') {
+    return true;
+  }
+
+  // Otherwise, check if 48 hours have passed since the match
+  const matchDateTime = parseDateAndTime(matchDate, matchTime);
+  const now = new Date();
+  const hoursSinceMatch = (now.getTime() - matchDateTime.getTime()) / (1000 * 60 * 60);
+  
+  return hoursSinceMatch >= 48;
+};

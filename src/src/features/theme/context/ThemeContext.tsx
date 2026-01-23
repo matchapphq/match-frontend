@@ -1,6 +1,60 @@
-/**
- * ThemeContext (re-exported from old location)
- * TODO: Move implementation here during migration
- */
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 
-export { ThemeProvider, useTheme } from '../../../context/ThemeContext';
+type Theme = 'light' | 'dark';
+
+interface ThemeContextType {
+  theme: Theme;
+  toggleTheme: () => void;
+}
+
+const defaultContext: ThemeContextType = {
+  theme: 'light',
+  toggleTheme: () => {},
+};
+
+const ThemeContext = createContext<ThemeContextType>(defaultContext);
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<Theme>('light');
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('match-theme');
+      if (saved === 'dark' || saved === 'light') {
+        setTheme(saved);
+        if (saved === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+  }, []);
+
+  // Save to localStorage and update DOM when theme changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('match-theme', theme);
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    } catch {
+      // Ignore errors
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(current => current === 'light' ? 'dark' : 'light');
+  };
+
+  const value = useMemo(() => ({ theme, toggleTheme }), [theme]);
+
+  return (
+    <ThemeContext.Provider value={value}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export function useTheme(): ThemeContextType {
+  return useContext(ThemeContext);
+}

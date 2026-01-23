@@ -27,8 +27,15 @@ export {
   formatDateTime,
   formatTime,
   parseDate,
+  parseDateAndTime,
   isInPast,
   isToday,
   getRelativeTime,
   addDays,
+  isMatchFinished,
 } from './date';
+
+// API utilities
+export * from './api-constants';
+export * from './api-helpers';
+export * from './data-mappers';

@@ -24,6 +24,13 @@ Tous les fichiers de documentation API sont maintenant regroupés dans ce dossie
 | **[API_ENDPOINTS_BY_PAGE.md](./API_ENDPOINTS_BY_PAGE.md)** | Endpoints par page | Mapping |
 | **[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)** | Migration mock → API | Migration |
 
+### 🚀 Migration & Structure
+
+| Fichier | Description | Pour qui ? |
+|---------|-------------|------------|
+| **[DUPLICATE_FILES_ANALYSIS.md](./DUPLICATE_FILES_ANALYSIS.md)** | Analyse des doublons racine vs /src/ | Architecture |
+| **[/MIGRATION_STATUS.md](../MIGRATION_STATUS.md)** | État migration vers /src/ | Architecture |
+
 ### 📋 Référence & Exemples
 
 | Fichier | Description | Pour qui ? |
@@ -48,6 +55,7 @@ Tous les fichiers de documentation API sont maintenant regroupés dans ce dossie
 | Besoin | Document recommandé |
 |--------|---------------------|
 | **Démarrer rapidement** | [QUICK_START.md](./QUICK_START.md) |
+| **Comprendre la structure /src/** | [MIGRATION_STATUS.md](../MIGRATION_STATUS.md) + [DUPLICATE_FILES_ANALYSIS.md](./DUPLICATE_FILES_ANALYSIS.md) |
 | **Comprendre l'implémentation** | [README_API.md](./README_API.md) |
 | **Voir un résumé complet** | [IMPLEMENTATION_COMPLETE.md](./IMPLEMENTATION_COMPLETE.md) |
 | **Savoir quel service utiliser** | [SERVICES_BY_PAGE.md](./SERVICES_BY_PAGE.md) |
