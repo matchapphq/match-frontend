@@ -2,9 +2,11 @@
  * API Helper Functions for Match Platform
  * 
  * Utility functions for making API calls
- * Following 100% seamless approach (snake_case everywhere)
+ * Refactored to use Axios for better interceptor support and standardization
  */
 
+import apiClient from '../api/client';
+import { AxiosRequestConfig } from 'axios';
 import { buildUrl, buildPath } from './api-constants';
 
 /**
@@ -18,6 +20,7 @@ export interface ApiResponse<T = any> {
 
 /**
  * Get standard headers for API requests
+ * Kept for backward compatibility
  * 
  * @param authToken - Optional JWT token
  * @param contentType - Content type (default: application/json)
@@ -26,8 +29,8 @@ export interface ApiResponse<T = any> {
 export function getHeaders(
   authToken?: string,
   contentType: string = 'application/json'
-): HeadersInit {
-  const headers: HeadersInit = {};
+): any {
+  const headers: any = {};
   
   if (contentType) {
     headers['Content-Type'] = contentType;
@@ -41,51 +44,11 @@ export function getHeaders(
 }
 
 /**
- * Handle API errors uniformly
- * 
- * @param response - Fetch response
- * @throws Error with message from API or default message
- */
-export async function handleApiError(response: Response): Promise<never> {
-  let errorMessage = 'Une erreur est survenue';
-  
-  try {
-    const error = await response.json();
-    errorMessage = error.error || error.message || errorMessage;
-  } catch (e) {
-    // If parsing fails, use status text
-    errorMessage = response.statusText || errorMessage;
-  }
-  
-  throw new Error(errorMessage);
-}
-
-/**
- * Parse API response
- * 
- * @param response - Fetch response
- * @returns Parsed JSON data
- * @throws Error if response is not ok
- */
-export async function parseResponse<T = any>(response: Response): Promise<T> {
-  if (!response.ok) {
-    await handleApiError(response);
-  }
-  
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return {} as T;
-  }
-  
-  return response.json();
-}
-
-/**
  * Generic GET request
  * 
  * @param endpoint - API endpoint
  * @param params - Query parameters (snake_case)
- * @param authToken - Optional JWT token
+ * @param authToken - Optional JWT token (overrides default)
  * @returns Promise with response data
  */
 export async function apiGet<T = any>(
@@ -93,14 +56,16 @@ export async function apiGet<T = any>(
   params?: Record<string, any>,
   authToken?: string
 ): Promise<T> {
-  const url = params ? buildUrl(endpoint, params) : buildPath(endpoint);
-  
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: getHeaders(authToken),
-  });
-  
-  return parseResponse<T>(response);
+  const config: AxiosRequestConfig = {
+    params,
+  };
+
+  if (authToken) {
+    config.headers = { Authorization: `Bearer ${authToken}` };
+  }
+
+  const response = await apiClient.get<T>(endpoint, config);
+  return response.data;
 }
 
 /**
@@ -116,15 +81,14 @@ export async function apiPost<T = any>(
   body?: any,
   authToken?: string
 ): Promise<T> {
-  const url = buildPath(endpoint);
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: getHeaders(authToken),
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  
-  return parseResponse<T>(response);
+  const config: AxiosRequestConfig = {};
+
+  if (authToken) {
+    config.headers = { Authorization: `Bearer ${authToken}` };
+  }
+
+  const response = await apiClient.post<T>(endpoint, body, config);
+  return response.data;
 }
 
 /**
@@ -140,15 +104,14 @@ export async function apiPut<T = any>(
   body?: any,
   authToken?: string
 ): Promise<T> {
-  const url = buildPath(endpoint);
-  
-  const response = await fetch(url, {
-    method: 'PUT',
-    headers: getHeaders(authToken),
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  
-  return parseResponse<T>(response);
+  const config: AxiosRequestConfig = {};
+
+  if (authToken) {
+    config.headers = { Authorization: `Bearer ${authToken}` };
+  }
+
+  const response = await apiClient.put<T>(endpoint, body, config);
+  return response.data;
 }
 
 /**
@@ -164,15 +127,14 @@ export async function apiPatch<T = any>(
   body?: any,
   authToken?: string
 ): Promise<T> {
-  const url = buildPath(endpoint);
-  
-  const response = await fetch(url, {
-    method: 'PATCH',
-    headers: getHeaders(authToken),
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  
-  return parseResponse<T>(response);
+  const config: AxiosRequestConfig = {};
+
+  if (authToken) {
+    config.headers = { Authorization: `Bearer ${authToken}` };
+  }
+
+  const response = await apiClient.patch<T>(endpoint, body, config);
+  return response.data;
 }
 
 /**
@@ -186,14 +148,14 @@ export async function apiDelete<T = any>(
   endpoint: string,
   authToken?: string
 ): Promise<T> {
-  const url = buildPath(endpoint);
-  
-  const response = await fetch(url, {
-    method: 'DELETE',
-    headers: getHeaders(authToken),
-  });
-  
-  return parseResponse<T>(response);
+  const config: AxiosRequestConfig = {};
+
+  if (authToken) {
+    config.headers = { Authorization: `Bearer ${authToken}` };
+  }
+
+  const response = await apiClient.delete<T>(endpoint, config);
+  return response.data;
 }
 
 /**
@@ -209,21 +171,21 @@ export async function apiUpload<T = any>(
   formData: FormData,
   authToken?: string
 ): Promise<T> {
-  const url = buildPath(endpoint);
-  
-  const headers: HeadersInit = {};
+  const config: AxiosRequestConfig = {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  };
+
   if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+    config.headers = { 
+      ...config.headers, 
+      Authorization: `Bearer ${authToken}` 
+    };
   }
-  // Don't set Content-Type for FormData - browser will set it with boundary
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
-  
-  return parseResponse<T>(response);
+
+  const response = await apiClient.post<T>(endpoint, formData, config);
+  return response.data;
 }
 
 /**
@@ -237,96 +199,29 @@ export async function apiDownload(
   endpoint: string,
   authToken?: string
 ): Promise<Blob> {
-  const url = buildPath(endpoint);
-  
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: getHeaders(authToken, ''),
-  });
-  
-  if (!response.ok) {
-    await handleApiError(response);
+  const config: AxiosRequestConfig = {
+    responseType: 'blob',
+  };
+
+  if (authToken) {
+    config.headers = { Authorization: `Bearer ${authToken}` };
   }
-  
-  return response.blob();
+
+  const response = await apiClient.get<Blob>(endpoint, config);
+  return response.data;
 }
 
 /**
  * Check if response is successful (2xx status)
  * 
- * @param response - Fetch response
+ * @param response - Response object (AxiosResponse or plain object)
  * @returns boolean
  */
-export function isSuccess(response: Response): boolean {
-  return response.ok && response.status >= 200 && response.status < 300;
-}
-
-/**
- * Retry a failed request
- * 
- * @param fn - Function that returns a Promise
- * @param retries - Number of retries (default: 3)
- * @param delay - Delay between retries in ms (default: 1000)
- * @returns Promise
- */
-export async function retryRequest<T>(
-  fn: () => Promise<T>,
-  retries: number = 3,
-  delay: number = 1000
-): Promise<T> {
-  try {
-    return await fn();
-  } catch (error) {
-    if (retries <= 0) {
-      throw error;
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, delay));
-    return retryRequest(fn, retries - 1, delay);
+export function isSuccess(response: any): boolean {
+  if (response && response.status) {
+    return response.status >= 200 && response.status < 300;
   }
-}
-
-/**
- * Cache API responses in memory
- */
-const cache = new Map<string, { data: any; timestamp: number }>();
-
-/**
- * Get cached response or fetch new one
- * 
- * @param key - Cache key
- * @param fn - Function that returns a Promise
- * @param ttl - Time to live in ms (default: 5 minutes)
- * @returns Promise with cached or fresh data
- */
-export async function getCached<T>(
-  key: string,
-  fn: () => Promise<T>,
-  ttl: number = 5 * 60 * 1000
-): Promise<T> {
-  const cached = cache.get(key);
-  
-  if (cached && Date.now() - cached.timestamp < ttl) {
-    return cached.data;
-  }
-  
-  const data = await fn();
-  cache.set(key, { data, timestamp: Date.now() });
-  
-  return data;
-}
-
-/**
- * Clear cache
- * 
- * @param key - Optional key to clear specific entry
- */
-export function clearCache(key?: string): void {
-  if (key) {
-    cache.delete(key);
-  } else {
-    cache.clear();
-  }
+  return true; // If we got data back from axios, it was likely successful (interceptors catch errors)
 }
 
 /**

@@ -5,7 +5,7 @@
  * Following 100% seamless approach (snake_case everywhere)
  */
 
-export const API_BASE_URL = 'https://api.example.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8008/api';
 
 /**
  * API Endpoints
