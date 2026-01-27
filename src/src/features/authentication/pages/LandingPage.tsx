@@ -1,6 +1,8 @@
 import { ArrowRight, Moon, Sun } from 'lucide-react';
 import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import { useTheme } from '../../theme/context/ThemeContext';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -10,6 +12,21 @@ interface LandingPageProps {
 
 export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: LandingPageProps) {
   const { theme, toggleTheme } = useTheme();
+
+  // Health check API call
+  useQuery({
+    queryKey: ['health'],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get('/health');
+        console.log('API Health Check:', res.data);
+        return res.data;
+      } catch (error) {
+        console.error('API Health Check Failed:', error);
+        throw error;
+      }
+    }
+  });
   
   const features = [
     {

@@ -76,8 +76,8 @@ function AppContent() {
   const [unauthPage, setUnauthPage] = useState<'landing' | 'app-presentation' | null>(null);
 
   // Gestion de l'inscription avec redirection vers "ajouter-restaurant"
-  const handleRegister = (data: any) => {
-    const success = register(data);
+  const handleRegister = async (data: any) => {
+    const success = await register(data);
     if (success) {
       // L'utilisateur sera redirigé vers l'écran d'onboarding automatiquement
       setCurrentPage('ajouter-restaurant');
