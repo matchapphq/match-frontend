@@ -47,14 +47,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const response = await apiClient.get('/auth/me');
           const apiUser = response.data.user;
+          
+          // Check if user has venues to determine onboarding status
+          let hasVenues = false;
+          try {
+            const venuesResponse = await apiClient.get('/partners/venues');
+            hasVenues = venuesResponse.data.venues && venuesResponse.data.venues.length > 0;
+          } catch (e) {
+            console.warn('Failed to fetch venues during auth init', e);
+          }
+
+          const isOnboardingComplete = apiUser.onboarding_completed || hasVenues;
+
           const user: User = {
             id: apiUser.id,
             email: apiUser.email,
             nom: apiUser.last_name || '',
             prenom: apiUser.first_name || '',
             telephone: apiUser.phone,
-            hasCompletedOnboarding: apiUser.onboarding_completed || false, // Assuming this field exists or logic
-            onboardingStep: apiUser.onboarding_completed ? 'complete' : 'restaurant', // Simplified logic
+            hasCompletedOnboarding: isOnboardingComplete,
+            onboardingStep: isOnboardingComplete ? 'complete' : 'restaurant',
             role: apiUser.role
           };
           setCurrentUser(user);
@@ -79,14 +91,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('authToken', token);
       if (refresh_token) localStorage.setItem('refreshToken', refresh_token);
 
+      // Check if user has venues to determine onboarding status
+      let hasVenues = false;
+      try {
+        const venuesResponse = await apiClient.get('/partners/venues');
+        hasVenues = venuesResponse.data.venues && venuesResponse.data.venues.length > 0;
+      } catch (e) {
+        console.warn('Failed to fetch venues during login', e);
+      }
+
+      const isOnboardingComplete = apiUser.onboarding_completed || hasVenues;
+
       const user: User = {
         id: apiUser.id,
         email: apiUser.email,
         nom: apiUser.last_name || '',
         prenom: apiUser.first_name || '',
         telephone: apiUser.phone,
-        hasCompletedOnboarding: apiUser.onboarding_completed || false,
-        onboardingStep: apiUser.onboarding_completed ? 'complete' : 'restaurant',
+        hasCompletedOnboarding: isOnboardingComplete,
+        onboardingStep: isOnboardingComplete ? 'complete' : 'restaurant',
         role: apiUser.role
       };
 
