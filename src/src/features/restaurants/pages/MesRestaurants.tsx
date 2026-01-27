@@ -1,17 +1,42 @@
-import { MapPin, Star, Edit2, Plus, BarChart3, Eye, Building2, Users, TrendingUp, ChevronRight } from 'lucide-react';
+import { MapPin, Star, Edit2, Plus, BarChart3, Eye, Building2, Users, TrendingUp, ChevronRight, Loader2 } from 'lucide-react';
 import { PageType } from '../../../types';
-import { useAppContext } from '../../../context/AppContext';
 import { useAuth } from '../../authentication/context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
 
 interface MesRestaurantsProps {
   onNavigate?: (page: PageType, matchId?: number, restaurantId?: number) => void;
 }
 
+interface Restaurant {
+  id: number;
+  nom: string;
+  adresse: string;
+  note: number;
+  capaciteMax: number;
+  image: string;
+  matchsOrganises: number;
+}
+
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
-  const { getUserRestaurants } = useAppContext();
   const { currentUser } = useAuth();
 
-  const restaurants = currentUser ? getUserRestaurants(currentUser.id) : [];
+  const { data: restaurants = [], isLoading, error } = useQuery<Restaurant[]>({
+    queryKey: ['partner-venues'],
+    queryFn: async () => {
+      const response = await apiClient.get('/partners/venues');
+      return response.data.venues.map((venue: any) => ({
+        id: venue.id,
+        nom: venue.name,
+        adresse: `${venue.street_address}, ${venue.city}`,
+        note: venue.average_rating || 0,
+        capaciteMax: venue.capacity || 0,
+        image: venue.photos?.[0]?.url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+        matchsOrganises: venue.matches_count || 0,
+      }));
+    },
+    enabled: !!currentUser,
+  });
 
   const handleAddRestaurant = () => {
     if (onNavigate) {
@@ -39,6 +64,30 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">Une erreur est survenue lors du chargement de vos établissements.</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-[#5a03cf] text-white rounded-lg hover:bg-[#4a02af]"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const totalRestaurants = restaurants.length;
   const noteMoyenne = restaurants.length > 0
     ? (restaurants.reduce((acc, r) => acc + r.note, 0) / restaurants.length).toFixed(1)
@@ -64,6 +113,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
             <span className="sm:hidden">Ajouter</span>
           </button>
         </div>
+
 
         {/* Stats Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

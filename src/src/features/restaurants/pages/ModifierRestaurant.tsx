@@ -1,6 +1,7 @@
-import { ArrowLeft, Edit, MapPin, Phone, Mail, Users, Save, Zap, Clock } from 'lucide-react';
+import { ArrowLeft, Edit, MapPin, Phone, Mail, Users, Save, Zap, Clock, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useAppContext } from '../../../context/AppContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
 
 interface ModifierRestaurantProps {
   restaurantId: number | null;
@@ -8,49 +9,91 @@ interface ModifierRestaurantProps {
 }
 
 export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantProps) {
-  const { restaurants, updateRestaurant } = useAppContext();
-  const restaurant = restaurants.find(r => r.id === restaurantId);
-
-  const [capaciteMax, setCapaciteMax] = useState(restaurant?.capaciteMax || 50);
+  const queryClient = useQueryClient();
   const maxCapacite = 100;
-  
-  // ✅ NOUVEAU : Booking mode state
-  const [bookingMode, setBookingMode] = useState<'INSTANT' | 'REQUEST'>(restaurant?.bookingMode || 'INSTANT');
 
-  const [formData, setFormData] = useState({
-    nom: restaurant?.nom || '',
-    adresse: restaurant?.adresse || '',
-    telephone: restaurant?.telephone || '',
-    email: restaurant?.email || '',
-    horaires: restaurant?.horaires || '',
+  // 1. Fetch current venue details
+  const { data: restaurant, isLoading: isLoadingVenue } = useQuery({
+    queryKey: ['venue', restaurantId],
+    queryFn: async () => {
+      if (!restaurantId) return null;
+      const res = await apiClient.get(`/venues/${restaurantId}`);
+      return res.data.venue;
+    },
+    enabled: !!restaurantId,
   });
 
+  const [capaciteMax, setCapaciteMax] = useState(50);
+  const [bookingMode, setBookingMode] = useState<'INSTANT' | 'REQUEST'>('INSTANT');
+  const [formData, setFormData] = useState({
+    nom: '',
+    adresse: '',
+    telephone: '',
+    email: '',
+    horaires: '',
+  });
+
+  // 2. Populate form when data is loaded
   useEffect(() => {
     if (restaurant) {
       setFormData({
-        nom: restaurant.nom,
-        adresse: restaurant.adresse,
-        telephone: restaurant.telephone,
-        email: restaurant.email,
-        horaires: restaurant.horaires,
+        nom: restaurant.name || '',
+        adresse: `${restaurant.street_address}, ${restaurant.city}` || '', // Address is read-only for now
+        telephone: restaurant.phone || '',
+        email: restaurant.email || '', // Email might not be editable
+        horaires: 'Lun-Dim: 11h00 - 02h00', // Placeholder
       });
-      setCapaciteMax(restaurant.capaciteMax);
-      setBookingMode(restaurant.bookingMode || 'INSTANT');
+      setCapaciteMax(restaurant.capacity || 50);
+      setBookingMode(restaurant.booking_mode || 'INSTANT');
     }
   }, [restaurant]);
+
+  // 3. Mutation for updating venue
+  const updateVenueMutation = useMutation({
+    mutationFn: async (data: any) => {
+      // First update basic info
+      const basicPayload = {
+        name: data.nom,
+        phone: data.telephone,
+        capacity: data.capaciteMax,
+      };
+      await apiClient.put(`/venues/${restaurantId}`, basicPayload);
+
+      // Then update booking mode
+      await apiClient.put(`/venues/${restaurantId}/booking-mode`, {
+        booking_mode: data.bookingMode
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venue', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
+      alert('Restaurant modifié avec succès !');
+      onBack();
+    },
+    onError: (err) => {
+      console.error('Update failed:', err);
+      alert('Erreur lors de la modification du restaurant.');
+    }
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (restaurantId) {
-      updateRestaurant(restaurantId, {
+      updateVenueMutation.mutate({
         ...formData,
         capaciteMax,
-        bookingMode, // ✅ NOUVEAU : Include booking mode
+        bookingMode,
       });
-      alert('Restaurant modifié avec succès !');
-      onBack();
     }
   };
+
+  if (isLoadingVenue) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf]" />
+      </div>
+    );
+  }
 
   if (!restaurant) {
     return (
@@ -112,7 +155,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
           <h1 className="text-4xl sm:text-5xl mb-4">
             Modifier{' '}
             <span className="bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] bg-clip-text text-transparent">
-              {restaurant.nom}
+              {restaurant.name}
             </span>
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
@@ -140,14 +183,13 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
           <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
             <label className="flex items-center gap-2 text-gray-900 dark:text-white mb-3">
               <MapPin className="w-4 h-4 text-[#5a03cf]" />
-              Adresse complète
+              Adresse complète (Non modifiable)
             </label>
             <input
               type="text"
               value={formData.adresse}
-              onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
-              className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
-              required
+              disabled
+              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
 
@@ -172,14 +214,13 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
             <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
               <label className="flex items-center gap-2 text-gray-900 dark:text-white mb-3">
                 <Mail className="w-4 h-4 text-[#5a03cf]" />
-                Email
+                Email (Non modifiable)
               </label>
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
-                required
+                disabled
+                className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl text-gray-500 dark:text-gray-400 cursor-not-allowed"
               />
             </div>
           </div>
@@ -375,15 +416,21 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
           <div className="flex gap-4 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white py-4 rounded-full hover:brightness-110 hover:shadow-xl hover:shadow-[#5a03cf]/30 transition-all duration-200 flex items-center justify-center gap-2"
+              disabled={updateVenueMutation.isPending}
+              className="flex-1 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white py-4 rounded-full hover:brightness-110 hover:shadow-xl hover:shadow-[#5a03cf]/30 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Save className="w-5 h-5" />
-              Enregistrer les modifications
+              {updateVenueMutation.isPending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Save className="w-5 h-5" />
+              )}
+              {updateVenueMutation.isPending ? 'Enregistrement...' : 'Enregistrer les modifications'}
             </button>
             <button
               type="button"
               onClick={onBack}
-              className="px-8 py-4 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 rounded-full hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all"
+              disabled={updateVenueMutation.isPending}
+              className="px-8 py-4 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 rounded-full hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all disabled:opacity-50"
             >
               Annuler
             </button>

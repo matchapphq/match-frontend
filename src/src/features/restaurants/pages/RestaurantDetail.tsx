@@ -1,4 +1,6 @@
-import { ArrowLeft, MapPin, Users, Star, Phone, Mail, Clock, Euro, Edit2, Calendar, BarChart3, Eye } from 'lucide-react';
+import { ArrowLeft, MapPin, Users, Star, Phone, Mail, Clock, Euro, Edit2, Calendar, BarChart3, Eye, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
 
 interface RestaurantDetailProps {
   restaurantId: number | null;
@@ -6,23 +8,60 @@ interface RestaurantDetailProps {
   onNavigate?: (page: string) => void;
 }
 
-const restaurant = {
-  nom: 'Le Sport Bar',
-  adresse: '12 Rue de la République, 75001 Paris',
-  telephone: '01 23 45 67 89',
-  email: 'contact@lesportbar.fr',
-  capaciteMax: 50,
-  note: 4.5,
-  totalAvis: 0, // Nombre d'avis réels
-  image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
-  horaires: 'Lun-Dim: 11h00 - 02h00',
-  tarif: '30€/mois',
-  statut: 'actif', // 'actif' | 'inactif' | 'en_attente'
-  matchsDiffuses: 45,
-  clientsAccueillis: 1240,
-};
+export function RestaurantDetail({ restaurantId, onBack, onNavigate }: RestaurantDetailProps) {
+  const { data: venue, isLoading, error } = useQuery({
+    queryKey: ['venue', restaurantId],
+    queryFn: async () => {
+      if (!restaurantId) return null;
+      
+      const [venueRes, analyticsRes] = await Promise.all([
+        apiClient.get(`/venues/${restaurantId}`),
+        apiClient.get(`/venues/${restaurantId}/analytics/overview`)
+      ]);
 
-export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) {
+      const v = venueRes.data.venue;
+      const stats = analyticsRes.data.analytics;
+      const rating = venueRes.data.rating;
+      const photos = venueRes.data.photos;
+
+      return {
+        nom: v.name,
+        adresse: `${v.street_address}, ${v.city}`,
+        telephone: v.phone || 'Non renseigné',
+        email: v.email || 'Non renseigné', // assuming email might be in venue object
+        capaciteMax: v.capacity || 0,
+        note: rating?.average || 0,
+        totalAvis: rating?.count || 0,
+        image: photos?.[0]?.url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+        horaires: 'Lun-Dim: 11h00 - 02h00', // Placeholder, needs parsing logic for opening_hours
+        tarif: '30€/mois', // Placeholder
+        statut: 'actif', // Placeholder
+        matchsDiffuses: stats?.top_matches?.length || 0, // Using top matches count as proxy
+        clientsAccueillis: stats?.total_reservations || 0,
+      };
+    },
+    enabled: !!restaurantId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf]" />
+      </div>
+    );
+  }
+
+  if (error || !venue) {
+    return (
+      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+        <p className="text-red-500">Erreur lors du chargement du lieu</p>
+        <button onClick={onBack} className="text-[#5a03cf] hover:underline">
+          Retour
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <button
@@ -36,26 +75,26 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
       {/* Hero - Image et titre */}
       <div className="mb-8">
         <div className="h-64 rounded-2xl overflow-hidden mb-6 relative">
-          <img src={restaurant.image} alt={restaurant.nom} className="w-full h-full object-cover" />
+          <img src={venue.image} alt={venue.nom} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
         </div>
         
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-3">
             <h1 className="text-4xl italic" style={{ fontWeight: '700', color: '#5a03cf' }}>
-              {restaurant.nom}
+              {venue.nom}
             </h1>
             <span
               className={`px-3 py-1.5 rounded-lg text-sm backdrop-blur-sm ${
-                restaurant.statut === 'actif'
+                venue.statut === 'actif'
                   ? 'bg-[#9cff02]/20 text-[#5a03cf] border border-[#9cff02]/40'
-                  : restaurant.statut === 'inactif'
+                  : venue.statut === 'inactif'
                   ? 'bg-gray-100/80 text-gray-600 border border-gray-300/50'
                   : 'bg-orange-50/80 text-orange-600 border border-orange-200/50'
               }`}
               style={{ fontWeight: '600' }}
             >
-              {restaurant.statut === 'actif' ? 'Actif' : restaurant.statut === 'inactif' ? 'Inactif' : 'En attente de validation'}
+              {venue.statut === 'actif' ? 'Actif' : venue.statut === 'inactif' ? 'Inactif' : 'En attente de validation'}
             </span>
           </div>
         </div>
@@ -95,7 +134,7 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
               </button>
             </div>
             <p className="text-gray-600 text-sm mb-1">Adresse</p>
-            <p className="text-gray-900" style={{ fontWeight: '600' }}>{restaurant.adresse}</p>
+            <p className="text-gray-900" style={{ fontWeight: '600' }}>{venue.adresse}</p>
           </div>
         </div>
 
@@ -109,7 +148,7 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
             </div>
             <p className="text-gray-600 text-sm mb-1">Capacité maximale</p>
             <p className="text-gray-900" style={{ fontWeight: '600' }}>
-              {restaurant.capaciteMax} places
+              {venue.capaciteMax} places
             </p>
           </div>
           <p className="text-xs text-gray-500 mt-2">Utilisée pour la gestion des réservations</p>
@@ -119,7 +158,7 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
           <div>
             <Phone className="w-5 h-5 text-[#5a03cf] mb-2" />
             <p className="text-gray-600 text-sm mb-1">Téléphone</p>
-            <p className="text-gray-900" style={{ fontWeight: '600' }}>{restaurant.telephone}</p>
+            <p className="text-gray-900" style={{ fontWeight: '600' }}>{venue.telephone}</p>
           </div>
         </div>
 
@@ -127,7 +166,7 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
           <div>
             <Mail className="w-5 h-5 text-[#5a03cf] mb-2" />
             <p className="text-gray-600 text-sm mb-1">Email</p>
-            <p className="text-gray-900" style={{ fontWeight: '600' }}>{restaurant.email}</p>
+            <p className="text-gray-900" style={{ fontWeight: '600' }}>{venue.email}</p>
           </div>
         </div>
       </div>
@@ -140,14 +179,14 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
         <div className="bg-white/70 backdrop-blur-xl rounded-xl border border-gray-200/50 p-5 hover:border-gray-300/60 transition-all">
           <p className="text-gray-600 text-sm mb-2">Matchs diffusés</p>
           <p className="text-3xl italic" style={{ fontWeight: '700', color: '#5a03cf' }}>
-            {restaurant.matchsDiffuses}
+            {venue.matchsDiffuses}
           </p>
         </div>
 
         <div className="bg-white/70 backdrop-blur-xl rounded-xl border border-gray-200/50 p-5 hover:border-gray-300/60 transition-all">
           <p className="text-gray-600 text-sm mb-2">Clients accueillis</p>
           <p className="text-3xl italic" style={{ fontWeight: '700', color: '#5a03cf' }}>
-            {restaurant.clientsAccueillis.toLocaleString('fr-FR')}
+            {venue.clientsAccueillis.toLocaleString('fr-FR')}
           </p>
         </div>
 
@@ -155,7 +194,7 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
           <p className="text-gray-600 text-sm mb-2">Note moyenne</p>
           <div className="flex items-center gap-2">
             <p className="text-3xl italic" style={{ fontWeight: '700', color: '#5a03cf' }}>
-              {restaurant.note}
+              {venue.note}
             </p>
             <Star className="w-6 h-6 fill-[#9cff02] text-[#9cff02]" />
           </div>
@@ -164,7 +203,7 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
         <div className="bg-white/70 backdrop-blur-xl rounded-xl border border-gray-200/50 p-5 hover:border-gray-300/60 transition-all">
           <p className="text-gray-600 text-sm mb-2">Nombre d'avis</p>
           <p className="text-3xl italic" style={{ fontWeight: '700', color: '#5a03cf' }}>
-            {restaurant.totalAvis}
+            {venue.totalAvis}
           </p>
         </div>
       </div>
@@ -174,7 +213,7 @@ export function RestaurantDetail({ onBack, onNavigate }: RestaurantDetailProps) 
         Avis clients
       </h2>
       <div className="bg-white/70 backdrop-blur-xl rounded-xl border border-gray-200/50 overflow-hidden">
-        {restaurant.totalAvis === 0 ? (
+        {venue.totalAvis === 0 ? (
           <div className="p-12 text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 flex items-center justify-center">
               <Star className="w-8 h-8 text-[#5a03cf]/40" />

@@ -1,6 +1,7 @@
-import { ArrowLeft, Building2, MapPin, Mail, Phone, Users, Store } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Mail, Phone, Users, Store, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { PageType } from '../../../types';
+import apiClient from '../../../api/client';
 
 interface InfosEtablissementProps {
   onBack: () => void;
@@ -20,19 +21,45 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
     capacite: '',
     typeEtablissement: 'bar',
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const updateField = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Enregistrer le nom du bar
-    if (onBarInfoSubmit) {
-      onBarInfoSubmit(formData.nomBar);
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const payload = {
+        name: formData.nomBar,
+        street_address: formData.adresse,
+        city: formData.ville,
+        postal_code: formData.codePostal,
+        country: 'France',
+        latitude: 48.8566, // Dummy coordinates
+        longitude: 2.3522,
+        phone: formData.telephone,
+        capacity: parseInt(formData.capacite) || 0,
+        type: 'SPORTS_BAR', // Defaulting to SPORTS_BAR for now
+        description: `Etablissement de type ${formData.typeEtablissement}`
+      };
+
+      await apiClient.post('/partners/venues', payload);
+
+      if (onBarInfoSubmit) {
+        onBarInfoSubmit(formData.nomBar);
+      }
+      onNavigate('paiement-validation' as PageType);
+    } catch (err) {
+      console.error('Failed to create venue:', err);
+      setError('Une erreur est survenue lors de la création de l\'établissement.');
+    } finally {
+      setIsLoading(false);
     }
-    // Passer à la page de paiement
-    onNavigate('paiement-validation' as PageType);
   };
 
   return (
@@ -72,6 +99,12 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
         {/* Formulaire en liquid glass */}
         <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-gray-200/50 dark:border-gray-700/50 shadow-xl mb-6">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
+            
             {/* Nom du bar */}
             <div>
               <label htmlFor="nomBar" className="block text-sm mb-2 text-gray-700 dark:text-gray-300">
@@ -220,9 +253,11 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
             {/* Bouton CTA */}
             <button
               type="submit"
-              className="w-full py-4 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-all duration-200 shadow-lg shadow-[#5a03cf]/20 hover:scale-[1.01] mt-2"
+              disabled={isLoading}
+              className="w-full py-4 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-all duration-200 shadow-lg shadow-[#5a03cf]/20 hover:scale-[1.01] mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Continuer vers le paiement
+              {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
+              {isLoading ? 'Création en cours...' : 'Continuer vers le paiement'}
             </button>
           </form>
         </div>
