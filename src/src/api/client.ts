@@ -8,13 +8,14 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000, // 10 seconds
+  withCredentials: true, // Include cookies for auth (matches services/api.ts)
 });
 
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Get token from storage (adapt key as needed)
-    const token = localStorage.getItem('authToken');
+    // Get token from storage (check local then session)
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;

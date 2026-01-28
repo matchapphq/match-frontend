@@ -55,7 +55,17 @@
       outDir: 'build',
     },
     server: {
-      port: 3000,
-      open: true,
-    },
+     port: 5173,
+     host: true,
+     strictPort: true,
+     open: true,
+     // Allow these hosts in development
+     allowedHosts: ['localhost', '127.0.0.1', 'matchapp.fr', '.matchapp.fr'],
+   },
+   preview: {
+     host: true, // Listen on all addresses for preview
+     port: 3000,
+     strictPort: true,
+     allowedHosts: ['localhost', '127.0.0.1', 'matchapp.fr', '.matchapp.fr'],
+   },
   });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { QRScanner } from '../features/reservations/pages/QRScanner';
 import { QrCode } from 'lucide-react';
 import { AuthProvider, useAuth } from '../features/authentication/context/AuthContext';
@@ -43,6 +43,16 @@ import { NotificationCenter } from '../pages/notification-center/NotificationCen
 import { NotificationBell } from '../components/layout/NotificationBell';
 import { NotificationBanner } from '../components/NotificationBanner';
 import { PageType } from '../types';
+import apiClient from '../api/client';
+import { 
+  getCheckoutState,
+  clearCheckoutState,
+  isReturningFromStripe,
+  cleanCheckoutUrl,
+  saveAppState,
+  getAppState,
+  CheckoutState 
+} from '../utils/checkout-state';
 
 export default function App() {
   return (
@@ -61,7 +71,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { isAuthenticated, login, register, currentUser } = useAuth();
+  const { isAuthenticated, isLoading, login, register, currentUser, completeOnboarding, refreshUserData } = useAuth();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('à venir');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
@@ -71,22 +81,157 @@ function AppContent() {
   // États pour le parcours de souscription
   const [selectedFormule, setSelectedFormule] = useState<'mensuel' | 'annuel'>('mensuel');
   const [nomBarOnboarding, setNomBarOnboarding] = useState<string>('');
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [checkoutProcessing, setCheckoutProcessing] = useState(false);
+  const [pendingCheckoutState, setPendingCheckoutState] = useState<CheckoutState | null>(null);
   
   // État pour la navigation non authentifiée
   const [unauthPage, setUnauthPage] = useState<'landing' | 'app-presentation' | null>(null);
 
-  // Gestion de l'inscription avec redirection vers "ajouter-restaurant"
-  const handleRegister = async (data: any) => {
-    const success = await register(data);
-    if (success) {
-      // L'utilisateur sera redirigé vers l'écran d'onboarding automatiquement
-      setCurrentPage('ajouter-restaurant');
-    }
-    return success;
+  // Handle registration - wrapper to use the auth register function
+  const handleRegister = async (formData: any): Promise<boolean> => {
+    const result = await register(formData);
+    return result.success;
   };
+
+  // Handle login - wrapper to match expected interface
+  const handleLogin = async (email: string, password: string): Promise<boolean> => {
+    const result = await login(email, password);
+    return result.success;
+  };
+
+  // Restore app state on mount (for page refresh persistence)
+  useEffect(() => {
+    if (isAuthenticated || currentUser?.hasCompletedOnboarding) {
+      const savedState = getAppState();
+      if (savedState && savedState.currentPage) {
+        // Only restore if it's a valid dashboard page
+        const validPages: PageType[] = ['dashboard', 'mes-restaurants', 'mes-matchs', 'booster', 'parrainage', 'mes-avis', 'compte', 'reservations'];
+        if (validPages.includes(savedState.currentPage as PageType)) {
+          setCurrentPage(savedState.currentPage as PageType);
+        }
+        if (savedState.selectedRestaurantId) {
+          setSelectedRestaurantId(savedState.selectedRestaurantId);
+        }
+        if (savedState.selectedMatchId) {
+          setSelectedMatchId(savedState.selectedMatchId);
+        }
+      }
+    }
+  }, [isAuthenticated, currentUser?.hasCompletedOnboarding]);
+
+  // Save app state when it changes
+  useEffect(() => {
+    if (isAuthenticated && currentUser?.hasCompletedOnboarding) {
+      saveAppState({
+        currentPage,
+        selectedRestaurantId: selectedRestaurantId ?? undefined,
+        selectedMatchId: selectedMatchId ?? undefined,
+        selectedFormule,
+        nomBarOnboarding
+      });
+    }
+  }, [currentPage, selectedRestaurantId, selectedMatchId, selectedFormule, nomBarOnboarding, isAuthenticated, currentUser?.hasCompletedOnboarding]);
+
+  // Handle Stripe checkout verification
+  const verifyCheckout = useCallback(async (stripeSessionId: string, checkoutState: CheckoutState | null) => {
+    if (checkoutProcessing) return;
+    setCheckoutProcessing(true);
+    
+    try {
+      console.log('Verifying checkout, session_id:', stripeSessionId);
+      const response = await apiClient.post('/partners/venues/verify-checkout', {
+        session_id: stripeSessionId
+      });
+      console.log('Verification successful:', response.data);
+      
+      // Clean URL
+      cleanCheckoutUrl();
+      
+      // Refresh user data to get updated venues and onboarding status
+      await refreshUserData();
+      
+      // Clear checkout state
+      clearCheckoutState();
+      
+      // Determine where to navigate based on checkout type
+      if (checkoutState?.type === 'add-venue') {
+        // User was adding a venue from "Mes lieux" - go to confirmation then redirect
+        setNomBarOnboarding(checkoutState.venueName || '');
+        setCurrentPage('confirmation-onboarding');
+      } else {
+        // Onboarding flow - complete onboarding
+        await completeOnboarding();
+        setCurrentPage('confirmation-onboarding');
+      }
+    } catch (err) {
+      console.error('Error verifying payment:', err);
+      cleanCheckoutUrl();
+      clearCheckoutState();
+    } finally {
+      setCheckoutProcessing(false);
+    }
+  }, [checkoutProcessing, refreshUserData, completeOnboarding]);
+
+  // Effect to handle Stripe checkout return
+  useEffect(() => {
+    const stripeReturn = isReturningFromStripe();
+    const checkoutState = getCheckoutState();
+    
+    if (stripeReturn.canceled) {
+      // User canceled checkout - clean up and restore state
+      cleanCheckoutUrl();
+      if (checkoutState?.type === 'add-venue') {
+        setCurrentPage('mes-restaurants');
+      }
+      clearCheckoutState();
+      return;
+    }
+
+    if (stripeReturn.success && stripeReturn.sessionId) {
+      setPendingCheckoutState(checkoutState);
+      
+      if (isAuthenticated && !checkoutProcessing) {
+        verifyCheckout(stripeReturn.sessionId, checkoutState);
+      }
+    }
+  }, [isAuthenticated, checkoutProcessing, verifyCheckout]);
+
+  // Afficher un loader pendant l'initialisation de l'auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#5a03cf] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // Si on détecte un retour de checkout mais qu'on n'est pas authentifié, 
+  // on affiche un message spécial au lieu de la landing page directe
+  const params = new URLSearchParams(window.location.search);
+  const isReturningFromCheckout = params.get('checkout') === 'success';
 
   // Si l'utilisateur n'est pas authentifié, afficher la landing page, connexion ou inscription
   if (!isAuthenticated) {
+    // Si on détecte un retour de checkout mais qu'on n'est pas authentifié,
+    // on affiche un message spécial en attendant que l'auth se rétablisse
+    if (isReturningFromCheckout) {
+      return (
+        <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-center p-8">
+          <div className="max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-[#5a03cf]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-8 h-8 border-4 border-[#5a03cf] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h1 className="text-2xl font-bold mb-4">Finalisation en cours...</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-8">
+              Nous vérifions votre paiement et restaurons votre session.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
     // Afficher la page de présentation de l'app si demandé
     if (unauthPage === 'app-presentation') {
       return (
@@ -133,7 +278,7 @@ function AppContent() {
     }
     return (
       <Login
-        onLogin={login}
+        onLogin={handleLogin}
         onSwitchToRegister={() => setAuthView('register')}
         onBackToLanding={() => setAuthView('landing')}
       />
@@ -165,6 +310,10 @@ function AppContent() {
             onNavigate={setCurrentPage}
             selectedFormule={selectedFormule}
             onBarInfoSubmit={(nom) => setNomBarOnboarding(nom)}
+            onCheckoutData={(url, sid) => {
+              setCheckoutUrl(url);
+              setSessionId(sid);
+            }}
           />
         </div>
       );
@@ -176,6 +325,7 @@ function AppContent() {
             onNavigate={setCurrentPage}
             selectedFormule={selectedFormule}
             nomBar={nomBarOnboarding}
+            checkoutUrl={checkoutUrl}
           />
         </div>
       );
@@ -290,6 +440,11 @@ function AppContent() {
             onNavigate={setCurrentPage}
             selectedFormule={selectedFormule}
             onBarInfoSubmit={(nom) => setNomBarOnboarding(nom)}
+            onCheckoutData={(url, sid) => {
+              setCheckoutUrl(url);
+              setSessionId(sid);
+            }}
+            isAddingVenue={true}
           />
         );
       case 'facturation':
@@ -298,8 +453,8 @@ function AppContent() {
         return (
           <OnboardingWelcome 
             onContinue={setCurrentPage}
-            currentStep={currentUser.onboardingStep}
-            userName={currentUser.prenom}
+            currentStep={currentUser?.onboardingStep || 'restaurant'}
+            userName={currentUser?.prenom || ''}
           />
         );
       case 'confirmation-onboarding':
@@ -307,6 +462,7 @@ function AppContent() {
           <ConfirmationOnboarding 
             onNavigate={setCurrentPage}
             nomBar={nomBarOnboarding}
+            isAddingVenue={true}
           />
         );
       case 'paiement-validation':
@@ -316,6 +472,8 @@ function AppContent() {
             onNavigate={setCurrentPage}
             selectedFormule={selectedFormule}
             nomBar={nomBarOnboarding}
+            checkoutUrl={checkoutUrl}
+            isAddingVenue={true}
           />
         );
       case 'app-presentation':

@@ -4,7 +4,7 @@ import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import { ReferralCodeInput } from '../../../components/ReferralCodeInput';
 
 interface RegisterProps {
-  onRegister: (data: any) => boolean;
+  onRegister: (data: any) => Promise<boolean> | boolean;
   onSwitchToLogin: () => void;
   onBackToLanding?: () => void;
 }
@@ -42,7 +42,7 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -58,13 +58,16 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = onRegister(formData);
+    try {
+      const success = await onRegister(formData);
       if (!success) {
         setError('Une erreur est survenue lors de l\'inscription');
       }
+    } catch (err) {
+      setError('Une erreur est survenue lors de l\'inscription');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

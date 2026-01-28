@@ -1,24 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle2, ArrowLeft, CreditCard, Lock, Receipt } from 'lucide-react';
 import { PageType } from '../../../types';
-import { useAuth } from '../../authentication/context/AuthContext';
 import { API_ENDPOINTS } from '../../../utils/api-constants';
 import { apiPost } from '../../../utils/api-helpers';
 import { CgvModal } from '../../../components/CgvModal';
+import { saveCheckoutState, getCheckoutState } from '../../../utils/checkout-state';
 
 interface PaiementValidationProps {
   onBack: () => void;
   onNavigate: (page: PageType) => void;
   selectedFormule?: 'mensuel' | 'annuel';
   nomBar?: string;
+  checkoutUrl?: string | null;
+  isAddingVenue?: boolean; // True when adding from "Mes lieux" (not onboarding)
 }
 
-export function PaiementValidation({ onBack, onNavigate, selectedFormule = 'mensuel', nomBar = '' }: PaiementValidationProps) {
-  const { completeOnboarding, authToken } = useAuth();
+export function PaiementValidation({ onBack, onNavigate, selectedFormule = 'mensuel', nomBar = '', checkoutUrl: checkoutUrlProp, isAddingVenue = false }: PaiementValidationProps) {
+  const authToken = localStorage.getItem('authToken') || '';
   const [isProcessing, setIsProcessing] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isCgvModalOpen, setIsCgvModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get checkout URL from localStorage if not provided as prop (handles React state timing issues)
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(checkoutUrlProp || null);
+  
+  useEffect(() => {
+    // If no checkout URL from prop, try to get it from saved checkout state
+    if (!checkoutUrl) {
+      const savedState = getCheckoutState();
+      if (savedState?.checkoutUrl) {
+        setCheckoutUrl(savedState.checkoutUrl);
+        console.log('Retrieved checkout URL from localStorage:', savedState.checkoutUrl);
+      }
+    }
+  }, [checkoutUrl]);
 
   const formuleDetails = {
     mensuel: {
@@ -53,28 +69,49 @@ export function PaiementValidation({ onBack, onNavigate, selectedFormule = 'mens
     setError(null);
 
     try {
-      // Appel API pour créer une session Stripe Checkout
+      console.log('Starting payment process. checkoutUrl:', !!checkoutUrl);
+      
+      // Si on a déjà un checkoutUrl (onboarding flow), on l'utilise
+      if (checkoutUrl) {
+        // Ensure checkout state is saved before redirect
+        const existingState = getCheckoutState();
+        if (!existingState) {
+          saveCheckoutState({
+            type: isAddingVenue ? 'add-venue' : 'onboarding',
+            venueName: nomBar,
+            formule: selectedFormule,
+            returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding'
+          });
+        }
+        window.location.href = checkoutUrl;
+        return;
+      }
+
+      // Si pas de checkoutUrl mais qu'on a un nomBar, c'est probablement une création de lieu qui a perdu son état
+      if (nomBar) {
+        throw new Error('La session de création a expiré. Veuillez retourner à l\'étape précédente.');
+      }
+
+      // Sinon, appel API pour créer une session Stripe Checkout (cas général - abonnement simple)
+      console.log('Calling generic subscription checkout...');
       const data = await apiPost(
         API_ENDPOINTS.SUBSCRIPTIONS_CREATE_CHECKOUT,
         {
-          plan: 'basic',
-          billing_period: details.stripePeriod,
+          plan_id: selectedFormule === 'annuel' ? 'annual' : 'monthly',
+          success_url: window.location.origin,
+          cancel_url: window.location.origin
         },
-        authToken || 'mock-token'
+        authToken || ''
       );
 
       // Redirection vers Stripe Checkout
       if (data.checkout_url) {
-        // Dans un vrai environnement, rediriger vers Stripe
-        // window.location.href = data.checkout_url;
-        
-        // Pour la démo, simuler le succès après un délai
-        setTimeout(() => {
-          completeOnboarding();
-          onNavigate('confirmation-onboarding' as PageType);
-        }, 2000);
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error('Impossible de créer la session de paiement');
       }
     } catch (err) {
+      console.error('Payment process error:', err);
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
       setIsProcessing(false);
     }

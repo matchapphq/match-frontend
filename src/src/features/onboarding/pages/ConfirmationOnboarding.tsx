@@ -5,9 +5,10 @@ import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png'
 interface ConfirmationOnboardingProps {
   onNavigate: (page: PageType) => void;
   nomBar?: string;
+  isAddingVenue?: boolean; // True when adding from "Mes lieux" (redirects back there)
 }
 
-export function ConfirmationOnboarding({ onNavigate, nomBar }: ConfirmationOnboardingProps) {
+export function ConfirmationOnboarding({ onNavigate, nomBar, isAddingVenue = false }: ConfirmationOnboardingProps) {
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
       {/* Ambient background effects */}
@@ -90,19 +91,21 @@ export function ConfirmationOnboarding({ onNavigate, nomBar }: ConfirmationOnboa
           {/* Boutons d'action */}
           <div className="space-y-3">
             <button
-              onClick={() => onNavigate('dashboard')}
+              onClick={() => onNavigate(isAddingVenue ? 'mes-restaurants' : 'dashboard')}
               className="w-full py-4 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-all duration-200 shadow-lg shadow-[#5a03cf]/20 hover:scale-[1.01]"
             >
-              Accéder à mon tableau de bord
+              {isAddingVenue ? 'Retour à mes établissements' : 'Accéder à mon tableau de bord'}
             </button>
 
-            <button
-              onClick={() => onNavigate('mes-restaurants')}
-              className="w-full py-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
-            >
-              <Settings className="w-5 h-5" />
-              Configurer mon établissement
-            </button>
+            {!isAddingVenue && (
+              <button
+                onClick={() => onNavigate('mes-restaurants')}
+                className="w-full py-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+              >
+                <Settings className="w-5 h-5" />
+                Configurer mon établissement
+              </button>
+            )}
           </div>
         </div>
 

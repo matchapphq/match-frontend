@@ -3,7 +3,7 @@ import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => Promise<boolean>;
+  onLogin: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
   onSwitchToRegister: () => void;
   onBackToLanding?: () => void;
 }
@@ -12,6 +12,7 @@ export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginPro
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -21,7 +22,7 @@ export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginPro
     setIsLoading(true);
 
     try {
-      const success = await onLogin(email, password);
+      const success = await onLogin(email, password, rememberMe);
       if (!success) {
         setError('Email ou mot de passe incorrect');
       }
@@ -114,6 +115,8 @@ export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginPro
               <label className="flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
                 <input 
                   type="checkbox" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-[#5a03cf] focus:ring-[#5a03cf] bg-gray-50 dark:bg-gray-900"
                 />
                 Se souvenir de moi

@@ -2,15 +2,18 @@ import { ArrowLeft, Building2, MapPin, Mail, Phone, Users, Store, Loader2 } from
 import { useState } from 'react';
 import { PageType } from '../../../types';
 import apiClient from '../../../api/client';
+import { saveCheckoutState } from '../../../utils/checkout-state';
 
 interface InfosEtablissementProps {
   onBack: () => void;
   onNavigate: (page: PageType) => void;
   selectedFormule?: 'mensuel' | 'annuel';
   onBarInfoSubmit?: (nomBar: string) => void;
+  onCheckoutData?: (url: string, sessionId: string) => void;
+  isAddingVenue?: boolean; // True when adding from "Mes lieux" (not onboarding)
 }
 
-export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mensuel', onBarInfoSubmit }: InfosEtablissementProps) {
+export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mensuel', onBarInfoSubmit, onCheckoutData, isAddingVenue = false }: InfosEtablissementProps) {
   const [formData, setFormData] = useState({
     nomBar: '',
     adresse: '',
@@ -45,14 +48,35 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
         phone: formData.telephone,
         capacity: parseInt(formData.capacite) || 0,
         type: 'SPORTS_BAR', // Defaulting to SPORTS_BAR for now
-        description: `Etablissement de type ${formData.typeEtablissement}`
+        description: `Etablissement de type ${formData.typeEtablissement}`,
+        plan_id: selectedFormule === 'annuel' ? 'annual' : 'monthly',
+        success_url: window.location.origin,
+        cancel_url: window.location.origin
       };
 
-      await apiClient.post('/partners/venues', payload);
+      const response = await apiClient.post('/partners/venues', payload);
+      const data = response.data;
 
       if (onBarInfoSubmit) {
         onBarInfoSubmit(formData.nomBar);
       }
+      
+      if (onCheckoutData && data.checkout_url && data.session_id) {
+        onCheckoutData(data.checkout_url, data.session_id);
+      }
+
+      // Save checkout state before redirecting to Stripe
+      // This helps restore context after Stripe redirect
+      saveCheckoutState({
+        type: isAddingVenue ? 'add-venue' : 'onboarding',
+        venueId: data.venue_id,
+        venueName: formData.nomBar,
+        formule: selectedFormule,
+        sessionId: data.session_id,
+        checkoutUrl: data.checkout_url,
+        returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding'
+      });
+      
       onNavigate('paiement-validation' as PageType);
     } catch (err) {
       console.error('Failed to create venue:', err);
