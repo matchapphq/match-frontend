@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { QRScanner } from '../features/reservations/pages/QRScanner';
 import { QrCode } from 'lucide-react';
 import { AuthProvider, useAuth } from '../features/authentication/context/AuthContext';
@@ -72,6 +73,7 @@ export default function App() {
 
 function AppContent() {
   const { isAuthenticated, isLoading, login, register, currentUser, completeOnboarding, refreshUserData } = useAuth();
+  const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('à venir');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
@@ -156,8 +158,13 @@ function AppContent() {
         window.history.replaceState({}, document.title, '/');
         clearCheckoutState();
         
+        // Invalidate boost queries to refetch fresh data
+        await queryClient.invalidateQueries({ queryKey: ['boost-summary'] });
+        await queryClient.invalidateQueries({ queryKey: ['available-boosts'] });
+        await queryClient.invalidateQueries({ queryKey: ['boost-history'] });
+        
         // Show success and redirect to booster
-        setPurchasedBoostCount(response.data.quantity || 0);
+        setPurchasedBoostCount(response.data.purchase?.quantity || 0);
         setBoostPurchaseSuccess(true);
         setCurrentPage('booster');
         
@@ -204,7 +211,7 @@ function AppContent() {
     } finally {
       setCheckoutProcessing(false);
     }
-  }, [checkoutProcessing, refreshUserData, completeOnboarding]);
+  }, [checkoutProcessing, refreshUserData, completeOnboarding, queryClient]);
 
   // Effect to handle Stripe checkout return
   useEffect(() => {
