@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageType } from '../../types';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { useNotificationPreferences, useUpdateNotificationPreferences } from '../../hooks/api/useAccount';
+import { toast } from 'sonner';
 
 interface CompteNotificationsProps {
   onBack?: () => void;
@@ -8,10 +10,37 @@ interface CompteNotificationsProps {
 }
 
 export function CompteNotifications({ onBack }: CompteNotificationsProps) {
+  const { data: preferences, isLoading } = useNotificationPreferences();
+  const updateMutation = useUpdateNotificationPreferences();
+  
   const [emailReservations, setEmailReservations] = useState(true);
   const [emailMatchs, setEmailMatchs] = useState(true);
   const [pushReservations, setPushReservations] = useState(true);
   const [pushRappels, setPushRappels] = useState(false);
+  
+  // Sync state with fetched preferences
+  useEffect(() => {
+    if (preferences) {
+      setEmailReservations(preferences.email_reservations ?? true);
+      setEmailMatchs(preferences.email_updates ?? true);
+      setPushReservations(preferences.push_reservations ?? true);
+      setPushRappels(preferences.push_updates ?? false);
+    }
+  }, [preferences]);
+  
+  const handleSave = async () => {
+    try {
+      await updateMutation.mutateAsync({
+        email_reservations: emailReservations,
+        email_updates: emailMatchs,
+        push_reservations: pushReservations,
+        push_updates: pushRappels,
+      });
+      toast.success('Préférences mises à jour');
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -149,9 +178,12 @@ export function CompteNotifications({ onBack }: CompteNotificationsProps) {
 
       {/* Bouton CTA */}
       <button
-        className="w-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm"
+        onClick={handleSave}
+        disabled={updateMutation.isPending || isLoading}
+        className="w-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         style={{ fontWeight: '600' }}
       >
+        {updateMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
         Enregistrer les préférences
       </button>
     </div>

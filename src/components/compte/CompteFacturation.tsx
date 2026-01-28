@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { PageType } from '../../src/types';
 import { useAuth } from '../../src/features/authentication/context/AuthContext';
-import { ArrowLeft, Plus, X, Building, MapPin, Mail, Phone, CreditCard } from 'lucide-react';
+import { ArrowLeft, Plus, X, Building, MapPin, Mail, Phone, CreditCard, Loader2 } from 'lucide-react';
+import { usePartnerVenues } from '../../src/hooks/api/useVenues';
+import { useInvoices, usePaymentPortal } from '../../src/hooks/api/useAccount';
+import { toast } from 'sonner';
 
 interface CompteFacturationProps {
   onNavigate?: (page: PageType) => void;
@@ -12,51 +15,61 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
   const { currentUser } = useAuth();
   const [showAddVenueModal, setShowAddVenueModal] = useState(false);
 
-  // 4️⃣ Logique : 1 établissement = 1 abonnement
-  const [etablissements] = useState([
-    {
-      id: '1',
-      nom: 'Le Sport Bar Paris',
-      ville: 'Paris 11ème',
-      formule: 'Annuel',
-      prix: '300€/an',
-      prixMensuel: '25€/mois',
-      statut: 'actif',
-      prochainRenouvellement: '01/12/2025',
-      moyenPaiement: {
-        type: 'VISA',
-        numero: '•••• 4242',
-        expiration: '12/2026',
-      },
-      factures: [
-        { id: 1, date: '01/12/2024', montant: '300€', statut: 'Payée', numero: 'INV-2024-001' },
-        { id: 2, date: '01/12/2023', montant: '300€', statut: 'Payée', numero: 'INV-2023-001' },
-      ],
-    },
-    {
-      id: '2',
-      nom: 'Stadium Café Lyon',
-      ville: 'Lyon 2ème',
-      formule: 'Mensuel',
+  // Fetch real data from API
+  const { data: venues, isLoading: isLoadingVenues } = usePartnerVenues();
+  const { data: invoices, isLoading: isLoadingInvoices } = useInvoices();
+  const paymentPortalMutation = usePaymentPortal();
+
+  // Transform venues to etablissements format
+  const etablissements = useMemo(() => {
+    if (!venues) return [];
+    return venues.map(venue => ({
+      id: venue.id,
+      nom: venue.name,
+      ville: venue.city || '',
+      formule: venue.subscription_status === 'active' ? 'Actif' : 'Inactif',
       prix: '30€/mois',
       prixMensuel: '30€/mois',
-      statut: 'actif',
-      prochainRenouvellement: '15/01/2025',
+      statut: venue.subscription_status || 'actif',
+      prochainRenouvellement: '-',
       moyenPaiement: {
-        type: 'MASTERCARD',
-        numero: '•••• 8888',
-        expiration: '08/2027',
+        type: 'CARD',
+        numero: '•••• ****',
+        expiration: '-',
       },
-      factures: [
-        { id: 1, date: '15/12/2024', montant: '30€', statut: 'Payée', numero: 'INV-2024-002' },
-        { id: 2, date: '15/11/2024', montant: '30€', statut: 'Payée', numero: 'INV-2024-003' },
-      ],
-    },
-  ]);
+    }));
+  }, [venues]);
 
-  const [selectedEtablissement, setSelectedEtablissement] = useState(etablissements[0].id);
+  // Transform invoices
+  const formattedInvoices = useMemo(() => {
+    if (!invoices) return [];
+    return invoices.map(inv => ({
+      id: inv.id,
+      date: new Date(inv.created_at).toLocaleDateString('fr-FR'),
+      montant: `${(inv.amount / 100).toFixed(0)}€`,
+      statut: inv.status === 'paid' ? 'Payée' : inv.status,
+      numero: inv.number || inv.id,
+      pdf_url: inv.pdf_url,
+    }));
+  }, [invoices]);
 
-  const currentEtablissement = etablissements.find(e => e.id === selectedEtablissement);
+  const [selectedEtablissement, setSelectedEtablissement] = useState<string>('');
+
+  // Set default selected when venues load
+  const currentEtablissement = etablissements.find(e => e.id === selectedEtablissement) || etablissements[0];
+
+  const handleManagePayment = async () => {
+    try {
+      const result = await paymentPortalMutation.mutateAsync();
+      if (result.url) {
+        window.location.href = result.url;
+      }
+    } catch (error) {
+      toast.error('Erreur lors de l\'accès au portail de paiement');
+    }
+  };
+
+  const isLoading = isLoadingVenues || isLoadingInvoices;
 
   const features = [
     'Diffusion illimitée de matchs',
@@ -72,6 +85,16 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
     alert('Nouvel établissement ajouté !');
     setShowAddVenueModal(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -288,9 +311,12 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
                   </div>
                 </div>
                 <button
-                  className="px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 dark:hover:bg-[#5a03cf]/10 rounded-lg transition-colors"
+                  onClick={handleManagePayment}
+                  disabled={paymentPortalMutation.isPending}
+                  className="px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 dark:hover:bg-[#5a03cf]/10 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                   style={{ fontWeight: '600' }}
                 >
+                  {paymentPortalMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                   Modifier
                 </button>
               </div>
@@ -307,38 +333,47 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
             </p>
 
             <div className="space-y-3">
-              {currentEtablissement.factures.map((invoice) => (
-                <div
-                  key={invoice.id}
-                  className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 border border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-6">
-                    <div>
-                      <p className="text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
-                        {invoice.numero}
-                      </p>
-                      <p className="text-gray-600 dark:text-gray-400 text-sm">{invoice.date}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
-                        {invoice.montant}
-                      </p>
-                    </div>
-                    <span
-                      className="px-3 py-1 bg-[#9cff02]/20 backdrop-blur-sm text-[#5a03cf] rounded-lg text-sm border border-[#9cff02]/30"
-                      style={{ fontWeight: '600' }}
-                    >
-                      {invoice.statut}
-                    </span>
-                  </div>
-                  <button
-                    className="px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 dark:hover:bg-[#5a03cf]/10 rounded-lg transition-colors"
-                    style={{ fontWeight: '600' }}
+              {formattedInvoices.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">Aucune facture disponible</p>
+              ) : (
+                formattedInvoices.map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 border border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between"
                   >
-                    Télécharger
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-6">
+                      <div>
+                        <p className="text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
+                          {invoice.numero}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">{invoice.date}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
+                          {invoice.montant}
+                        </p>
+                      </div>
+                      <span
+                        className="px-3 py-1 bg-[#9cff02]/20 backdrop-blur-sm text-[#5a03cf] rounded-lg text-sm border border-[#9cff02]/30"
+                        style={{ fontWeight: '600' }}
+                      >
+                        {invoice.statut}
+                      </span>
+                    </div>
+                    {invoice.pdf_url && (
+                      <a
+                        href={invoice.pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 dark:hover:bg-[#5a03cf]/10 rounded-lg transition-colors"
+                        style={{ fontWeight: '600' }}
+                      >
+                        Télécharger
+                      </a>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

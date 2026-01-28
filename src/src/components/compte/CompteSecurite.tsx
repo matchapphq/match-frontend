@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { PageType } from '../../types';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { useUpdatePassword } from '../../hooks/api/useAccount';
+import { toast } from 'sonner';
 
 interface CompteSecuriteProps {
   onBack?: () => void;
@@ -7,6 +10,39 @@ interface CompteSecuriteProps {
 }
 
 export function CompteSecurite({ onBack }: CompteSecuriteProps) {
+  const updatePasswordMutation = useUpdatePassword();
+  
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('Les mots de passe ne correspondent pas');
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      toast.error('Le mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+    
+    try {
+      await updatePasswordMutation.mutateAsync({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      toast.success('Mot de passe mis à jour avec succès');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour du mot de passe');
+    }
+  };
+
   return (
     <div className="p-8 max-w-4xl mx-auto">
       {/* 🔁 Navigation - Retour au compte */}
@@ -36,13 +72,15 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">Modifiez votre mot de passe actuel</p>
 
-        <form className="space-y-6">
+        <form onSubmit={handlePasswordSubmit} className="space-y-6">
           <div>
             <label className="block text-gray-700 dark:text-gray-300 mb-2" style={{ fontWeight: '600' }}>
               Mot de passe actuel
             </label>
             <input
               type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
               className="w-full px-4 py-3 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all text-gray-900 dark:text-white"
             />
           </div>
@@ -53,6 +91,8 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
             </label>
             <input
               type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
               className="w-full px-4 py-3 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all text-gray-900 dark:text-white"
             />
           </div>
@@ -63,15 +103,19 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
             </label>
             <input
               type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full px-4 py-3 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf]/30 focus:border-[#5a03cf]/30 transition-all text-gray-900 dark:text-white"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm"
+            disabled={updatePasswordMutation.isPending}
+            className="w-full bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={{ fontWeight: '600' }}
           >
+            {updatePasswordMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             Mettre à jour le mot de passe
           </button>
         </form>

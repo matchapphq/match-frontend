@@ -6,17 +6,11 @@
  * Noms anonymisés
  */
 
-import { useState } from 'react';
-import { toast } from 'sonner@2.0.3';
+import { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { ShareReferralModal } from '../../../components/ShareReferralModal';
-import { ArrowLeft, Copy, Share2, Users, TrendingUp, Gift } from 'lucide-react';
-import {
-  mockUserReferralCode,
-  mockUserReferralStats,
-  mockReferralHistory,
-  mockVenueOwnerReferralCode,
-  mockVenueOwnerReferralStats,
-} from '../../../data/mockData';
+import { ArrowLeft, Copy, Share2, Users, TrendingUp, Gift, Loader2 } from 'lucide-react';
+import { useReferralCode, useReferralStats, useReferralHistory } from '../../../hooks/api/useReferral';
 
 interface ParrainageProps {
   onBack?: () => void;
@@ -26,23 +20,31 @@ export function Parrainage({ onBack }: ParrainageProps) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  // Mock data
-  const isVenueOwner = true;
-  const referralCode = isVenueOwner ? mockVenueOwnerReferralCode.referral_code : mockUserReferralCode.referral_code;
-  const stats = isVenueOwner ? mockVenueOwnerReferralStats : mockUserReferralStats;
-  const referralLink = `https://match.app/signup?ref=${referralCode}`;
+  // Fetch real data from API
+  const { data: codeData, isLoading: isLoadingCode } = useReferralCode();
+  const { data: statsData, isLoading: isLoadingStats } = useReferralStats();
+  const { data: historyData, isLoading: isLoadingHistory } = useReferralHistory({ status: statusFilter });
+
+  const referralCode = codeData?.referral_code || '';
+  const referralLink = codeData?.referral_link || `https://match.app/signup?ref=${referralCode}`;
+  
+  // Default stats if not loaded
+  const stats = useMemo(() => ({
+    total_invited: statsData?.total_invited || 0,
+    total_signed_up: statsData?.total_signed_up || 0,
+    total_converted: statsData?.total_converted || 0,
+    total_rewards_earned: statsData?.total_rewards_earned || 0,
+  }), [statsData]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Code copié !');
   };
 
-  const filteredHistory = (mockReferralHistory.referred_users || []).filter((referral) => {
-    if (statusFilter === 'all') return true;
-    if (statusFilter === 'converted') return referral.status === 'converted';
-    if (statusFilter === 'pending') return referral.status === 'signed_up';
-    return true;
-  });
+  // History is already filtered by the API based on statusFilter
+  const filteredHistory = historyData?.referred_users || [];
+  
+  const isLoading = isLoadingCode || isLoadingStats;
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
@@ -288,7 +290,7 @@ export function Parrainage({ onBack }: ParrainageProps) {
         onClose={() => setIsShareModalOpen(false)}
         referralCode={referralCode}
         referralLink={referralLink}
-        isVenueOwner={isVenueOwner}
+        isVenueOwner={true}
       />
     </div>
   );

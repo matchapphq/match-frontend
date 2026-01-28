@@ -1,19 +1,57 @@
-import { ArrowLeft, Star } from 'lucide-react';
-import { mockAvis } from '../../../data/mockData';
+import { useMemo } from 'react';
+import { ArrowLeft, Star, Loader2 } from 'lucide-react';
+import { useAllVenueReviews, Review } from '../../../hooks/api/useReviews';
+import { usePartnerVenues } from '../../../hooks/api/useVenues';
 
 interface MesAvisProps {
   onBack: () => void;
 }
 
 export function MesAvis({ onBack }: MesAvisProps) {
-  const avisData = mockAvis;
-  const noteMoyenne = (avisData.reduce((sum, avis) => sum + avis.note, 0) / avisData.length).toFixed(1);
+  // Fetch partner's venues
+  const { data: venues, isLoading: isLoadingVenues } = usePartnerVenues();
+  
+  // Get venue IDs from fetched venues
+  const venueIds = useMemo(() => {
+    return venues?.map(v => v.id) || [];
+  }, [venues]);
+  
+  const { data: reviewsData, isLoading: isLoadingReviews } = useAllVenueReviews(venueIds);
+  
+  const isLoading = isLoadingVenues || isLoadingReviews;
+  
+  // Transform API reviews to display format
+  const avisData = useMemo(() => {
+    if (!reviewsData?.reviews) return [];
+    return reviewsData.reviews.map((review: Review) => ({
+      id: review.id,
+      client: review.user_name,
+      note: review.rating,
+      commentaire: review.comment,
+      date: new Date(review.created_at).toLocaleDateString('fr-FR'),
+    }));
+  }, [reviewsData]);
+  
+  const noteMoyenne = reviewsData?.average_rating?.toFixed(1) || 
+    (avisData.length > 0 
+      ? (avisData.reduce((sum, avis) => sum + avis.note, 0) / avisData.length).toFixed(1) 
+      : '0.0');
+
+  if (isLoading) {
+    return (
+      <div className="p-8 max-w-6xl mx-auto">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+        className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />
         Retour au tableau de bord
@@ -25,8 +63,8 @@ export function MesAvis({ onBack }: MesAvisProps) {
             <Star className="w-8 h-8 text-[#5a03cf]" />
           </div>
           <div>
-            <h1 className="text-gray-900">Mes avis</h1>
-            <p className="text-gray-600">Tous les avis clients</p>
+            <h1 className="text-gray-900 dark:text-white">Mes avis</h1>
+            <p className="text-gray-600 dark:text-gray-400">Tous les avis clients</p>
           </div>
         </div>
       </div>
