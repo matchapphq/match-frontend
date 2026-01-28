@@ -46,19 +46,10 @@ export interface ReservationStats {
 }
 
 export interface CustomerStats {
-  total_customers: number;
-  average_age?: number;
-  favorite_sport?: string;
-  average_per_match: number;
-  recent_customers: Array<{
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone?: string;
-    last_visit: string;
-    total_reservations: number;
-  }>;
+  customerCount: number;
+  totalGuests: number;
+  totalReservations: number;
+  period: number;
 }
 
 // Hook to fetch reservations for a venue
@@ -165,12 +156,12 @@ export function useCheckIn() {
   });
 }
 
-// Hook to fetch customer stats
-export function useCustomerStats() {
+// Hook to fetch customer stats with configurable period
+export function useCustomerStats(period: 7 | 30 | 90 = 30) {
   return useQuery({
-    queryKey: ['customer-stats'],
+    queryKey: ['customer-stats', period],
     queryFn: async () => {
-      const response = await apiClient.get(API_ENDPOINTS.PARTNERS_STATS_CUSTOMERS);
+      const response = await apiClient.get(`${API_ENDPOINTS.PARTNERS_STATS_CUSTOMERS}?period=${period}`);
       return response.data as CustomerStats;
     },
   });

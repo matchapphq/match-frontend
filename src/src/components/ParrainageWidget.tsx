@@ -17,6 +17,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { useState } from 'react';
+import { PageType } from '../types';
 import { 
   mockVenueOwnerReferralCode, 
   mockVenueOwnerReferralStats,
@@ -24,7 +25,7 @@ import {
 import { useToast } from '../context/ToastContext';
 
 interface ParrainageWidgetProps {
-  onNavigate?: (page: string) => void;
+  onNavigate?: (page: PageType) => void;
 }
 
 export function ParrainageWidget({ onNavigate }: ParrainageWidgetProps) {

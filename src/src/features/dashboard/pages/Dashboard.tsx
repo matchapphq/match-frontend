@@ -19,12 +19,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [periodFilter, setPeriodFilter] = useState<'7j' | '30j' | '90j'>('30j');
   const toast = useToast();
 
+  // Convert period filter to numeric days
+  const periodDays = periodFilter === '7j' ? 7 : periodFilter === '90j' ? 90 : 30;
+
   // Fetch matches from API
   const { data: matchesData, isLoading: matchesLoading } = usePartnerMatches();
   
-  // Fetch customer stats
-  const { data: customerStatsData } = useCustomerStats();
-  const totalClients = customerStatsData?.total_customers || 0;
+  // Fetch customer stats with period filter
+  const { data: customerStatsData } = useCustomerStats(periodDays as 7 | 30 | 90);
+  // totalGuests = sum of party_size (actual number of people, not just reservations)
+  const totalClients = customerStatsData?.totalGuests || 0;
   
   // Sport emoji mapping
   const getSportEmoji = (league: string): string => {
