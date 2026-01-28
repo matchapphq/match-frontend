@@ -1,6 +1,6 @@
-import { ArrowLeft, Users, Calendar, Trophy, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { useState } from 'react';
-import { STATS, CLIENTS_RECENTS } from '../../data/mockData';
+import { ArrowLeft, Users, Calendar, Trophy, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { useCustomerStats } from '../../hooks/api/useReservations';
 
 interface ClientsDetailProps {
   onBack: () => void;
@@ -9,10 +9,49 @@ interface ClientsDetailProps {
 type SortField = 'nom' | 'prenom' | 'match' | 'date' | null;
 type SortOrder = 'asc' | 'desc' | null;
 
+interface ClientData {
+  id: string;
+  nom: string;
+  prenom: string;
+  match: string;
+  date: string;
+}
+
 export function ClientsDetail({ onBack }: ClientsDetailProps) {
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
-  const [clientsData, setClientsData] = useState(CLIENTS_RECENTS);
+  
+  // Fetch customer stats from API
+  const { data: customerStats, isLoading, error } = useCustomerStats();
+  
+  // Transform API data to match expected format
+  const baseClientsData: ClientData[] = useMemo(() => {
+    if (!customerStats?.recent_customers) return [];
+    return customerStats.recent_customers.map(c => ({
+      id: c.id,
+      nom: c.last_name,
+      prenom: c.first_name,
+      match: `${c.total_reservations} réservation(s)`,
+      date: c.last_visit ? new Date(c.last_visit).toLocaleDateString('fr-FR') : '-',
+    }));
+  }, [customerStats]);
+  
+  const [clientsData, setClientsData] = useState<ClientData[]>([]);
+  
+  // Update clientsData when baseClientsData changes
+  useEffect(() => {
+    if (baseClientsData.length > 0) {
+      setClientsData(baseClientsData);
+    }
+  }, [baseClientsData]);
+  
+  // Stats from API or defaults
+  const stats = {
+    ageMoyen: customerStats?.average_age || '-',
+    sportFavori: customerStats?.favorite_sport || 'Football',
+    clientsTotal: customerStats?.total_customers || 0,
+    moyenneClientsParMatch: customerStats?.average_per_match || 0,
+  };
 
   const handleSort = (field: SortField) => {
     let newOrder: SortOrder = 'asc';
@@ -29,7 +68,7 @@ export function ClientsDetail({ onBack }: ClientsDetailProps) {
     setSortOrder(newOrder);
 
     if (newOrder === null) {
-      setClientsData(CLIENTS_RECENTS);
+      setClientsData(baseClientsData);
     } else {
       const sorted = [...clientsData].sort((a, b) => {
         const aVal = a[field as keyof typeof a];
@@ -82,25 +121,25 @@ export function ClientsDetail({ onBack }: ClientsDetailProps) {
         <div className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white p-6 rounded-xl shadow-lg">
           <Calendar className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-white/80 text-sm mb-1">Âge moyen</p>
-          <p className="italic text-2xl">{STATS.ageMoyen} ans</p>
+          <p className="italic text-2xl">{stats.ageMoyen} ans</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] p-6 rounded-xl shadow-lg">
           <Trophy className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-[#5a03cf]/80 text-sm mb-1">Sport favori</p>
-          <p className="italic text-2xl">{STATS.sportFavori}</p>
+          <p className="italic text-2xl">{stats.sportFavori}</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white p-6 rounded-xl shadow-lg">
           <Users className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-white/80 text-sm mb-1">Total clients</p>
-          <p className="italic text-2xl">{STATS.clientsTotal.toLocaleString()}</p>
+          <p className="italic text-2xl">{stats.clientsTotal.toLocaleString()}</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] p-6 rounded-xl shadow-lg">
           <TrendingUp className="w-6 h-6 mb-3 opacity-80" />
           <p className="text-[#5a03cf]/80 text-sm mb-1">Moyenne/match</p>
-          <p className="italic text-2xl">{STATS.moyenneClientsParMatch}</p>
+          <p className="italic text-2xl">{stats.moyenneClientsParMatch}</p>
         </div>
       </div>
 

@@ -1,9 +1,10 @@
-import { Calendar, Eye, Plus, Zap, Edit, TrendingUp, Users, Clock, ChevronRight, Filter } from 'lucide-react';
-import { useState } from 'react';
+import { Calendar, Eye, Plus, Zap, Edit, TrendingUp, Users, Clock, ChevronRight, Filter, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { PageType } from '../../../types';
-import { useAppContext } from '../../../context/AppContext';
 import { useAuth } from '../../authentication/context/AuthContext';
-import { isMatchFinished } from '../../../utils/date';
+import { usePartnerMatches } from '../../../hooks/api/useMatches';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface MesMatchsProps {
   onNavigate?: (page: PageType, matchId?: number) => void;
@@ -11,11 +12,111 @@ interface MesMatchsProps {
 }
 
 export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsProps) {
-  const { getUserMatchs } = useAppContext();
   const { currentUser } = useAuth();
   const [filtre, setFiltre] = useState<'tous' | 'à venir' | 'terminé'>(defaultFilter);
-
-  const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
+  
+  // Fetch matches from API
+  const { data: matchesData, isLoading } = usePartnerMatches();
+  
+  // Sport emoji mapping based on league name
+  const getSportEmoji = (league: string): string => {
+    const leagueLower = (league || '').toLowerCase();
+    if (leagueLower.includes('nfl') || leagueLower.includes('american football')) return '🏈';
+    if (leagueLower.includes('nba') || leagueLower.includes('basketball')) return '🏀';
+    if (leagueLower.includes('nhl') || leagueLower.includes('hockey')) return '🏒';
+    if (leagueLower.includes('mlb') || leagueLower.includes('baseball')) return '⚾';
+    if (leagueLower.includes('tennis') || leagueLower.includes('atp') || leagueLower.includes('wta')) return '🎾';
+    if (leagueLower.includes('golf') || leagueLower.includes('pga')) return '⛳';
+    if (leagueLower.includes('rugby')) return '🏉';
+    if (leagueLower.includes('cricket')) return '🏏';
+    if (leagueLower.includes('f1') || leagueLower.includes('formula')) return '🏎️';
+    if (leagueLower.includes('mma') || leagueLower.includes('ufc')) return '🥊';
+    if (leagueLower.includes('boxing')) return '🥊';
+    // Default to football/soccer for Premier League, La Liga, Serie A, Bundesliga, Ligue 1, etc.
+    return '⚽';
+  };
+  
+  // Transform API data to match expected format
+  const matchs = useMemo(() => {
+    let matches: any[] = [];
+    if (Array.isArray(matchesData)) {
+      matches = matchesData;
+    } else if (matchesData?.matches && Array.isArray(matchesData.matches)) {
+      matches = matchesData.matches;
+    } else if (matchesData?.data && Array.isArray(matchesData.data)) {
+      matches = matchesData.data;
+    }
+    
+    return matches.map((vm: any) => {
+      const match = vm.match || vm;
+      let dateStr = '';
+      let heureStr = '';
+      let isFinished = vm.status === 'finished';
+      
+      try {
+        // Use scheduled_at from the actual API response
+        const startTime = match.scheduled_at || match.start_time || vm.scheduled_at;
+        if (startTime) {
+          const date = new Date(startTime);
+          if (!isNaN(date.getTime())) {
+            dateStr = format(date, 'dd/MM/yyyy', { locale: fr });
+            heureStr = format(date, 'HH:mm', { locale: fr });
+            // Use status from API if available, otherwise check date
+            if (vm.status) {
+              isFinished = vm.status === 'finished';
+            } else {
+              isFinished = date < new Date();
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Error parsing match date:', e);
+      }
+      
+      // Get team names - API uses homeTeam/awayTeam as strings
+      const equipe1 = match.homeTeam || match.home_team?.name || match.home_team || 'Équipe A';
+      const equipe2 = match.awayTeam || match.away_team?.name || match.away_team || 'Équipe B';
+      const league = match.league || match.competition?.name || '';
+      
+      return {
+        id: vm.id || match.id,
+        equipe1,
+        equipe2,
+        date: dateStr,
+        heure: heureStr,
+        sport: getSportEmoji(league),
+        sportNom: league || 'Football',
+        competition: league,
+        total: vm.total_capacity || vm.capacity || 50,
+        reservees: vm.reserved_seats || vm.reservations_count || 0,
+        statut: isFinished ? 'terminé' : 'à venir',
+        venueId: vm.venue?.id || vm.venue_id,
+        matchId: match.id,
+      };
+    });
+  }, [matchesData]);
+  
+  // Helper function to check if match is finished
+  const isMatchFinished = (date: string, heure: string, statut: string) => {
+    if (statut === 'terminé') return true;
+    if (!date || !heure) return false;
+    try {
+      const dateParts = date.split('/');
+      const timeParts = heure.split(':');
+      if (dateParts.length < 3 || timeParts.length < 2) return false;
+      
+      const day = parseInt(dateParts[0] || '0');
+      const month = parseInt(dateParts[1] || '0') - 1;
+      const year = parseInt(dateParts[2] || '0');
+      const hours = parseInt(timeParts[0] || '0');
+      const minutes = parseInt(timeParts[1] || '0');
+      
+      const matchDate = new Date(year, month, day, hours, minutes);
+      return matchDate < new Date();
+    } catch {
+      return false;
+    }
+  };
 
   const handleProgrammerMatch = () => {
     if (onNavigate) {

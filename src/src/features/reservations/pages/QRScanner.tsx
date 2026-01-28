@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Camera, AlertCircle, CheckCircle2, Scan } from 'lucide-react';
+import { X, Camera, AlertCircle, CheckCircle2, Scan, Loader2, Users } from 'lucide-react';
 import { PageType } from '../../../types';
+import { useVerifyQR, useCheckIn } from '../../../hooks/api/useReservations';
+import { toast } from 'sonner';
 
 interface QRScannerProps {
   onBack: () => void;
   onNavigate: (page: PageType) => void;
+}
+
+interface VerifiedReservation {
+  id: string;
+  user_name: string;
+  party_size: number;
+  match_name: string;
+  status: string;
 }
 
 export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
@@ -13,8 +23,14 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [scannedData, setScannedData] = useState<string>('');
+  const [verifiedReservation, setVerifiedReservation] = useState<VerifiedReservation | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  
+  const verifyQRMutation = useVerifyQR();
+  const checkInMutation = useCheckIn();
 
   useEffect(() => {
     return () => {
@@ -57,13 +73,53 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
     }
   };
 
-  const handleManualInput = (code: string) => {
+  const handleManualInput = async (code: string) => {
+    if (!code) return;
+    
     setScannedData(code);
-    setSuccess(true);
-    setTimeout(() => {
-      alert(`QR Code scanné: ${code}`);
-      onBack();
-    }, 1500);
+    setIsVerifying(true);
+    setError(null);
+    
+    try {
+      const result = await verifyQRMutation.mutateAsync(code);
+      
+      // Store verified reservation info
+      setVerifiedReservation({
+        id: result.reservation?.id || result.id,
+        user_name: result.reservation?.user?.first_name 
+          ? `${result.reservation.user.first_name} ${result.reservation.user.last_name}`
+          : result.user_name || 'Client',
+        party_size: result.reservation?.party_size || result.party_size || 1,
+        match_name: result.match_name || 'Match',
+        status: result.reservation?.status || result.status || 'pending',
+      });
+      
+      setSuccess(true);
+      stopCamera();
+      toast.success('QR Code vérifié avec succès!');
+    } catch (err: any) {
+      setError(err.message || 'QR Code invalide ou expiré');
+      toast.error('QR Code invalide');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+  
+  const handleCheckIn = async () => {
+    if (!verifiedReservation) return;
+    
+    setIsCheckingIn(true);
+    try {
+      await checkInMutation.mutateAsync(verifiedReservation.id);
+      toast.success('Check-in effectué avec succès!');
+      setTimeout(() => {
+        onBack();
+      }, 1500);
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors du check-in');
+    } finally {
+      setIsCheckingIn(false);
+    }
   };
 
   return (
@@ -199,13 +255,88 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
           </div>
         )}
 
-        {success && (
-          <div className="text-center">
+        {success && verifiedReservation && (
+          <div className="text-center w-full max-w-md">
             <div className="w-24 h-24 bg-green-500/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 animate-scale-in">
               <CheckCircle2 className="w-12 h-12 text-green-400" />
             </div>
-            <h3 className="text-white text-xl mb-2">Succès !</h3>
-            <p className="text-white/70">Code scanné: {scannedData}</p>
+            <h3 className="text-white text-xl mb-2">Réservation vérifiée !</h3>
+            
+            {/* Reservation Details */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mt-6 text-left">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">
+                      {verifiedReservation.user_name.charAt(0)}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold">{verifiedReservation.user_name}</div>
+                    <div className="text-white/60 text-sm">{verifiedReservation.match_name}</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 text-white/80">
+                  <Users className="w-5 h-5" />
+                  <span>{verifiedReservation.party_size} personne(s)</span>
+                </div>
+                
+                <div className="pt-4 border-t border-white/20">
+                  <div className="text-sm text-white/60 mb-2">Statut actuel</div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    verifiedReservation.status === 'confirmed' 
+                      ? 'bg-green-500/20 text-green-400' 
+                      : verifiedReservation.status === 'checked_in'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-yellow-500/20 text-yellow-400'
+                  }`}>
+                    {verifiedReservation.status === 'confirmed' ? 'Confirmé' : 
+                     verifiedReservation.status === 'checked_in' ? 'Déjà enregistré' : 
+                     'En attente'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={onBack}
+                className="flex-1 px-6 py-3 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-colors"
+              >
+                Fermer
+              </button>
+              {verifiedReservation.status !== 'checked_in' && (
+                <button
+                  onClick={handleCheckIn}
+                  disabled={isCheckingIn}
+                  className="flex-1 px-6 py-3 bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] font-semibold rounded-xl hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isCheckingIn ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Check-in...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      Valider l'arrivée
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {isVerifying && (
+          <div className="text-center">
+            <div className="w-24 h-24 bg-[#5a03cf]/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6">
+              <Loader2 className="w-12 h-12 text-[#9cff02] animate-spin" />
+            </div>
+            <h3 className="text-white text-xl mb-2">Vérification en cours...</h3>
+            <p className="text-white/70">Code: {scannedData}</p>
           </div>
         )}
       </div>

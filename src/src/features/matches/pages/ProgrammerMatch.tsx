@@ -1,6 +1,11 @@
-import { ArrowLeft, Calendar, ChevronRight, MapPin, Check, Search, Trophy, Clock, Users } from 'lucide-react';
-import { useState } from 'react';
-import { mockSports, mockAvailableMatches, mockRestaurants } from '../../../data/mockData';
+import { ArrowLeft, Calendar, ChevronRight, MapPin, Check, Search, Trophy, Clock, Users, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
+import { useSports, useUpcomingMatches, useScheduleMatch } from '../../../hooks/api/useMatches';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface ProgrammerMatchProps {
   onBack: () => void;
@@ -21,10 +26,8 @@ interface Match {
   date: string;
   time: string;
   venue?: string;
+  startTime?: string;
 };
-
-const SPORTS = mockSports;
-const MOCK_MATCHES = mockAvailableMatches;
 
 export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const [step, setStep] = useState<'sport' | 'date' | 'search' | 'configure'>('sport');
@@ -32,10 +35,110 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [selectedVenueId, setSelectedVenueId] = useState<string>('');
   const [placesDisponibles, setPlacesDisponibles] = useState(30);
   const maxPlaces = 50;
-
-  const restaurants = mockRestaurants.map(r => ({ id: r.id, nom: r.nom }));
+  
+  // Sport name to emoji mapping
+  const getSportEmojiByName = (name: string): string => {
+    const nameLower = (name || '').toLowerCase();
+    if (nameLower.includes('football') && !nameLower.includes('american')) return '⚽';
+    if (nameLower.includes('american football')) return '🏈';
+    if (nameLower.includes('basketball')) return '🏀';
+    if (nameLower.includes('hockey') || nameLower.includes('ice hockey')) return '🏒';
+    if (nameLower.includes('baseball')) return '⚾';
+    if (nameLower.includes('tennis')) return '🎾';
+    if (nameLower.includes('golf')) return '⛳';
+    if (nameLower.includes('rugby')) return '🏉';
+    if (nameLower.includes('cricket')) return '🏏';
+    if (nameLower.includes('formula') || nameLower.includes('f1')) return '🏎️';
+    if (nameLower.includes('mma') || nameLower.includes('martial')) return '🥋';
+    if (nameLower.includes('boxing')) return '🥊';
+    if (nameLower.includes('soccer')) return '⚽';
+    return '⚽';
+  };
+  
+  // Fetch sports from API
+  const { data: sportsData } = useSports();
+  const SPORTS: Sport[] = useMemo(() => {
+    let sports: any[] = [];
+    if (Array.isArray(sportsData)) {
+      sports = sportsData;
+    } else if (sportsData?.sports) {
+      sports = sportsData.sports;
+    } else if (sportsData?.data) {
+      sports = sportsData.data;
+    }
+    return sports.map((s: any) => ({
+      id: s.id,
+      name: s.name,
+      emoji: getSportEmojiByName(s.name),
+    }));
+  }, [sportsData]);
+  
+  // Fetch upcoming matches from API
+  const { data: upcomingData, isLoading: matchesLoading } = useUpcomingMatches({
+    sport_id: selectedSport || undefined,
+    date: selectedDate || undefined,
+    search: searchQuery || undefined,
+  });
+  
+  // Transform upcoming matches
+  const availableMatches: Match[] = useMemo(() => {
+    let matches: any[] = [];
+    if (Array.isArray(upcomingData)) {
+      matches = upcomingData;
+    } else if (upcomingData?.matches) {
+      matches = upcomingData.matches;
+    } else if (upcomingData?.data) {
+      matches = upcomingData.data;
+    }
+    
+    return matches.map((m: any) => {
+      let dateStr = '';
+      let timeStr = '';
+      try {
+        if (m.start_time) {
+          const date = new Date(m.start_time);
+          if (!isNaN(date.getTime())) {
+            dateStr = format(date, 'yyyy-MM-dd');
+            timeStr = format(date, 'HH:mm');
+          }
+        }
+      } catch (e) {
+        console.warn('Error parsing date:', e);
+      }
+      
+      return {
+        id: m.id,
+        sport: m.sport?.id || selectedSport || '',
+        team1: m.home_team?.name || 'Équipe A',
+        team2: m.away_team?.name || 'Équipe B',
+        league: m.competition?.name || 'Compétition',
+        date: dateStr,
+        time: timeStr,
+        venue: m.venue?.name,
+        startTime: m.start_time,
+      };
+    });
+  }, [upcomingData, selectedSport]);
+  
+  // Fetch user's venues
+  const { data: venuesData } = useQuery({
+    queryKey: ['partner-venues'],
+    queryFn: async () => {
+      const response = await apiClient.get('/partners/venues');
+      return response.data.venues || [];
+    },
+  });
+  
+  const restaurants = useMemo(() => {
+    const venues = venuesData || [];
+    return venues.map((v: any) => ({ id: String(v.id), nom: v.name }));
+  }, [venuesData]);
+  
+  // Schedule match mutation
+  const scheduleMatchMutation = useScheduleMatch();
 
   const handleSportSelect = (sportId: string) => {
     setSelectedSport(sportId);
@@ -47,14 +150,13 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     setStep('search');
   };
 
-  const filteredMatches = MOCK_MATCHES.filter(
+  // Filter matches based on search (API already filters by sport and date)
+  const filteredMatches = availableMatches.filter(
     (match) =>
-      match.sport === selectedSport &&
-      match.date === selectedDate &&
-      (searchQuery === '' ||
-        match.team1.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        match.team2.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        match.league.toLowerCase().includes(searchQuery.toLowerCase()))
+      searchQuery === '' ||
+      match.team1.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      match.team2.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      match.league.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleMatchSelect = (match: Match) => {
@@ -62,10 +164,25 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     setStep('configure');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Match programmé avec succès !');
-    onBack();
+    
+    if (!selectedMatch || !selectedVenueId) {
+      toast.error('Veuillez sélectionner un établissement');
+      return;
+    }
+    
+    try {
+      await scheduleMatchMutation.mutateAsync({
+        venueId: selectedVenueId,
+        matchId: selectedMatch.id,
+        capacity: placesDisponibles,
+      });
+      toast.success('Match programmé avec succès !');
+      onBack();
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la programmation du match');
+    }
   };
 
   const handleBackToSport = () => {
@@ -347,9 +464,13 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
                   <label className="block text-gray-900 dark:text-white mb-3">
                     Établissement
                   </label>
-                  <select className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white">
+                  <select 
+                    value={selectedVenueId}
+                    onChange={(e) => setSelectedVenueId(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
+                  >
                     <option key="select-resto" value="">Sélectionnez un établissement</option>
-                    {restaurants.map((resto) => (
+                    {restaurants.map((resto: { id: string; nom: string }) => (
                       <option key={resto.id} value={resto.id}>
                         {resto.nom}
                       </option>

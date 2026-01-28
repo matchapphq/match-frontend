@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   Search, 
   Filter, 
@@ -30,11 +30,14 @@ import {
   Plus,
   Edit,
   Trash2,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { PageType } from '../../../types';
-import { useAppContext } from '../../../context/AppContext';
 import { useAuth } from '../../authentication/context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
+import { useVenueReservations, useUpdateReservationStatus, useMarkNoShow } from '../../../hooks/api/useReservations';
 import { format, parseISO, isWithinInterval, subDays, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -409,8 +412,159 @@ function ContactModal({ client, onClose }: ContactModalProps) {
 }
 
 export function Reservations({ onNavigate, matchId }: ReservationsProps) {
-  const { clients, handleReservationAction, matchs } = useAppContext();
   const { currentUser } = useAuth();
+  
+  // Fetch user's venues first
+  const { data: venuesData } = useQuery({
+    queryKey: ['partner-venues'],
+    queryFn: async () => {
+      const response = await apiClient.get('/partners/venues');
+      return response.data.venues || [];
+    },
+  });
+  
+  const venues = venuesData || [];
+  const selectedVenueId = venues.length > 0 ? String(venues[0].id) : null;
+  
+  // Fetch reservations for the selected venue
+  const { data: reservationsData, isLoading: reservationsLoading } = useVenueReservations(selectedVenueId);
+  
+  // Fetch matches for the venue (uses /partners/venues/matches for all venue matches)
+  const { data: matchesData } = useQuery({
+    queryKey: ['partner-matches'],
+    queryFn: async () => {
+      const response = await apiClient.get('/partners/venues/matches');
+      return response.data.matches || response.data || [];
+    },
+  });
+  
+  // Mutation hooks
+  const updateStatusMutation = useUpdateReservationStatus();
+  const markNoShowMutation = useMarkNoShow();
+  
+  // Transform API data to match expected format
+  const clients = useMemo(() => {
+    const reservations = reservationsData?.reservations || [];
+    return reservations.map((r: any) => {
+      let dateStr = '';
+      let createdAtStr = '';
+      
+      try {
+        if (r.created_at) {
+          const date = new Date(r.created_at);
+          if (!isNaN(date.getTime())) {
+            dateStr = format(date, 'dd/MM/yyyy', { locale: fr });
+            createdAtStr = format(date, 'dd/MM/yyyy HH:mm', { locale: fr });
+          }
+        }
+      } catch (e) {
+        console.warn('Error parsing reservation date:', e);
+      }
+      
+      return {
+        id: r.id,
+        nom: r.user?.last_name || 'Client',
+        prenom: r.user?.first_name || '',
+        email: r.user?.email || '',
+        telephone: r.user?.phone || '',
+        personnes: r.party_size || 1,
+        matchId: r.venue_match?.match?.id || r.venue_match_id,
+        match: r.venue_match?.match ? 
+          `${r.venue_match.match.home_team?.name || 'Équipe A'} vs ${r.venue_match.match.away_team?.name || 'Équipe B'}` : 
+          'Match',
+        date: dateStr,
+        createdAt: createdAtStr,
+        statut: r.status === 'pending' ? 'en attente' : 
+                r.status === 'confirmed' ? 'confirmé' : 
+                r.status === 'declined' ? 'refusé' : 
+                r.status === 'checked_in' ? 'confirmé' :
+                r.status === 'no_show' ? 'refusé' : r.status,
+        restaurant: venues.find((v: any) => String(v.id) === selectedVenueId)?.name || '',
+      };
+    });
+  }, [reservationsData, venues, selectedVenueId]);
+  
+  // Sport emoji mapping based on league name
+  const getSportEmoji = (league: string): string => {
+    const leagueLower = (league || '').toLowerCase();
+    if (leagueLower.includes('nfl') || leagueLower.includes('american football')) return '🏈';
+    if (leagueLower.includes('nba') || leagueLower.includes('basketball')) return '🏀';
+    if (leagueLower.includes('nhl') || leagueLower.includes('hockey')) return '🏒';
+    if (leagueLower.includes('mlb') || leagueLower.includes('baseball')) return '⚾';
+    if (leagueLower.includes('tennis') || leagueLower.includes('atp') || leagueLower.includes('wta')) return '🎾';
+    if (leagueLower.includes('golf') || leagueLower.includes('pga')) return '⛳';
+    if (leagueLower.includes('rugby')) return '🏉';
+    if (leagueLower.includes('cricket')) return '🏏';
+    if (leagueLower.includes('f1') || leagueLower.includes('formula')) return '🏎️';
+    if (leagueLower.includes('mma') || leagueLower.includes('ufc')) return '🥊';
+    if (leagueLower.includes('boxing')) return '🥊';
+    return '⚽';
+  };
+  
+  // Transform matches data
+  const matchs = useMemo(() => {
+    // Handle various API response formats
+    let matches: any[] = [];
+    if (Array.isArray(matchesData)) {
+      matches = matchesData;
+    } else if (matchesData?.matches && Array.isArray(matchesData.matches)) {
+      matches = matchesData.matches;
+    } else if (matchesData?.data && Array.isArray(matchesData.data)) {
+      matches = matchesData.data;
+    }
+    
+    return matches.map((m: any) => {
+      const match = m.match || m;
+      let dateStr = '';
+      let heureStr = '';
+      let statut = 'à venir';
+      
+      try {
+        // Use scheduled_at from the actual API response
+        const startTime = match.scheduled_at || match.start_time || m.scheduled_at;
+        if (startTime) {
+          const date = new Date(startTime);
+          if (!isNaN(date.getTime())) {
+            dateStr = format(date, 'dd/MM/yyyy', { locale: fr });
+            heureStr = format(date, 'HH:mm', { locale: fr });
+            statut = m.status === 'finished' ? 'passé' : (date > new Date() ? 'à venir' : 'passé');
+          }
+        }
+      } catch (e) {
+        console.warn('Error parsing match date:', e);
+      }
+      
+      // Get team names - API uses homeTeam/awayTeam as strings
+      const equipe1 = match.homeTeam || match.home_team?.name || match.home_team || 'Équipe A';
+      const equipe2 = match.awayTeam || match.away_team?.name || match.away_team || 'Équipe B';
+      const league = match.league || match.competition?.name || '';
+      
+      return {
+        id: match.id || m.id,
+        equipe1,
+        equipe2,
+        date: dateStr,
+        heure: heureStr,
+        competition: league || 'Compétition',
+        sport: getSportEmoji(league),
+        statut,
+      };
+    });
+  }, [matchesData]);
+  
+  // Handle reservation actions
+  const handleReservationAction = async (reservationId: string | number, action: string) => {
+    const status = action === 'acceptée' ? 'confirmed' : action === 'refusée' ? 'declined' : action;
+    try {
+      await updateStatusMutation.mutateAsync({ 
+        reservationId: String(reservationId), 
+        status 
+      });
+      toast.success(action === 'acceptée' ? 'Réservation confirmée' : 'Réservation refusée');
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
   const [filter, setFilter] = useState<'tous' | 'en-attente' | 'confirmé' | 'refusé'>('tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMatchFilter, setSelectedMatchFilter] = useState<number | 'tous'>('tous');
