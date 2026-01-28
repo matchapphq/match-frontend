@@ -1,7 +1,7 @@
 
-  # Match - maquette site
+  # moderne-match
 
-  This is a code bundle for Match - maquette site. The original project is available at https://www.figma.com/design/O5xUdn1OgIuxEjYlJU56tP/Match---maquette-site.
+  This is a code bundle for moderne-match. The original project is available at https://www.figma.com/design/fkXLUjKz0LO2thl1IzmdFB/moderne-match.
 
   ## Running the code
 
