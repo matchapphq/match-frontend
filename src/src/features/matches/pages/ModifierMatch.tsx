@@ -1,89 +1,154 @@
-import { ArrowLeft, Edit, Calendar, Clock, MapPin, Users, Save, Trophy } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Save, Trophy, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useAppContext } from '../../../context/AppContext';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
+import { useUpdateScheduledMatch } from '../../../hooks/api/useMatches';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface ModifierMatchProps {
-  matchId: number | null;
+  matchId: string | null;
   onBack: () => void;
 }
 
 export function ModifierMatch({ matchId, onBack }: ModifierMatchProps) {
-  const { matchs, restaurants, updateMatch } = useAppContext();
-  const match = matchs.find(m => m.id === matchId);
-
-  const [formData, setFormData] = useState({
-    restaurantId: match?.restaurantId || 1,
-    equipe1: match?.equipe1 || '',
-    equipe2: match?.equipe2 || '',
-    date: match?.date || '',
-    heure: match?.heure || '',
-    sport: match?.sport || '⚽',
-    sportNom: match?.sportNom || 'Football',
-    competition: match?.competition || 'Ligue 1',
+  // Fetch venue match data from API
+  const { data: venueMatchData, isLoading } = useQuery({
+    queryKey: ['venue-match', matchId],
+    queryFn: async () => {
+      if (!matchId) return null;
+      // Fetch all venue matches and find the one we need
+      const response = await apiClient.get('/partners/venues/matches');
+      const matches = response.data?.data || response.data?.matches || response.data || [];
+      return matches.find((vm: any) => vm.id === matchId);
+    },
+    enabled: !!matchId,
   });
 
-  const [placesDisponibles, setPlacesDisponibles] = useState(match?.total || 30);
-  const [placesReservees] = useState(match?.reservees || 0);
+  // Fetch venues for dropdown
+  const { data: venuesData } = useQuery({
+    queryKey: ['partner-venues'],
+    queryFn: async () => {
+      const response = await apiClient.get('/partners/venues');
+      return response.data?.venues || response.data || [];
+    },
+  });
 
-  const selectedRestaurant = restaurants.find(r => r.id === formData.restaurantId);
-  const maxPlaces = selectedRestaurant?.capaciteMax || 50;
+  const venues = venuesData || [];
+  const updateMutation = useUpdateScheduledMatch();
+
+  // Extract match info from venue match data
+  const venueMatch = venueMatchData;
+  const matchInfo = venueMatch?.match || venueMatch;
+  
+  const [formData, setFormData] = useState({
+    venueId: '',
+    equipe1: '',
+    equipe2: '',
+    date: '',
+    heure: '',
+    sport: '⚽',
+    sportNom: 'Football',
+    competition: '',
+  });
+
+  const [placesDisponibles, setPlacesDisponibles] = useState(50);
+  const [placesReservees, setPlacesReservees] = useState(0);
+
+  const selectedVenue = venues.find((v: any) => v.id === formData.venueId);
+  const maxPlaces = selectedVenue?.capacity || 100;
+
+  // Sport emoji mapping
+  const getSportEmoji = (league: string): string => {
+    const leagueLower = (league || '').toLowerCase();
+    if (leagueLower.includes('nfl') || leagueLower.includes('american football')) return '🏈';
+    if (leagueLower.includes('nba') || leagueLower.includes('basketball')) return '🏀';
+    if (leagueLower.includes('nhl') || leagueLower.includes('hockey')) return '🏒';
+    if (leagueLower.includes('mlb') || leagueLower.includes('baseball')) return '⚾';
+    if (leagueLower.includes('tennis')) return '🎾';
+    if (leagueLower.includes('golf')) return '⛳';
+    if (leagueLower.includes('rugby')) return '🏉';
+    if (leagueLower.includes('cricket')) return '🏏';
+    if (leagueLower.includes('f1') || leagueLower.includes('formula')) return '🏎️';
+    if (leagueLower.includes('mma') || leagueLower.includes('ufc')) return '🥊';
+    if (leagueLower.includes('boxing')) return '🥊';
+    return '⚽';
+  };
 
   useEffect(() => {
-    if (match) {
+    if (venueMatch && matchInfo) {
+      const league = matchInfo.league || matchInfo.competition?.name || '';
+      let dateStr = '';
+      let heureStr = '';
+      
+      try {
+        const startTime = matchInfo.scheduled_at || matchInfo.start_time;
+        if (startTime) {
+          const date = new Date(startTime);
+          if (!isNaN(date.getTime())) {
+            dateStr = format(date, 'yyyy-MM-dd');
+            heureStr = format(date, 'HH:mm');
+          }
+        }
+      } catch (e) {
+        console.warn('Error parsing date:', e);
+      }
+      
       setFormData({
-        restaurantId: match.restaurantId,
-        equipe1: match.equipe1,
-        equipe2: match.equipe2,
-        date: match.date,
-        heure: match.heure,
-        sport: match.sport,
-        sportNom: match.sportNom,
-        competition: match.competition || 'Ligue 1',
+        venueId: venueMatch.venue?.id || venueMatch.venue_id || '',
+        equipe1: matchInfo.homeTeam || matchInfo.home_team?.name || 'Équipe A',
+        equipe2: matchInfo.awayTeam || matchInfo.away_team?.name || 'Équipe B',
+        date: dateStr,
+        heure: heureStr,
+        sport: getSportEmoji(league),
+        sportNom: league || 'Football',
+        competition: league,
       });
-      setPlacesDisponibles(match.total);
+      setPlacesDisponibles(venueMatch.total_capacity || venueMatch.capacity || 50);
+      setPlacesReservees(venueMatch.reserved_seats || venueMatch.reservations_count || 0);
     }
-  }, [match]);
+  }, [venueMatch, matchInfo]);
 
   useEffect(() => {
-    // Ajuster les places si on change de restaurant
+    // Adjust places if changed venue
     if (placesDisponibles > maxPlaces) {
       setPlacesDisponibles(maxPlaces);
     }
-  }, [formData.restaurantId, maxPlaces, placesDisponibles]);
+  }, [formData.venueId, maxPlaces, placesDisponibles]);
 
-  const equipes = [
-    'PSG', 'OM', 'Lyon', 'Monaco', 'Nice', 'Lille', 'Lens',
-    'Real Madrid', 'Barcelona', 'Bayern', 'Dortmund', 'Liverpool',
-    'Manchester City', 'Manchester United', 'Arsenal', 'Chelsea'
-  ];
-
-  const competitions = [
-    'Ligue 1',
-    'Ligue 2',
-    'Ligue des Champions',
-    'Europa League',
-    'Coupe de France',
-    'Premier League',
-    'La Liga',
-    'Serie A',
-    'Bundesliga',
-  ];
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (matchId) {
-      const selectedRestaurant = restaurants.find(r => r.id === formData.restaurantId);
-      updateMatch(matchId, {
-        ...formData,
-        total: placesDisponibles,
-        restaurant: selectedRestaurant?.nom || '',
+    if (!matchId || !formData.venueId) {
+      toast.error('Données manquantes');
+      return;
+    }
+    
+    try {
+      await updateMutation.mutateAsync({
+        venueId: formData.venueId,
+        matchId: matchInfo?.id || matchId,
+        capacity: placesDisponibles,
       });
-      alert('Match modifié avec succès !');
+      toast.success('Match modifié avec succès !');
       onBack();
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la modification');
     }
   };
 
-  if (!match) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf]" />
+          <p className="text-gray-600 dark:text-gray-400">Chargement du match...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!venueMatch) {
     return (
       <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
         <div className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-800/50">
@@ -136,8 +201,8 @@ export function ModifierMatch({ matchId, onBack }: ModifierMatchProps) {
         {/* Title */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-full mb-6">
-            <span className="text-2xl">{match.sport}</span>
-            <span className="text-sm text-gray-700 dark:text-gray-300">{match.sportNom}</span>
+            <span className="text-2xl">{formData.sport}</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">{formData.sportNom}</span>
           </div>
           
           <h1 className="text-4xl sm:text-5xl mb-4">
@@ -147,7 +212,7 @@ export function ModifierMatch({ matchId, onBack }: ModifierMatchProps) {
             </span>
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            {match.equipe1} vs {match.equipe2}
+            {formData.equipe1} vs {formData.equipe2}
           </p>
         </div>
 
@@ -165,14 +230,14 @@ export function ModifierMatch({ matchId, onBack }: ModifierMatchProps) {
               <MapPin className="w-4 h-4" />
               <span className="text-sm">Établissement</span>
             </div>
-            <p className="text-xl text-gray-900 dark:text-white line-clamp-1">{match.restaurant}</p>
+            <p className="text-xl text-gray-900 dark:text-white line-clamp-1">{selectedVenue?.name || venueMatch?.venue?.name || 'N/A'}</p>
           </div>
           <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
               <Calendar className="w-4 h-4" />
               <span className="text-sm">Date</span>
             </div>
-            <p className="text-xl text-gray-900 dark:text-white">{new Date(match.date).toLocaleDateString('fr-FR')}</p>
+            <p className="text-xl text-gray-900 dark:text-white">{formData.date ? new Date(formData.date).toLocaleDateString('fr-FR') : 'N/A'}</p>
           </div>
         </div>
 
@@ -185,87 +250,60 @@ export function ModifierMatch({ matchId, onBack }: ModifierMatchProps) {
               Établissement
             </label>
             <select 
-              value={formData.restaurantId}
-              onChange={(e) => setFormData({ ...formData, restaurantId: Number(e.target.value) })}
+              value={formData.venueId}
+              onChange={(e) => setFormData({ ...formData, venueId: e.target.value })}
               className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
             >
-              {restaurants.map((resto) => (
-                <option key={resto.id} value={resto.id}>
-                  {resto.nom} (Capacité: {resto.capaciteMax} places)
+              {venues.map((venue: { id: string; name: string; capacity?: number }) => (
+                <option key={venue.id} value={venue.id}>
+                  {venue.name} (Capacité: {venue.capacity || 50} places)
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Équipes */}
+          {/* Match Info (Read-only) */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
               <label className="block text-gray-900 dark:text-white mb-3">
                 Équipe 1
               </label>
-              <select 
-                value={formData.equipe1}
-                onChange={(e) => setFormData({ ...formData, equipe1: e.target.value })}
-                className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
-              >
-                {equipes.map((equipe) => (
-                  <option key={equipe} value={equipe}>
-                    {equipe}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-900 dark:text-white">
+                {formData.equipe1}
+              </div>
             </div>
             
             <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
               <label className="block text-gray-900 dark:text-white mb-3">
                 Équipe 2
               </label>
-              <select 
-                value={formData.equipe2}
-                onChange={(e) => setFormData({ ...formData, equipe2: e.target.value })}
-                className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
-              >
-                {equipes.map((equipe) => (
-                  <option key={equipe} value={equipe}>
-                    {equipe}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-900 dark:text-white">
+                {formData.equipe2}
+              </div>
             </div>
           </div>
 
-          {/* Compétition */}
+          {/* Compétition (Read-only) */}
           <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
             <label className="flex items-center gap-2 text-gray-900 dark:text-white mb-3">
               <Trophy className="w-4 h-4 text-[#5a03cf]" />
               Compétition
             </label>
-            <select 
-              value={formData.competition}
-              onChange={(e) => setFormData({ ...formData, competition: e.target.value })}
-              className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
-            >
-              {competitions.map((comp) => (
-                <option key={comp} value={comp}>
-                  {comp}
-                </option>
-              ))}
-            </select>
+            <div className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-900 dark:text-white">
+              {formData.competition || 'N/A'}
+            </div>
           </div>
 
-          {/* Date et heure */}
+          {/* Date et heure (Read-only) */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
               <label className="flex items-center gap-2 text-gray-900 dark:text-white mb-3">
                 <Calendar className="w-4 h-4 text-[#5a03cf]" />
                 Date du match
               </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
-              />
+              <div className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-900 dark:text-white">
+                {formData.date ? new Date(formData.date).toLocaleDateString('fr-FR') : 'N/A'}
+              </div>
             </div>
             
             <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
@@ -273,12 +311,9 @@ export function ModifierMatch({ matchId, onBack }: ModifierMatchProps) {
                 <Clock className="w-4 h-4 text-[#5a03cf]" />
                 Heure du match
               </label>
-              <input
-                type="time"
-                value={formData.heure}
-                onChange={(e) => setFormData({ ...formData, heure: e.target.value })}
-                className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
-              />
+              <div className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-900 dark:text-white">
+                {formData.heure || 'N/A'}
+              </div>
             </div>
           </div>
 

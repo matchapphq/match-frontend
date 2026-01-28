@@ -25,14 +25,15 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
     queryKey: ['partner-venues'],
     queryFn: async () => {
       const response = await apiClient.get('/partners/venues');
-      return response.data.venues.map((venue: any) => ({
+      const venues = response.data?.venues || response.data || [];
+      return venues.map((venue: any) => ({
         id: venue.id,
-        nom: venue.name,
-        adresse: `${venue.street_address}, ${venue.city}`,
-        note: venue.average_rating || 0,
-        capaciteMax: venue.capacity || 0,
+        nom: venue.name || 'Établissement',
+        adresse: `${venue.street_address || ''}, ${venue.city || ''}`.replace(/^, |, $/g, '') || 'Adresse non renseignée',
+        note: Number(venue.average_rating) || 0,
+        capaciteMax: Number(venue.capacity) || 0,
         image: venue.photos?.[0]?.url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
-        matchsOrganises: venue.matches_count || 0,
+        matchsOrganises: Number(venue.matches_count) || 0,
       }));
     },
     enabled: !!currentUser,

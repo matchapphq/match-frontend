@@ -1,6 +1,7 @@
 import { CheckCircle, Sparkles, Calendar, Settings, Download } from 'lucide-react';
 import { PageType } from '../../app/App';
-import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import logoMatch from '../../../assets/logo.png';
 import { useEffect } from 'react';
 import { useAuth } from '../../features/authentication/context/AuthContext';
 import { API_ENDPOINTS } from '../../utils/api-constants';

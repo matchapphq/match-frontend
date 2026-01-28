@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+// import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import logo from '../../assets/logo.png';
 import { ReferralCodeInput } from './ReferralCodeInput';
 
 interface RegisterProps {

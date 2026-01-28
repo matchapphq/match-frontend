@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { PageType } from '../../types';
 import { useState, useEffect } from 'react';
-import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+// import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import logo from '../../../assets/logo.png';
 import { useAuth } from '../../features/authentication/context/AuthContext';
 import { useTheme } from '../../features/theme/context/ThemeContext';
 

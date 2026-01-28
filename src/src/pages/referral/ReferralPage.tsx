@@ -2,7 +2,8 @@ import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import logoMatch from '../../../assets/logo.png';
 import { useState } from 'react';
 
 interface ReferralPageProps {

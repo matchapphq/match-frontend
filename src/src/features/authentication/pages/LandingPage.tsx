@@ -1,5 +1,6 @@
 import { ArrowRight, Moon, Sun } from 'lucide-react';
-import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+// import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import logo from '../../../../assets/logo.png';
 import { useTheme } from '../../theme/context/ThemeContext';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../api/client';

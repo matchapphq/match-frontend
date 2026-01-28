@@ -1,33 +1,110 @@
-import { Calendar, TrendingUp, Users, Eye, MapPin, Zap, Clock, ArrowUpRight, Star, MessageSquare, CheckCircle, Plus, MoreVertical, QrCode, ArrowDownRight } from 'lucide-react';
+import { Calendar, TrendingUp, Users, Eye, MapPin, Zap, Clock, ArrowUpRight, Star, MessageSquare, CheckCircle, Plus, MoreVertical, QrCode, ArrowDownRight, Loader2 } from 'lucide-react';
 import { PageType } from '../../../types';
-import { useState } from 'react';
-import { useAppContext } from '../../../context/AppContext';
+import { useState, useMemo } from 'react';
 import { useAuth } from '../../authentication/context/AuthContext';
 import { ParrainageWidget } from '../../../components/ParrainageWidget';
 import { NotificationBanner } from '../../../components/NotificationBanner';
 import { useToast } from '../../../context/ToastContext';
+import { usePartnerMatches } from '../../../hooks/api/useMatches';
+import { useCustomerStats } from '../../../hooks/api/useReservations';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface DashboardProps {
-  onNavigate: (page: PageType, matchId?: number, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
+  onNavigate: (page: PageType, matchId?: number | string, restaurantId?: number, filter?: 'tous' | 'à venir' | 'terminé') => void;
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { getUserMatchs, getUserClients, boostsDisponibles } = useAppContext();
   const { currentUser } = useAuth();
   const [periodFilter, setPeriodFilter] = useState<'7j' | '30j' | '90j'>('30j');
   const toast = useToast();
 
-  const matchs = currentUser ? getUserMatchs(currentUser.id) : [];
-  const allClients = currentUser ? getUserClients(currentUser.id) : [];
+  // Fetch matches from API
+  const { data: matchesData, isLoading: matchesLoading } = usePartnerMatches();
+  
+  // Fetch customer stats
+  const { data: customerStatsData } = useCustomerStats();
+  const totalClients = customerStatsData?.total_customers || 0;
+  
+  // Sport emoji mapping
+  const getSportEmoji = (league: string): string => {
+    const leagueLower = (league || '').toLowerCase();
+    if (leagueLower.includes('nfl') || leagueLower.includes('american football')) return '🏈';
+    if (leagueLower.includes('nba') || leagueLower.includes('basketball')) return '🏀';
+    if (leagueLower.includes('nhl') || leagueLower.includes('hockey')) return '🏒';
+    if (leagueLower.includes('mlb') || leagueLower.includes('baseball')) return '⚾';
+    if (leagueLower.includes('tennis')) return '🎾';
+    if (leagueLower.includes('golf')) return '⛳';
+    if (leagueLower.includes('rugby')) return '🏉';
+    if (leagueLower.includes('cricket')) return '🏏';
+    if (leagueLower.includes('f1') || leagueLower.includes('formula')) return '🏎️';
+    if (leagueLower.includes('mma') || leagueLower.includes('ufc')) return '🥊';
+    if (leagueLower.includes('boxing')) return '🥊';
+    return '⚽';
+  };
+  
+  // Transform matches data
+  const matchs = useMemo(() => {
+    let matches: any[] = [];
+    if (Array.isArray(matchesData)) {
+      matches = matchesData;
+    } else if (matchesData?.matches) {
+      matches = matchesData.matches;
+    } else if (matchesData?.data) {
+      matches = matchesData.data;
+    }
+    
+    return matches.map((vm: any) => {
+      const match = vm.match || vm;
+      let dateStr = '';
+      let heureStr = '';
+      let isFinished = vm.status === 'finished';
+      
+      try {
+        const startTime = match.scheduled_at || match.start_time || vm.scheduled_at;
+        if (startTime) {
+          const date = new Date(startTime);
+          if (!isNaN(date.getTime())) {
+            dateStr = format(date, 'dd/MM/yyyy', { locale: fr });
+            heureStr = format(date, 'HH:mm', { locale: fr });
+            if (vm.status) {
+              isFinished = vm.status === 'finished';
+            } else {
+              isFinished = date < new Date();
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Error parsing match date:', e);
+      }
+      
+      const equipe1 = match.homeTeam || match.home_team?.name || 'Équipe A';
+      const equipe2 = match.awayTeam || match.away_team?.name || 'Équipe B';
+      const league = match.league || match.competition?.name || '';
+      
+      return {
+        id: vm.id || match.id,
+        equipe1,
+        equipe2,
+        date: dateStr,
+        heure: heureStr,
+        sport: getSportEmoji(league),
+        sportNom: league || 'Football',
+        total: vm.total_capacity || vm.capacity || 50,
+        reservees: vm.reserved_seats || vm.reservations_count || 0,
+        statut: isFinished ? 'terminé' : 'à venir',
+      };
+    });
+  }, [matchesData]);
 
-  const matchsAVenir = matchs.filter(m => m.statut === 'à venir');
-  const matchsTermines = matchs.filter(m => m.statut === 'terminé');
+  const matchsAVenir = matchs.filter((m: any) => m.statut === 'à venir');
+  const matchsTermines = matchs.filter((m: any) => m.statut === 'terminé');
 
   const stats = [
     {
       id: 'clients-detail' as PageType,
       title: 'Total clients',
-      value: allClients.length.toString(),
+      value: totalClients.toString(),
       change: '+12.5%',
       changeType: 'increase' as const,
       icon: Users,

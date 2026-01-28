@@ -1,6 +1,7 @@
 import { Check, Sparkles, Calendar, Settings } from 'lucide-react';
 import { PageType } from '../../../types';
-import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import logoMatch from '../../../../assets/logo.png';
 
 interface ConfirmationOnboardingProps {
   onNavigate: (page: PageType) => void;

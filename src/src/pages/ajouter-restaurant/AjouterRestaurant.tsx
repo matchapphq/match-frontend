@@ -1,8 +1,10 @@
 import { ArrowLeft, MapPin, Phone, Mail, Users, Clock, Save, Upload } from 'lucide-react';
 import { PageType } from '../../types';
 import { useAuth } from '../../features/authentication/context/AuthContext';
-import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import patternBg from 'figma:asset/20e2f150b2f5f4be01b1aec94edb580bb26d8dcf.png';
+// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import logoMatch from '../../../assets/logo.png';
+// import patternBg from 'figma:asset/20e2f150b2f5f4be01b1aec94edb580bb26d8dcf.png';
+const patternBg = '';
 import { useState } from 'react';
 
 interface AjouterRestaurantProps {

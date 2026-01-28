@@ -1,6 +1,7 @@
 import { Check, MapPin, Search, Sparkles, Star, Smartphone, Navigation, Users, ArrowRight, Trophy, Zap, Target, Moon, Sun } from 'lucide-react';
 import { PageType } from '../../types';
-import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
+import logoMatch from '../../../assets/logo.png';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { useTheme } from '../../features/theme/context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';

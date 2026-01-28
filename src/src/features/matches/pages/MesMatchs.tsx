@@ -124,20 +124,20 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
     }
   };
 
-  const handleMatchClick = (matchId: number) => {
+  const handleMatchClick = (matchId: string) => {
     if (onNavigate) {
-      onNavigate('match-detail', matchId);
+      onNavigate('match-detail', matchId as any);
     }
   };
 
-  const handleEditMatch = (e: React.MouseEvent, matchId: number) => {
+  const handleEditMatch = (e: React.MouseEvent, matchId: string) => {
     e.stopPropagation();
     if (onNavigate) {
-      onNavigate('modifier-match', matchId);
+      onNavigate('modifier-match', matchId as any);
     }
   };
 
-  const handleBoostClick = (e: React.MouseEvent, matchId: number) => {
+  const handleBoostClick = (e: React.MouseEvent, matchId: string) => {
     e.stopPropagation();
     if (onNavigate) {
       onNavigate('booster');

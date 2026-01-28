@@ -44,8 +44,8 @@ import { toast } from 'sonner';
 import type { ReminderTemplate, ReminderHistoryEntry } from '../../../data/mockData';
 
 interface ReservationsProps {
-  onNavigate: (page: PageType, matchId?: number, restaurantId?: number) => void;
-  matchId?: number | null;
+  onNavigate: (page: PageType, matchId?: number | string, restaurantId?: number) => void;
+  matchId?: string | number | null;
 }
 
 interface ContactModalProps {
@@ -444,10 +444,23 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
   
   // Transform API data to match expected format
   const clients = useMemo(() => {
-    const reservations = reservationsData?.reservations || [];
+    // Handle various API response formats
+    let reservations: any[] = [];
+    if (Array.isArray(reservationsData)) {
+      reservations = reservationsData;
+    } else if (reservationsData?.reservations) {
+      reservations = reservationsData.reservations;
+    } else if (reservationsData?.data) {
+      reservations = reservationsData.data;
+    }
+    
+    console.log('[DEBUG] reservationsData:', reservationsData);
+    console.log('[DEBUG] parsed reservations:', reservations);
+    
     return reservations.map((r: any) => {
       let dateStr = '';
       let createdAtStr = '';
+      let matchDateStr = '';
       
       try {
         if (r.created_at) {
@@ -461,17 +474,37 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
         console.warn('Error parsing reservation date:', e);
       }
       
+      // Handle both camelCase (venueMatch) and snake_case (venue_match) from API
+      const venueMatch = r.venueMatch || r.venue_match;
+      const match = venueMatch?.match;
+      
+      // Get match date/time
+      try {
+        const scheduledAt = match?.scheduled_at || match?.scheduledAt;
+        if (scheduledAt) {
+          const matchDate = new Date(scheduledAt);
+          if (!isNaN(matchDate.getTime())) {
+            matchDateStr = format(matchDate, 'dd/MM/yyyy à HH:mm', { locale: fr });
+          }
+        }
+      } catch (e) {
+        console.warn('Error parsing match date:', e);
+      }
+      
+      // Get team names - API uses homeTeam/awayTeam (camelCase)
+      const homeTeam = match?.homeTeam?.name || match?.home_team?.name || 'Équipe A';
+      const awayTeam = match?.awayTeam?.name || match?.away_team?.name || 'Équipe B';
+      
       return {
         id: r.id,
         nom: r.user?.last_name || 'Client',
         prenom: r.user?.first_name || '',
         email: r.user?.email || '',
         telephone: r.user?.phone || '',
-        personnes: r.party_size || 1,
-        matchId: r.venue_match?.match?.id || r.venue_match_id,
-        match: r.venue_match?.match ? 
-          `${r.venue_match.match.home_team?.name || 'Équipe A'} vs ${r.venue_match.match.away_team?.name || 'Équipe B'}` : 
-          'Match',
+        personnes: r.party_size || r.quantity || 1,
+        matchId: match?.id || venueMatch?.match_id || r.venue_match_id,
+        match: match ? `${homeTeam} vs ${awayTeam}` : 'Match',
+        matchDate: matchDateStr,
         date: dateStr,
         createdAt: createdAtStr,
         statut: r.status === 'pending' ? 'en attente' : 
@@ -567,7 +600,7 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
   };
   const [filter, setFilter] = useState<'tous' | 'en-attente' | 'confirmé' | 'refusé'>('tous');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMatchFilter, setSelectedMatchFilter] = useState<number | 'tous'>('tous');
+  const [selectedMatchFilter, setSelectedMatchFilter] = useState<string | 'tous'>('tous');
   const [matchSearchQuery, setMatchSearchQuery] = useState('');
   const [contactClient, setContactClient] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list');
@@ -596,8 +629,10 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
   // Helper function to parse French date format (DD/MM/YYYY) or (DD/MM/YYYY HH:mm)
   const parseFrenchDate = (dateStr: string): Date | null => {
     try {
-      const parts = dateStr.split(' ')[0].split('/');
-      if (parts.length === 3) {
+      const datePart = dateStr.split(' ')[0];
+      if (!datePart) return null;
+      const parts = datePart.split('/');
+      if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
         const year = parseInt(parts[2], 10);
@@ -676,7 +711,7 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
     // Check if currently selected match is still valid
     if (selectedMatchFilter !== 'tous') {
       const filteredMatchIds = filteredMatches.map(m => m.id);
-      if (!filteredMatchIds.includes(selectedMatchFilter as number)) {
+      if (!filteredMatchIds.includes(selectedMatchFilter as string)) {
         setSelectedMatchFilter('tous');
         toast.info('Le match sélectionné a été réinitialisé car il ne correspond plus aux critères');
       }
@@ -690,7 +725,7 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
     
     // CSV Data
     const csvData = filteredReservations.map(client => {
-      const clientMatch = matchs?.find(m => m.id === client.matchId);
+      const clientMatch = matchs?.find(m => String(m.id) === String(client.matchId));
       return [
         client.id,
         client.nom,
@@ -726,103 +761,15 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
     toast.success(`Export de ${filteredReservations.length} réservation(s) terminé`);
   };
 
-  // Filter clients/reservations
-  const filteredReservations = clients.filter(client => {
-    // Filter by matchId if provided
-    if (matchId && client.matchId !== matchId) return false;
-    
-    // Filter by selected match
-    if (selectedMatchFilter !== 'tous' && client.matchId !== selectedMatchFilter) return false;
-    
-    // Filter by status
-    if (filter !== 'tous' && client.statut !== (filter === 'en-attente' ? 'en attente' : filter)) return false;
-    
-    // Filter by reservation date (when the booking was created)
-    if (reservationDateFilter !== 'all' && client.createdAt) {
-      const reservationDate = parseFrenchDate(client.createdAt);
-      if (reservationDate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        switch (reservationDateFilter) {
-          case 'today':
-            const todayEnd = new Date(today);
-            todayEnd.setHours(23, 59, 59, 999);
-            if (reservationDate < today || reservationDate > todayEnd) return false;
-            break;
-          case '7days':
-            const sevenDaysAgo = subDays(today, 7);
-            if (reservationDate < sevenDaysAgo) return false;
-            break;
-          case '30days':
-            const thirtyDaysAgo = subDays(today, 30);
-            if (reservationDate < thirtyDaysAgo) return false;
-            break;
-          case 'custom':
-            if (customReservationStartDate && customReservationEndDate) {
-              const startDate = new Date(customReservationStartDate);
-              const endDate = new Date(customReservationEndDate);
-              endDate.setHours(23, 59, 59, 999);
-              if (reservationDate < startDate || reservationDate > endDate) return false;
-            }
-            break;
-        }
-      }
-    }
-    
-    // Filter by match date (when the game happens) - filter by the game date
-    if (matchDateFilter !== 'all') {
-      const clientMatch = matchs?.find(m => m.id === client.matchId);
-      if (clientMatch) {
-        const gameDate = parseFrenchDate(clientMatch.date);
-        if (gameDate) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          
-          switch (matchDateFilter) {
-            case 'today':
-              const todayEnd = new Date(today);
-              todayEnd.setHours(23, 59, 59, 999);
-              if (gameDate < today || gameDate > todayEnd) return false;
-              break;
-            case '7days':
-              const sevenDaysAgo = subDays(today, 7);
-              const sevenDaysAhead = new Date(today);
-              sevenDaysAhead.setDate(today.getDate() + 7);
-              if (gameDate < sevenDaysAgo || gameDate > sevenDaysAhead) return false;
-              break;
-            case '30days':
-              const thirtyDaysAgo = subDays(today, 30);
-              const thirtyDaysAhead = new Date(today);
-              thirtyDaysAhead.setDate(today.getDate() + 30);
-              if (gameDate < thirtyDaysAgo || gameDate > thirtyDaysAhead) return false;
-              break;
-            case 'custom':
-              if (customMatchStartDate && customMatchEndDate) {
-                const startDate = new Date(customMatchStartDate);
-                const endDate = new Date(customMatchEndDate);
-                endDate.setHours(23, 59, 59, 999);
-                if (gameDate < startDate || gameDate > endDate) return false;
-              }
-              break;
-          }
-        }
-      }
-    }
-    
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        client.nom.toLowerCase().includes(query) ||
-        (client.prenom && client.prenom.toLowerCase().includes(query)) ||
-        (client.email && client.email.toLowerCase().includes(query)) ||
-        (client.telephone && client.telephone.includes(query))
-      );
-    }
-    
-    return true;
-  });
+  // Debug: Log raw data to console
+  console.log('[RESERVATION DEBUG] Raw reservationsData:', reservationsData);
+  console.log('[RESERVATION DEBUG] Transformed clients:', clients);
+  console.log('[RESERVATION DEBUG] matchId prop:', matchId, 'type:', typeof matchId);
+  console.log('[RESERVATION DEBUG] selectedMatchFilter:', selectedMatchFilter);
+  console.log('[RESERVATION DEBUG] filter state:', filter);
+  
+  // TEMPORARY: Skip filtering to debug - just use clients directly
+  const filteredReservations = clients;
 
   // Group reservations by match
   const groupedReservations = filteredReservations.reduce((acc, client) => {
@@ -1125,7 +1072,7 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
             
             <select
               value={selectedMatchFilter}
-              onChange={(e) => setSelectedMatchFilter(e.target.value === 'tous' ? 'tous' : Number(e.target.value))}
+              onChange={(e) => setSelectedMatchFilter(e.target.value)}
               className="px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5a03cf]"
             >
               <option value="tous">Tous les matchs ({filteredMatches.length})</option>
