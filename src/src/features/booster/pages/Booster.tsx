@@ -1,22 +1,92 @@
-import { TrendingUp, Zap, Eye, Users, Target, Gift, Sparkles, ChevronRight, CheckCircle2, ArrowUpRight, ShoppingCart } from 'lucide-react';
+import { TrendingUp, Zap, Eye, Users, Target, Gift, Sparkles, ChevronRight, CheckCircle2, ArrowUpRight, ShoppingCart, Loader2, X } from 'lucide-react';
 import { PageType } from '../../../types';
-import { useAppContext } from '../../../context/AppContext';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useBoostSummary, useBoostHistory, useBoostableMatches, useActivateBoost } from '../../../hooks/api/useBoosts';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface BoosterProps {
   onBack: () => void;
   onNavigate?: (page: PageType) => void;
+  purchaseSuccess?: boolean;
+  purchasedCount?: number;
 }
 
-const matchsBoostes = [
-  { id: 1, equipe1: 'PSG', equipe2: 'OM', date: '15/11/2024', heure: '21:00', vuesGagnees: 87, reservations: 24 },
-  { id: 2, equipe1: 'Real Madrid', equipe2: 'Barcelona', date: '10/11/2024', heure: '20:00', vuesGagnees: 142, reservations: 31 },
-  { id: 3, equipe1: 'Bayern', equipe2: 'Dortmund', date: '05/11/2024', heure: '18:45', vuesGagnees: 95, reservations: 18 },
-];
-
-export function Booster({ onBack, onNavigate }: BoosterProps) {
-  const { boostsDisponibles } = useAppContext();
-  const [selectedMatch, setSelectedMatch] = useState<number | null>(null);
+export function Booster({ onBack, onNavigate, purchaseSuccess, purchasedCount }: BoosterProps) {
+  const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
+  const [showMatchSelector, setShowMatchSelector] = useState(false);
+  const [showSuccessBanner, setShowSuccessBanner] = useState(purchaseSuccess || false);
+  
+  // Handle purchase success prop changes
+  useEffect(() => {
+    if (purchaseSuccess) {
+      setShowSuccessBanner(true);
+      // Auto-hide after 8 seconds
+      const timer = setTimeout(() => {
+        setShowSuccessBanner(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [purchaseSuccess]);
+  
+  // Fetch boost summary (available boosts, stats)
+  const { data: summaryData, isLoading: summaryLoading } = useBoostSummary();
+  
+  // Fetch boost history
+  const { data: historyData, isLoading: historyLoading } = useBoostHistory();
+  
+  // Fetch venues for boostable matches
+  const { data: venuesData } = useQuery({
+    queryKey: ['partner-venues'],
+    queryFn: async () => {
+      const response = await apiClient.get('/partners/venues');
+      return response.data.venues || [];
+    },
+  });
+  
+  const firstVenueId = venuesData?.[0]?.id || null;
+  
+  // Fetch boostable matches
+  const { data: boostableMatches, isLoading: matchesLoading } = useBoostableMatches(firstVenueId);
+  
+  // Activate boost mutation
+  const activateBoostMutation = useActivateBoost();
+  
+  // Calculate stats from history
+  const boostsDisponibles = summaryData?.available_boosts || 0;
+  
+  // Transform history data
+  const matchsBoostes = useMemo(() => {
+    if (!historyData || !Array.isArray(historyData)) return [];
+    return historyData.map((boost: any) => {
+      let dateStr = '';
+      let heureStr = '';
+      try {
+        if (boost.match?.scheduled_at || boost.activated_at) {
+          const date = new Date(boost.match?.scheduled_at || boost.activated_at);
+          dateStr = format(date, 'dd/MM/yyyy', { locale: fr });
+          heureStr = format(date, 'HH:mm', { locale: fr });
+        }
+      } catch (e) {}
+      
+      return {
+        id: boost.id,
+        equipe1: boost.match?.home_team || boost.match?.homeTeam || 'Équipe A',
+        equipe2: boost.match?.away_team || boost.match?.awayTeam || 'Équipe B',
+        date: dateStr,
+        heure: heureStr,
+        vuesGagnees: boost.views_generated || 0,
+        reservations: boost.reservations_generated || 0,
+        status: boost.status,
+      };
+    });
+  }, [historyData]);
+  
+  const totalVuesGagnees = summaryData?.total_views_generated || matchsBoostes.reduce((acc, m) => acc + m.vuesGagnees, 0);
+  const totalReservations = summaryData?.total_reservations_generated || matchsBoostes.reduce((acc, m) => acc + m.reservations, 0);
 
   const handleParrainer = () => {
     if (onNavigate) {
@@ -34,12 +104,35 @@ export function Booster({ onBack, onNavigate }: BoosterProps) {
     }
   };
 
-  const totalVuesGagnees = matchsBoostes.reduce((acc, m) => acc + m.vuesGagnees, 0);
-  const totalReservations = matchsBoostes.reduce((acc, m) => acc + m.reservations, 0);
-
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
       <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto pb-24 lg:pb-8">
+        {/* Success Banner */}
+        {showSuccessBanner && (
+          <div className="mb-6 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-4 sm:p-6 text-white relative overflow-hidden animate-in slide-in-from-top duration-300">
+            <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Achat réussi !</h3>
+                  <p className="text-white/90 text-sm">
+                    {purchasedCount ? `${purchasedCount} boost${purchasedCount > 1 ? 's' : ''} ajouté${purchasedCount > 1 ? 's' : ''} à votre compte` : 'Vos boosts ont été ajoutés à votre compte'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSuccessBanner(false)}
+                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center gap-3 mb-3">

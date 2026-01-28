@@ -134,12 +134,43 @@ function AppContent() {
     }
   }, [currentPage, selectedRestaurantId, selectedMatchId, selectedFormule, nomBarOnboarding, isAuthenticated, currentUser?.hasCompletedOnboarding]);
 
+  // State for boost purchase success
+  const [boostPurchaseSuccess, setBoostPurchaseSuccess] = useState(false);
+  const [purchasedBoostCount, setPurchasedBoostCount] = useState(0);
+
   // Handle Stripe checkout verification
-  const verifyCheckout = useCallback(async (stripeSessionId: string, checkoutState: CheckoutState | null) => {
+  const verifyCheckout = useCallback(async (stripeSessionId: string, checkoutState: CheckoutState | null, checkoutType: 'venue' | 'boost' | null) => {
     if (checkoutProcessing) return;
     setCheckoutProcessing(true);
     
     try {
+      // Handle boost purchase verification
+      if (checkoutType === 'boost') {
+        console.log('Verifying boost purchase, session_id:', stripeSessionId);
+        const response = await apiClient.post('/boosts/purchase/verify', {
+          session_id: stripeSessionId
+        });
+        console.log('Boost verification successful:', response.data);
+        
+        // Clean URL and navigate to base path
+        window.history.replaceState({}, document.title, '/');
+        clearCheckoutState();
+        
+        // Show success and redirect to booster
+        setPurchasedBoostCount(response.data.quantity || 0);
+        setBoostPurchaseSuccess(true);
+        setCurrentPage('booster');
+        
+        // Hide success message after 5 seconds
+        setTimeout(() => {
+          setBoostPurchaseSuccess(false);
+        }, 5000);
+        
+        setCheckoutProcessing(false);
+        return;
+      }
+      
+      // Handle venue checkout verification
       console.log('Verifying checkout, session_id:', stripeSessionId);
       const response = await apiClient.post('/partners/venues/verify-checkout', {
         session_id: stripeSessionId
@@ -168,6 +199,7 @@ function AppContent() {
     } catch (err) {
       console.error('Error verifying payment:', err);
       cleanCheckoutUrl();
+      window.history.replaceState({}, document.title, '/');
       clearCheckoutState();
     } finally {
       setCheckoutProcessing(false);
@@ -193,7 +225,7 @@ function AppContent() {
       setPendingCheckoutState(checkoutState);
       
       if (isAuthenticated && !checkoutProcessing) {
-        verifyCheckout(stripeReturn.sessionId, checkoutState);
+        verifyCheckout(stripeReturn.sessionId, checkoutState, stripeReturn.type);
       }
     }
   }, [isAuthenticated, checkoutProcessing, verifyCheckout]);
@@ -412,7 +444,7 @@ function AppContent() {
       case 'modifier-restaurant':
         return <ModifierRestaurant restaurantId={selectedRestaurantId} onBack={() => setCurrentPage('mes-restaurants')} />;
       case 'booster':
-        return <Booster onBack={() => setCurrentPage('dashboard')} onNavigate={setCurrentPage} />;
+        return <Booster onBack={() => setCurrentPage('dashboard')} onNavigate={setCurrentPage} purchaseSuccess={boostPurchaseSuccess} purchasedCount={purchasedBoostCount} />;
       case 'acheter-boosts':
         return <AcheterBoosts onBack={() => setCurrentPage('booster')} />;
       case 'parrainage':

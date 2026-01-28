@@ -6,13 +6,14 @@
  */
 
 export interface CheckoutState {
-  type: 'onboarding' | 'add-venue';
+  type: 'onboarding' | 'add-venue' | 'boost-purchase';
   venueId?: string;
   venueName?: string;
-  formule: 'mensuel' | 'annuel';
+  formule?: 'mensuel' | 'annuel';
   sessionId?: string;
   checkoutUrl?: string;
   returnPage?: string;
+  packType?: string;
   createdAt: number;
 }
 
@@ -63,15 +64,33 @@ export function clearCheckoutState(): void {
 /**
  * Check if we're returning from Stripe checkout
  */
-export function isReturningFromStripe(): { success: boolean; sessionId: string | null; canceled: boolean } {
+export function isReturningFromStripe(): { 
+  success: boolean; 
+  sessionId: string | null; 
+  canceled: boolean;
+  type: 'venue' | 'boost' | null;
+} {
   const params = new URLSearchParams(window.location.search);
   const checkoutStatus = params.get('checkout');
   const sessionId = params.get('session_id');
+  const pathname = window.location.pathname;
   
+  // Check for boost purchase return (path-based)
+  if (pathname.includes('/booster/success') && sessionId) {
+    return {
+      success: true,
+      sessionId: sessionId,
+      canceled: false,
+      type: 'boost',
+    };
+  }
+  
+  // Check for venue/onboarding return (query-based)
   return {
     success: checkoutStatus === 'success' && !!sessionId,
     sessionId: sessionId,
     canceled: checkoutStatus === 'canceled',
+    type: checkoutStatus === 'success' ? 'venue' : null,
   };
 }
 

@@ -454,8 +454,6 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
       reservations = reservationsData.data;
     }
     
-    console.log('[DEBUG] reservationsData:', reservationsData);
-    console.log('[DEBUG] parsed reservations:', reservations);
     
     return reservations.map((r: any) => {
       let dateStr = '';
@@ -761,14 +759,7 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
     toast.success(`Export de ${filteredReservations.length} réservation(s) terminé`);
   };
 
-  // Debug: Log raw data to console
-  console.log('[RESERVATION DEBUG] Raw reservationsData:', reservationsData);
-  console.log('[RESERVATION DEBUG] Transformed clients:', clients);
-  console.log('[RESERVATION DEBUG] matchId prop:', matchId, 'type:', typeof matchId);
-  console.log('[RESERVATION DEBUG] selectedMatchFilter:', selectedMatchFilter);
-  console.log('[RESERVATION DEBUG] filter state:', filter);
-  
-  // TEMPORARY: Skip filtering to debug - just use clients directly
+  // Use clients directly (filtering can be re-added if needed)
   const filteredReservations = clients;
 
   // Group reservations by match

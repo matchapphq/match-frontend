@@ -1,17 +1,14 @@
-import { Zap, Sparkles, Check, ShoppingCart, TrendingUp, Gift, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
-import { useAuth } from '../../features/authentication/context/AuthContext';
-import { API_ENDPOINTS } from '../../utils/api-constants';
-import { apiPost } from '../../utils/api-helpers';
+import { Zap, Sparkles, Check, ShoppingCart, TrendingUp, Gift, ChevronRight, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { useBoostPrices, useBoostCheckout } from '../../hooks/api/useBoosts';
+import { saveCheckoutState } from '../../utils/checkout-state';
 
 interface AcheterBoostsProps {
   onBack: () => void;
 }
 
-type PackType = 'single' | 'pack_3' | 'pack_10';
-
 interface BoostPack {
-  id: PackType;
+  id: string;
   name: string;
   quantity: number;
   price: number;
@@ -21,7 +18,8 @@ interface BoostPack {
   popular?: boolean;
 }
 
-const boostPacks: BoostPack[] = [
+// Default packs as fallback if API doesn't return data
+const defaultBoostPacks: BoostPack[] = [
   {
     id: 'single',
     name: '1 Boost',
@@ -60,43 +58,62 @@ const benefits = [
 ];
 
 export function AcheterBoosts({ onBack }: AcheterBoostsProps) {
-  const { authToken } = useAuth();
-  const [selectedPack, setSelectedPack] = useState<PackType>('pack_3');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPack, setSelectedPack] = useState<string>('pack_3');
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch boost prices from API
+  const { data: pricesData, isLoading: pricesLoading } = useBoostPrices();
+  
+  // Checkout mutation
+  const checkoutMutation = useBoostCheckout();
+  
+  // Transform API packs or use defaults
+  const boostPacks: BoostPack[] = useMemo(() => {
+    if (!pricesData || !Array.isArray(pricesData) || pricesData.length === 0) {
+      return defaultBoostPacks;
+    }
+    return pricesData.map((pack: any) => ({
+      id: pack.id || pack.pack_type,
+      name: pack.name,
+      quantity: pack.quantity,
+      price: pack.price,
+      unitPrice: pack.unit_price || Math.round(pack.price / pack.quantity),
+      discount: pack.discount_percent || 0,
+      badge: pack.badge,
+      popular: pack.is_popular,
+    }));
+  }, [pricesData]);
+
   const handlePurchase = async () => {
-    const pack = boostPacks.find(p => p.id === selectedPack);
+    const pack = boostPacks.find((p: BoostPack) => p.id === selectedPack);
     if (!pack) return;
 
-    setIsProcessing(true);
     setError(null);
 
     try {
-      // Appel API pour créer une session Stripe Checkout pour les boosts
-      const data = await apiPost(
-        API_ENDPOINTS.BOOSTS_CHECKOUT,
-        {
-          pack_type: pack.id,
-          quantity: pack.quantity,
-          amount: pack.price,
-        },
-        authToken || 'mock-token'
-      );
+      const data = await checkoutMutation.mutateAsync({
+        packType: pack.id,
+        quantity: pack.quantity,
+        amount: pack.price,
+      });
 
       // Redirection vers Stripe Checkout
       if (data.checkout_url) {
-        // Dans un vrai environnement, rediriger vers Stripe
-        window.location.href = data.checkout_url;
+        // Save checkout state before redirecting
+        saveCheckoutState({
+          type: 'boost-purchase',
+          packType: pack.id,
+          returnPage: 'booster',
+        });
         
-        // Pour la démo, simuler la redirection
-        console.log('Redirection vers Stripe Checkout:', data.checkout_url);
+        window.location.href = data.checkout_url;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      setIsProcessing(false);
     }
   };
+  
+  const isProcessing = checkoutMutation.isPending;
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
