@@ -114,6 +114,8 @@ export const API_ENDPOINTS = {
   
   // ==================== Notifications ====================
   NOTIFICATIONS: '/notifications',
+  NOTIFICATIONS_UNREAD_COUNT: '/notifications/unread-count',
+  NOTIFICATIONS_NEW: '/notifications/new',
   NOTIFICATIONS_READ_ALL: '/notifications/read-all',
   
   NOTIFICATION_READ: (notificationId: string) => `/notifications/${notificationId}/read`,

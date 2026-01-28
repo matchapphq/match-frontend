@@ -7,6 +7,8 @@ import { AppProvider } from '../context/AppContext';
 import { ThemeProvider } from '../features/theme/context/ThemeContext';
 import { LanguageProvider } from '../context/LanguageContext';
 import { ToastProvider } from '../context/ToastContext';
+import { NotificationProvider, useNotificationContext } from '../context/NotificationContext';
+import { NotificationToast } from '../components/layout/NotificationToast';
 import { CompteInfos } from '../components/compte/CompteInfos';
 import { CompteFacturation } from '../../components/compte/CompteFacturation';
 import { Dashboard } from '../features/dashboard/pages/Dashboard';
@@ -55,6 +57,12 @@ import {
   CheckoutState 
 } from '../utils/checkout-state';
 
+// Wrapper component to connect NotificationBell with context
+function NotificationBellWithContext({ onNavigate }: { onNavigate: (page: PageType) => void }) {
+  const { unreadCount } = useNotificationContext();
+  return <NotificationBell onNavigate={onNavigate} unreadCount={unreadCount} />;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -62,7 +70,9 @@ export default function App() {
         <AppProvider>
           <LanguageProvider>
             <ToastProvider>
-              <AppContent />
+              <NotificationProvider>
+                <AppContent />
+              </NotificationProvider>
             </ToastProvider>
           </LanguageProvider>
         </AppProvider>
@@ -557,9 +567,12 @@ function AppContent() {
         {renderPage()}
       </div>
       
+      {/* Real-time Notification Toast */}
+      <NotificationToast onNavigate={handleNavigate} />
+      
       {/* Notification Bell - Fixed top right */}
       {isAuthenticated && (
-        <NotificationBell onNavigate={handleNavigate} unreadCount={3} />
+        <NotificationBellWithContext onNavigate={handleNavigate} />
       )}
       
       {/* Floating QR Scanner Button - Only on mobile when authenticated */}
