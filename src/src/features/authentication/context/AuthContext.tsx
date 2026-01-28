@@ -116,6 +116,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, [checkApiHealth, hasInitialized]);
 
+  // Listen for logout events from API client (token refresh failed)
+  useEffect(() => {
+    const handleForceLogout = (event: CustomEvent) => {
+      console.warn('Force logout triggered:', event.detail?.reason);
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+    };
+
+    window.addEventListener('auth:logout', handleForceLogout as EventListener);
+    
+    return () => {
+      window.removeEventListener('auth:logout', handleForceLogout as EventListener);
+    };
+  }, []);
+
   const refreshUserData = async () => {
     if (!isAuthenticated) return;
     
