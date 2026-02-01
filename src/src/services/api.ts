@@ -84,6 +84,34 @@ class ApiService {
     });
   }
 
+  async forgotPassword(email: string) {
+    return this.request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+    });
+  }
+
+  async verifyResetCode(email: string, code: string) {
+    return this.request<{ valid: boolean }>('/auth/verify-reset-code', {
+      method: 'POST',
+      body: { email, code },
+    });
+  }
+
+  async resetPassword(email: string, code: string, newPassword: string) {
+    return this.request<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: { email, code, new_password: newPassword },
+    });
+  }
+
+  async resendResetCode(email: string) {
+    return this.request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+    });
+  }
+
   async getMe() {
     return this.request<{ user: ApiUser }>('/auth/me');
   }

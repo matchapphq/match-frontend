@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 //import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import logo from '../../../../assets/logo.png';
+import { api } from '../../../services/api';
 
 interface ForgotPasswordProps {
   onBackToLogin: () => void;
@@ -25,8 +26,6 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Simulated verification code (in real app, this would be sent via email)
-  const verificationCode = '123456';
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -37,7 +36,7 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
     return password.length >= 8;
   };
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -52,11 +51,14 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await api.forgotPassword(email);
       setStep('code');
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Une erreur est survenue. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCodeChange = (index: number, value: string) => {
@@ -86,7 +88,7 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
     }
   };
 
-  const handleCodeSubmit = (e: React.FormEvent) => {
+  const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -97,20 +99,22 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
       return;
     }
 
-    if (enteredCode !== verificationCode) {
-      setError('Code de vérification incorrect');
-      return;
-    }
-
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const response = await api.verifyResetCode(email, enteredCode);
+      if (response.valid) {
+        setStep('reset');
+      } else {
+        setError('Code de vérification incorrect');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Code de vérification incorrect ou expiré');
+    } finally {
       setIsLoading(false);
-      setStep('reset');
-    }, 1000);
+    }
   };
 
-  const handlePasswordReset = (e: React.FormEvent) => {
+  const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -130,27 +134,33 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const enteredCode = code.join('');
+      await api.resetPassword(email, enteredCode, newPassword);
       setStep('success');
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Échec de la réinitialisation du mot de passe. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResendCode = () => {
+  const handleResendCode = async () => {
     setError('');
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      setError('');
+    try {
+      await api.resendResetCode(email);
       // Show success message
       const successMsg = document.createElement('div');
       successMsg.textContent = 'Code renvoyé avec succès !';
       successMsg.className = 'text-green-600 text-sm mt-2';
       document.querySelector('.resend-container')?.appendChild(successMsg);
       setTimeout(() => successMsg.remove(), 3000);
-    }, 1000);
+    } catch (err: any) {
+      setError(err.message || 'Échec de l\'envoi du code. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -333,7 +343,7 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
                     ))}
                   </div>
                   <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-                    Code de test : <strong className="text-[#5a03cf]">123456</strong>
+                    Entrez le code reçu par email
                   </p>
                 </div>
 
