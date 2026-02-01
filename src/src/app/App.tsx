@@ -15,6 +15,7 @@ import { Dashboard } from '../features/dashboard/pages/Dashboard';
 import { LandingPage } from '../features/authentication/pages/LandingPage';
 import { Login } from '../features/authentication/pages/Login';
 import { Register } from '../features/authentication/pages/Register';
+import { ForgotPassword } from '../features/authentication/pages/ForgotPassword';
 import { ListeMatchs } from '../features/matches/pages/ListeMatchs';
 import { MatchDetail } from '../features/matches/pages/MatchDetail';
 import { MesMatchs } from '../features/matches/pages/MesMatchs';
@@ -88,7 +89,7 @@ function AppContent() {
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('à venir');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
-  const [authView, setAuthView] = useState<'landing' | 'login' | 'register' | 'referral'>('landing');
+  const [authView, setAuthView] = useState<'landing' | 'login' | 'register' | 'referral' | 'forgot-password'>('landing');
   
   // États pour le parcours de souscription
   const [selectedFormule, setSelectedFormule] = useState<'mensuel' | 'annuel'>('mensuel');
@@ -325,10 +326,18 @@ function AppContent() {
         />
       );
     }
+    if (authView === 'forgot-password') {
+      return (
+        <ForgotPassword
+          onBackToLogin={() => setAuthView('login')}
+        />
+      );
+    }
     return (
       <Login
         onLogin={handleLogin}
         onSwitchToRegister={() => setAuthView('register')}
+        onForgotPassword={() => setAuthView('forgot-password')}
         onBackToLanding={() => setAuthView('landing')}
       />
     );

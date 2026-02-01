@@ -6,10 +6,11 @@ import logo from '../../assets/logo.png';
 interface LoginProps {
   onLogin: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
   onSwitchToRegister: () => void;
+  onForgotPassword: () => void;
   onBackToLanding?: () => void;
 }
 
-export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginProps) {
+export function Login({ onLogin, onSwitchToRegister, onForgotPassword, onBackToLanding }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -122,7 +123,11 @@ export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginPro
                 />
                 Se souvenir de moi
               </label>
-              <button type="button" className="text-[#5a03cf] hover:underline">
+              <button 
+                type="button" 
+                onClick={onForgotPassword}
+                className="text-[#5a03cf] hover:underline"
+              >
                 Mot de passe oublié ?
               </button>
             </div>
