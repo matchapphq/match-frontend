@@ -26,11 +26,13 @@ class ApiService {
 
   private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const { method = 'GET', body, headers = {} } = options;
+    const storedToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 
     const config: RequestInit = {
       method,
       headers: {
         'Content-Type': 'application/json',
+        ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
         ...headers,
       },
       credentials: 'include', // Include cookies for auth
@@ -55,14 +57,21 @@ class ApiService {
   // ============================================
 
   async login(email: string, password: string) {
-    return this.request<{ user: any; token?: string }>('/auth/login', {
+    return this.request<{ user: any; token?: string; refresh_token?: string }>('/auth/login', {
       method: 'POST',
       body: { email, password },
     });
   }
 
+  async googleLogin(idToken: string) {
+    return this.request<{ user: any; token?: string; refresh_token?: string; is_new_user?: boolean }>('/auth/google', {
+      method: 'POST',
+      body: { id_token: idToken },
+    });
+  }
+
   async register(data: { email: string; password: string; firstName: string; lastName: string; phone?: string }) {
-    return this.request<{ user: any }>('/auth/register', {
+    return this.request<{ user: any; token?: string; refresh_token?: string }>('/auth/register', {
       method: 'POST',
       body: data,
     });
