@@ -52,17 +52,6 @@ function apiUserToUser(apiUser: ApiUser): User {
   };
 }
 
-// Fallback mock user for demo mode when API is offline
-const mockUser: User = {
-  id: 'user-demo',
-  email: 'demo@match.com',
-  nom: 'Demo',
-  prenom: 'Restaurateur',
-  telephone: '01 23 45 67 89',
-  hasCompletedOnboarding: true,
-  onboardingStep: 'complete'
-};
-
 type GooglePhoneCountry = 'FR' | 'US';
 const GOOGLE_PHONE_COUNTRY_ORDER: GooglePhoneCountry[] = ['FR', 'US'];
 
@@ -362,15 +351,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Check if API is online first
     if (apiStatus === 'offline') {
-      // Fallback to demo mode
-      if (email === 'demo@match.com' && password === 'demo123') {
-        setIsAuthenticated(true);
-        setCurrentUser(mockUser);
-        return { success: true };
-      }
-      return { success: false, error: 'API hors ligne. Utilisez demo@match.com / demo123 pour le mode démo.' };
+      return { success: false, error: 'API hors ligne. Impossible de se connecter.' };
     }
 
     try {

@@ -282,12 +282,6 @@ export function Login({ onLogin, onGoogleLogin, onSwitchToRegister, onBackToLand
           </p>
         </div>
 
-        {/* Demo Credentials */}
-        <div className="mt-8 p-4 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-xl border border-gray-200/50 dark:border-gray-700/50">
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Compte de démonstration :</p>
-          <p className="text-xs text-gray-900 dark:text-white">Email: demo@match.com</p>
-          <p className="text-xs text-gray-900 dark:text-white">Mot de passe: demo123</p>
-        </div>
       </div>
     </div>
   );
