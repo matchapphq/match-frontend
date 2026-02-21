@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../api/client';
 
 interface ModifierRestaurantProps {
-  restaurantId: number | null;
+  restaurantId: string | null;
   onBack: () => void;
 }
 
@@ -18,7 +18,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
     queryFn: async () => {
       if (!restaurantId) return null;
       const res = await apiClient.get(`/venues/${restaurantId}`);
-      return res.data.venue;
+      return res.data?.venue ?? res.data;
     },
     enabled: !!restaurantId,
   });

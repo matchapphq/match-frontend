@@ -362,13 +362,13 @@ export function ConfirmationOnboarding() {
 export function RestaurantDetail() {
   const { id } = useParams<{ id: string }>();
   const goBack = useGoBack('/my-venues');
-  return <RawRestaurantDetail restaurantId={id ? Number(id) : null} onBack={goBack} />;
+  return <RawRestaurantDetail restaurantId={id ?? null} onBack={goBack} />;
 }
 
 export function ModifierRestaurant() {
   const { id } = useParams<{ id: string }>();
   const goBack = useGoBack('/my-venues');
-  return <RawModifierRestaurant restaurantId={id ? Number(id) : null} onBack={goBack} />;
+  return <RawModifierRestaurant restaurantId={id ?? null} onBack={goBack} />;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
