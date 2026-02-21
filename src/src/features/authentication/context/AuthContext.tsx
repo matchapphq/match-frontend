@@ -528,7 +528,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
       {showGooglePhoneModal && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeGooglePhoneModal}
+          />
           <div className="relative w-full max-w-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/60 dark:border-gray-700/60 shadow-2xl">
             <h2 className="text-xl text-gray-900 dark:text-white mb-2">Complétez votre compte</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
