@@ -50,6 +50,6 @@
       "@styles/*": ["src/styles/*"]
     }
   },
-  "include": ["src", "*.tsx", "*.ts", "components/**/*", "context/**/*", "data/**/*"],
+  "include": ["src/**/*", "main.tsx", "App.tsx"],
   "exclude": ["node_modules", "dist", "build"]
 }
