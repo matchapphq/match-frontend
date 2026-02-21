@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../features/authentication/context/AuthContext';
 import { AppProvider } from '../context/AppContext';
@@ -73,6 +73,7 @@ export default function App() {
             <LanguageProvider>
               <ToastProvider>
                 <StripeReturnHandler />
+                <ScrollToTop />
                 <AppRoutes />
               </ToastProvider>
             </LanguageProvider>
@@ -81,6 +82,19 @@ export default function App() {
       </ThemeProvider>
     </BrowserRouter>
   );
+}
+
+/**
+ * Resets window scroll position on route changes.
+ */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [pathname]);
+
+  return null;
 }
 
 /**
