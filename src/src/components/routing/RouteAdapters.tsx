@@ -19,6 +19,7 @@ import { Login as RawLogin } from '../../features/authentication/pages/Login';
 import { Register as RawRegister } from '../../features/authentication/pages/Register';
 import { ReferralPage as RawReferralPage } from '../../features/parrainage/pages/ReferralPage';
 import { AppPresentation as RawAppPresentation } from '../../pages/app-presentation/AppPresentation';
+import { Terms as RawTerms } from '../../pages/terms/Terms';
 
 // ─── Onboarding pages ─────────────────────────────────────────
 import { OnboardingWelcome as RawOnboardingWelcome } from '../../features/onboarding/pages/OnboardingWelcome';
@@ -143,6 +144,10 @@ export function AppPresentation() {
   const onNavigate = useOnNavigate();
   const goBack = useGoBack('/');
   return <RawAppPresentation onNavigate={onNavigate} onBack={goBack} />;
+}
+
+export function Terms() {
+  return <RawTerms />;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

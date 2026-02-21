@@ -28,6 +28,7 @@ import {
   Register,
   ReferralPage,
   AppPresentation,
+  Terms,
   OnboardingWelcome,
   OnboardingAjouterRestaurant,
   OnboardingInfosEtablissement,
@@ -192,6 +193,7 @@ function AppRoutes() {
       <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
       <Route path="/public-referral" element={<PublicOnly><ReferralPage /></PublicOnly>} />
       <Route path="/presentation" element={<AppPresentation />} />
+      <Route path="/terms" element={<Terms />} />
 
       {/* ── Onboarding routes (auth required, onboarding NOT complete) ── */}
       <Route path="/onboarding" element={<RequireAuth><OnboardingWelcome /></RequireAuth>} />

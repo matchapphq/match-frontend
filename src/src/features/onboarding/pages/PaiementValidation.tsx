@@ -252,9 +252,8 @@ export function PaiementValidation({ onBack, onNavigate, selectedFormule = 'mens
                       Conditions Générales de Vente (CGV)
                     </a>
                     {' '}et les{' '}
-                    <a 
-                      href="#" 
-                      onClick={(e) => { e.preventDefault(); alert('Redirection vers les CGU'); }}
+                    <a
+                      href="/terms"
                       className="text-[#5a03cf] dark:text-[#7a23ef] hover:underline font-medium"
                     >
                       Conditions Générales d'Utilisation (CGU)

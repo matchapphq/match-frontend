@@ -4,7 +4,7 @@ export function Footer() {
       <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
         <p>© 2025 Match. Tous droits réservés.</p>
         <div className="flex items-center gap-4">
-          <a href="#" className="hover:text-[#5a03cf] transition-colors">
+          <a href="/terms" className="hover:text-[#5a03cf] transition-colors">
             Conditions
           </a>
           <a href="#" className="hover:text-[#5a03cf] transition-colors">

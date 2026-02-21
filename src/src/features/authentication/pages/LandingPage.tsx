@@ -367,7 +367,7 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: Lan
               © 2026 Match. Tous droits réservés.
             </div>
             <div className="flex items-center gap-8">
-              <a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
+              <a href="/terms" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
                 Conditions
               </a>
               <a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
