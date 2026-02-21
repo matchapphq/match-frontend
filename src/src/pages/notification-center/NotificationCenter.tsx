@@ -1,41 +1,104 @@
 import { PageType } from '../../types';
-import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../features/authentication/context/AuthContext';
-import { Bell, Check, Clock, ChevronLeft, Trash2 } from 'lucide-react';
+import { Bell, Check, Clock, ChevronLeft, Trash2, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { parseDate } from '../../utils/date';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../../api/client';
 
 interface NotificationCenterProps {
   onNavigate: (page: PageType) => void;
 }
 
-export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
-  const { notifications, markAllAsRead } = useAppContext();
-  const { currentUser } = useAuth();
+interface ApiNotification {
+  id: string;
+  user_id: string;
+  type: 'reservation' | 'review' | 'referral' | 'system';
+  title: string;
+  message: string;
+  created_at: string;
+  read: boolean;
+  metadata?: any;
+}
 
-  // Filter notifications for current user
-  const userNotifications = notifications.filter(n => n.userId === currentUser?.id);
-  const unreadCount = userNotifications.filter(n => !n.read).length;
+export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
+  const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: notifications = [], isLoading } = useQuery<ApiNotification[]>({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get('/notifications');
+        return response.data?.notifications || response.data || [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!currentUser,
+    refetchInterval: 30000, // Poll every 30s
+  });
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAllMutation = useMutation({
+    mutationFn: () => apiClient.put('/notifications/read-all'),
+    onSuccess: () => {
+      queryClient.setQueryData<ApiNotification[]>(['notifications'], (old) =>
+        (old || []).map(n => ({ ...n, read: true }))
+      );
+    },
+  });
+
+  const markOneMutation = useMutation({
+    mutationFn: (id: string) => apiClient.put(`/notifications/${id}/read`),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<ApiNotification[]>(['notifications'], (old) =>
+        (old || []).map(n => n.id === id ? { ...n, read: true } : n)
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/notifications/${id}`),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<ApiNotification[]>(['notifications'], (old) =>
+        (old || []).filter(n => n.id !== id)
+      );
+    },
+  });
 
   const handleMarkAllRead = () => {
-    if (currentUser) {
-      markAllAsRead(currentUser.id);
-    }
+    markAllMutation.mutate();
   };
 
   const getIcon = (type: string) => {
     switch (type) {
       case 'reservation':
         return '📅';
-      case 'match':
-        return '⚽';
+      case 'review':
+        return '⭐';
+      case 'referral':
+        return '🤝';
       case 'system':
         return '🔔';
       default:
-        return 'info';
+        return '📌';
     }
   };
+
+  const safeParseDateISO = (dateStr: string): Date => {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf]" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-4 lg:space-y-6 pb-32 lg:pb-6 max-w-4xl mx-auto">
@@ -74,7 +137,7 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
       </header>
 
       <div className="space-y-4">
-        {userNotifications.length === 0 ? (
+        {notifications.length === 0 ? (
           <div className="text-center py-12 lg:py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 border-dashed">
             <Bell className="w-12 h-12 lg:w-16 lg:h-16 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
             <h3 className="text-lg lg:text-xl font-medium text-gray-900 dark:text-white mb-2">
@@ -86,11 +149,14 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-            {userNotifications.map((notification) => (
+            {notifications.map((notification) => (
               <div 
                 key={notification.id}
+                onClick={() => {
+                  if (!notification.read) markOneMutation.mutate(notification.id);
+                }}
                 className={`
-                  p-4 lg:p-5 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors relative group
+                  p-4 lg:p-5 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors relative group cursor-pointer
                   ${!notification.read ? 'bg-[#5a03cf]/5 dark:bg-[#5a03cf]/10' : ''}
                 `}
               >
@@ -110,10 +176,10 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
                       <span className="text-xs text-gray-400 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
                         <Clock className="w-3 h-3" />
                         <span className="hidden lg:inline">
-                          {formatDistanceToNow(parseDate(notification.date), { addSuffix: true, locale: fr })}
+                          {formatDistanceToNow(safeParseDateISO(notification.created_at), { addSuffix: true, locale: fr })}
                         </span>
                         <span className="lg:hidden">
-                          {formatDistanceToNow(parseDate(notification.date), { addSuffix: true, locale: fr }).replace('il y a ', '').replace('dans ', '')}
+                          {formatDistanceToNow(safeParseDateISO(notification.created_at), { addSuffix: true, locale: fr }).replace('il y a ', '').replace('dans ', '')}
                         </span>
                       </span>
                     </div>
@@ -126,7 +192,7 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
                     {notification.type === 'reservation' && (
                       <div className="mt-2 lg:mt-3 flex gap-3">
                         <button 
-                          onClick={() => onNavigate('reservations')}
+                          onClick={(e) => { e.stopPropagation(); onNavigate('reservations'); }}
                           className="text-xs font-medium text-[#5a03cf] hover:underline"
                         >
                           Voir la réservation
@@ -135,9 +201,18 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
                     )}
                   </div>
 
-                  {!notification.read && (
-                    <div className="w-2 h-2 bg-[#9cff02] rounded-full mt-1 lg:mt-2 flex-shrink-0" />
-                  )}
+                  <div className="flex items-start gap-2 flex-shrink-0">
+                    {!notification.read && (
+                      <div className="w-2 h-2 bg-[#9cff02] rounded-full mt-1 lg:mt-2" />
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(notification.id); }}
+                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-400 hover:text-red-500" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

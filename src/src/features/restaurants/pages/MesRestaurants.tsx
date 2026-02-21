@@ -30,10 +30,10 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
         id: venue.id,
         nom: venue.name || 'Établissement',
         adresse: `${venue.street_address || ''}, ${venue.city || ''}`.replace(/^, |, $/g, '') || 'Adresse non renseignée',
-        note: Number(venue.average_rating) || 0,
-        capaciteMax: Number(venue.capacity) || 0,
+        note: isNaN(Number(venue.average_rating)) ? 0 : Number(venue.average_rating),
+        capaciteMax: isNaN(Number(venue.capacity)) ? 0 : Number(venue.capacity),
         image: venue.photos?.[0]?.url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
-        matchsOrganises: Number(venue.matches_count) || 0,
+        matchsOrganises: isNaN(Number(venue.matches_count)) ? 0 : Number(venue.matches_count),
       }));
     },
     enabled: !!currentUser,
@@ -91,9 +91,9 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
 
   const totalRestaurants = restaurants.length;
   const noteMoyenne = restaurants.length > 0
-    ? (restaurants.reduce((acc, r) => acc + r.note, 0) / restaurants.length).toFixed(1)
+    ? (restaurants.reduce((acc, r) => acc + (r.note || 0), 0) / restaurants.length).toFixed(1)
     : '0.0';
-  const totalCapacite = restaurants.reduce((acc, r) => acc + r.capaciteMax, 0);
+  const totalCapacite = restaurants.reduce((acc, r) => acc + (r.capaciteMax || 0), 0);
   const totalMatchs = restaurants.reduce((acc, r) => acc + (r.matchsOrganises || 0), 0);
 
   return (

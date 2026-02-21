@@ -5,6 +5,8 @@ import { NotificationBanner } from '../NotificationBanner';
 import { QrCode } from 'lucide-react';
 import { useAuth } from '../../features/authentication/context/AuthContext';
 import { useAppNavigate } from '../../hooks/useAppNavigate';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../api/client';
 import type { PageType } from '../../types';
 
 /**
@@ -12,10 +14,26 @@ import type { PageType } from '../../types';
  * notification bell, banner, and QR scanner button.
  */
 export function AuthenticatedLayout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, currentUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { navigateTo } = useAppNavigate();
+
+  const { data: notifications = [] } = useQuery<{ id: string; read: boolean }[]>({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get('/notifications');
+        return response.data?.notifications || response.data || [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!currentUser,
+    refetchInterval: 30000,
+  });
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const isQrScanner = location.pathname === '/qr-scanner';
 
@@ -41,7 +59,7 @@ export function AuthenticatedLayout() {
 
       {/* Notification Bell - Fixed top right */}
       {isAuthenticated && (
-        <NotificationBell onNavigate={handleBellNavigate} unreadCount={3} />
+        <NotificationBell onNavigate={handleBellNavigate} unreadCount={unreadCount} />
       )}
 
       {/* Floating QR Scanner Button - Only on mobile when authenticated */}
