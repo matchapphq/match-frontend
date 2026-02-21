@@ -5,10 +5,8 @@
  * Only use these mappers when UI components expect different format
  */
 
-import type { Venue } from '../services/venues.service';
-import type { Match, VenueMatch } from '../services/matches.service';
-import type { Reservation } from '../services/reservations.service';
-import type { Restaurant, Match as UIMatch, Client } from '../context/AppContext';
+import type { Venue, VenueMatch, Reservation } from '../services/api';
+import type { Restaurant, Match as UIMatch, Client } from '../data/mockData';
 
 /**
  * Map Venue (backend) to Restaurant (UI)
@@ -22,17 +20,17 @@ export function mapVenueToRestaurant(venue: Venue, additionalData?: {
   return {
     id: Number(venue.id) || Math.floor(Math.random() * 1000000),
     nom: venue.name,
-    adresse: `${venue.address}, ${venue.city} ${venue.postal_code}`,
-    telephone: venue.phone,
+    adresse: `${venue.street_address}, ${venue.city} ${venue.postal_code}`,
+    telephone: venue.phone || '',
     email: venue.email || '',
     capaciteMax: venue.capacity || 50,
-    note: additionalData?.note || 4.5,
+    note: additionalData?.note || venue.rating || 4.5,
     totalAvis: additionalData?.totalAvis || 0,
-    image: additionalData?.image || '',
+    image: additionalData?.image || venue.image_url || '',
     horaires: 'Lun-Dim: 11h00 - 02h00', // TODO: Format from opening_hours
     tarif: '30€/mois',
     userId: 'current-user',
-    bookingMode: venue.booking_mode,
+    booking_mode: 'instant',
     matchsOrganises: additionalData?.matchsOrganises || 0,
   };
 }
@@ -49,19 +47,20 @@ export function mapVenuesToRestaurants(venues: Venue[]): Restaurant[] {
  */
 export function mapVenueMatchToUIMatch(venueMatch: VenueMatch, venueId?: string): UIMatch {
   const match = venueMatch.match;
+  const dateObj = match?.scheduled_at ? new Date(match.scheduled_at) : null;
   
   return {
     id: Number(venueMatch.id) || Math.floor(Math.random() * 1000000),
-    equipe1: match?.home_team_name || 'Équipe 1',
-    equipe2: match?.away_team_name || 'Équipe 2',
-    date: match?.match_date ? new Date(match.match_date).toLocaleDateString('fr-FR') : '',
-    heure: match?.match_time || '',
-    reservees: venueMatch.reservations_count || 0,
-    total: venueMatch.max_capacity || 0,
-    sport: match?.sport_id || 'football',
+    equipe1: match?.homeTeam || 'Équipe 1',
+    equipe2: match?.awayTeam || 'Équipe 2',
+    date: dateObj ? dateObj.toLocaleDateString('fr-FR') : '',
+    heure: dateObj ? dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
+    reservees: venueMatch.reserved_seats || 0,
+    total: venueMatch.total_capacity || 0,
+    sport: 'football',
     sportNom: 'Football', // TODO: Get from sport details
-    restaurant: '', // TODO: Get venue name
-    statut: match?.status === 'SCHEDULED' ? 'à venir' : 'terminé',
+    restaurant: venueMatch.venue?.name || '',
+    statut: venueMatch.status === 'upcoming' || venueMatch.status === 'live' ? 'à venir' : 'terminé',
     restaurantId: venueId ? Number(venueId) : 0,
     userId: 'current-user',
   };
@@ -78,18 +77,31 @@ export function mapVenueMatchesToUIMatches(venueMatches: VenueMatch[], venueId?:
  * Map Reservation (backend) to Client (UI)
  */
 export function mapReservationToClient(reservation: Reservation): Client {
+  const maybeExtended = reservation as Reservation & {
+    user_name?: string;
+    user_email?: string;
+    user_phone?: string;
+  };
+  const fullName = maybeExtended.user_name || 'Client';
+  const [prenom = '', ...lastNameParts] = fullName.split(' ');
+  const nom = lastNameParts.join(' ') || fullName;
+  const matchName = reservation.match
+    ? `${reservation.match.home_team} vs ${reservation.match.away_team}`
+    : '';
+
   return {
     id: Number(reservation.id) || Math.floor(Math.random() * 1000000),
-    nom: reservation.user_name.split(' ').pop() || reservation.user_name,
-    prenom: reservation.user_name.split(' ')[0] || '',
-    match: '', // TODO: Get match name from venue_match_id
+    nom,
+    prenom,
+    match: matchName,
     date: new Date(reservation.created_at).toLocaleDateString('fr-FR'),
     userId: 'current-user',
     statut: mapReservationStatus(reservation.status),
-    email: reservation.user_email,
-    telephone: reservation.user_phone,
-    restaurant: '',
-    matchId: 0,
+    email: maybeExtended.user_email || '',
+    telephone: maybeExtended.user_phone || '',
+    restaurant: reservation.venue?.name || '',
+    matchId: reservation.venue_match_id ? Number(reservation.venue_match_id) || undefined : undefined,
+    personnes: reservation.party_size,
   };
 }
 
@@ -104,14 +116,14 @@ export function mapReservationsToClients(reservations: Reservation[]): Client[] 
  * Map reservation status (backend) to client status (UI)
  */
 export function mapReservationStatus(status: string): 'confirmé' | 'en attente' | 'refusé' {
-  switch (status) {
-    case 'CONFIRMED':
-    case 'CHECKED_IN':
+  switch (status.toLowerCase()) {
+    case 'confirmed':
+    case 'checked_in':
       return 'confirmé';
-    case 'PENDING':
+    case 'pending':
       return 'en attente';
-    case 'CANCELLED':
-    case 'NO_SHOW':
+    case 'canceled':
+    case 'no_show':
       return 'refusé';
     default:
       return 'en attente';
@@ -121,14 +133,14 @@ export function mapReservationStatus(status: string): 'confirmé' | 'en attente'
 /**
  * Map UI reservation status to backend status
  */
-export function mapUIStatusToBackendStatus(status: 'confirmé' | 'en attente' | 'refusé'): 'CONFIRMED' | 'PENDING' | 'CANCELLED' {
+export function mapUIStatusToBackendStatus(status: 'confirmé' | 'en attente' | 'refusé'): 'confirmed' | 'pending' | 'canceled' {
   switch (status) {
     case 'confirmé':
-      return 'CONFIRMED';
+      return 'confirmed';
     case 'en attente':
-      return 'PENDING';
+      return 'pending';
     case 'refusé':
-      return 'CANCELLED';
+      return 'canceled';
   }
 }
 
