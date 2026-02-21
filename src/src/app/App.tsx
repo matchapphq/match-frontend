@@ -72,7 +72,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { isAuthenticated, isLoading, login, register, currentUser, completeOnboarding, refreshUserData } = useAuth();
+  const { isAuthenticated, isLoading, login, loginWithGoogle, register, currentUser, completeOnboarding, refreshUserData } = useAuth();
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [defaultMatchFilter, setDefaultMatchFilter] = useState<'tous' | 'à venir' | 'terminé'>('à venir');
@@ -100,6 +100,11 @@ function AppContent() {
   // Handle login - wrapper to match expected interface
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     const result = await login(email, password);
+    return result.success;
+  };
+
+  const handleGoogleLogin = async (idToken: string): Promise<boolean> => {
+    const result = await loginWithGoogle(idToken);
     return result.success;
   };
 
@@ -318,6 +323,7 @@ function AppContent() {
     return (
       <Login
         onLogin={handleLogin}
+        onGoogleLogin={handleGoogleLogin}
         onSwitchToRegister={() => setAuthView('register')}
         onBackToLanding={() => setAuthView('landing')}
       />

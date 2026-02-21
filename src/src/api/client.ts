@@ -86,18 +86,24 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const storedRefreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+
         // Call refresh token endpoint
         const response = await axios.post(
           `${API_BASE_URL}/auth/refresh-token`,
-          {},
+          storedRefreshToken ? { refresh_token: storedRefreshToken } : {},
           { withCredentials: true }
         );
 
         const newToken = response.data.token;
+        const newRefreshToken = response.data.refresh_token;
 
         if (newToken) {
           // Save new token
           localStorage.setItem('authToken', newToken);
+          if (newRefreshToken) {
+            localStorage.setItem('refresh_token', newRefreshToken);
+          }
           
           // Update authorization header for the original request
           if (originalRequest.headers) {
@@ -116,6 +122,8 @@ apiClient.interceptors.response.use(
         
         localStorage.removeItem('authToken');
         sessionStorage.removeItem('authToken');
+        localStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('refresh_token');
         
         // Dispatch a custom event that the auth context can listen to
         window.dispatchEvent(new CustomEvent('auth:logout', { detail: { reason: 'token_refresh_failed' } }));

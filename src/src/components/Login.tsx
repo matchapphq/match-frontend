@@ -1,21 +1,130 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 // import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import logo from '../../assets/logo.png';
 
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          initialize: (options: {
+            client_id: string;
+            callback: (response: { credential?: string }) => void;
+          }) => void;
+          renderButton: (
+            parent: HTMLElement,
+            options: {
+              theme?: 'outline' | 'filled_blue' | 'filled_black';
+              size?: 'large' | 'medium' | 'small';
+              shape?: 'rectangular' | 'pill' | 'circle' | 'square';
+              text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
+              width?: number;
+            }
+          ) => void;
+        };
+      };
+    };
+  }
+}
+
 interface LoginProps {
   onLogin: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
+  onGoogleLogin?: (idToken: string) => Promise<boolean>;
   onSwitchToRegister: () => void;
   onBackToLanding?: () => void;
 }
 
-export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginProps) {
+const GOOGLE_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
+
+function loadGoogleScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.google?.accounts?.id) {
+      resolve();
+      return;
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${GOOGLE_SCRIPT_SRC}"]`);
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('Failed to load Google script')), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = GOOGLE_SCRIPT_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Google script'));
+    document.head.appendChild(script);
+  });
+}
+
+export function Login({ onLogin, onGoogleLogin, onSwitchToRegister, onBackToLanding }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
+
+  const googleClientId = ((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim();
+
+  useEffect(() => {
+    if (!onGoogleLogin || !googleClientId || !googleButtonRef.current) return;
+
+    let cancelled = false;
+
+    const initGoogleButton = async () => {
+      try {
+        await loadGoogleScript();
+        if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) return;
+
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async ({ credential }) => {
+            if (!credential || !onGoogleLogin) {
+              setError('Connexion Google impossible');
+              return;
+            }
+
+            setError('');
+            setIsGoogleLoading(true);
+            try {
+              const success = await onGoogleLogin(credential);
+              if (!success) {
+                setError('Échec de la connexion Google');
+              }
+            } catch {
+              setError('Échec de la connexion Google');
+            } finally {
+              setIsGoogleLoading(false);
+            }
+          },
+        });
+
+        googleButtonRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          shape: 'pill',
+          text: 'continue_with',
+          width: 320,
+        });
+      } catch {
+        setError('Le bouton Google n’a pas pu être initialisé');
+      }
+    };
+
+    initGoogleButton();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [googleClientId, onGoogleLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +243,29 @@ export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginPro
             >
               {isLoading ? 'Connexion...' : 'Se connecter'}
             </button>
+
+            {onGoogleLogin && (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">ou</span>
+                  <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                </div>
+
+                {googleClientId ? (
+                  <div className="flex justify-center">
+                    <div
+                      ref={googleButtonRef}
+                      className={isGoogleLoading ? 'pointer-events-none opacity-70' : ''}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                    Google Login non configuré (`VITE_GOOGLE_CLIENT_ID` manquant)
+                  </p>
+                )}
+              </>
+            )}
           </form>
         </div>
 
@@ -150,12 +282,6 @@ export function Login({ onLogin, onSwitchToRegister, onBackToLanding }: LoginPro
           </p>
         </div>
 
-        {/* Demo Credentials */}
-        <div className="mt-8 p-4 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-xl border border-gray-200/50 dark:border-gray-700/50">
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Compte de démonstration :</p>
-          <p className="text-xs text-gray-900 dark:text-white">Email: demo@match.com</p>
-          <p className="text-xs text-gray-900 dark:text-white">Mot de passe: demo123</p>
-        </div>
       </div>
     </div>
   );
