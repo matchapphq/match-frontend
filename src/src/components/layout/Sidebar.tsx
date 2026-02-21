@@ -16,44 +16,41 @@ import {
   Moon,
   Sun
 } from 'lucide-react';
-import { PageType } from '../../types';
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 // import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import logo from '../../../assets/logo.png';
 import { useAuth } from '../../features/authentication/context/AuthContext';
 import { useTheme } from '../../features/theme/context/ThemeContext';
 
-interface SidebarProps {
-  currentPage: PageType;
-  onNavigate: (page: PageType) => void;
-}
+const navigation = [
+  { name: 'Dashboard', icon: LayoutDashboard, path: '/tableau-de-bord' },
+  { name: 'Mes matchs', icon: Trophy, path: '/mes-matchs' },
+  { name: 'Réservations', icon: CalendarCheck, path: '/reservations' },
+  { name: 'Mes lieux', icon: UtensilsCrossed, path: '/mes-restaurants' },
+  { name: 'Booster', icon: Zap, path: '/booster' },
+  { name: 'Parrainage', icon: Gift, path: '/parrainage' },
+];
 
-export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+const bottomNavigation = [
+  { name: 'Paramètres', icon: Settings, path: '/compte' },
+];
+
+export function Sidebar() {
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  // Close mobile menu when page changes
+  // Close mobile menu when path changes
   useEffect(() => {
     setIsMobileOpen(false);
-  }, [currentPage]);
+  }, [location.pathname]);
 
-  const navigation = [
-    { name: 'Dashboard', icon: LayoutDashboard, page: 'dashboard' as PageType },
-    { name: 'Mes matchs', icon: Trophy, page: 'mes-matchs' as PageType },
-    { name: 'Réservations', icon: CalendarCheck, page: 'reservations' as PageType },
-    { name: 'Mes lieux', icon: UtensilsCrossed, page: 'mes-restaurants' as PageType },
-    { name: 'Booster', icon: Zap, page: 'booster' as PageType },
-    { name: 'Parrainage', icon: Gift, page: 'parrainage' as PageType },
-  ];
-
-  const bottomNavigation = [
-    { name: 'Paramètres', icon: Settings, page: 'compte' as PageType },
-  ];
-
-  const handleNavigate = (page: PageType) => {
-    onNavigate(page);
+  const handleNavigate = (path: string) => {
+    navigate(path);
     setIsMobileOpen(false);
   };
 
@@ -112,11 +109,11 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         <nav className="flex-1 p-3 overflow-y-auto">
           <div className="space-y-1">
             {navigation.map((item) => {
-              const isActive = currentPage === item.page;
+              const isActive = location.pathname.startsWith(item.path);
               return (
                 <button
                   key={item.name}
-                  onClick={() => handleNavigate(item.page)}
+                  onClick={() => handleNavigate(item.path)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
                     isActive
                       ? 'bg-[#5a03cf] text-white shadow-lg shadow-[#5a03cf]/20'
@@ -139,11 +136,11 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {/* User Section */}
         <div className="p-3 border-t border-gray-200 dark:border-gray-800 space-y-1">
           {bottomNavigation.map((item) => {
-            const isActive = currentPage === item.page;
+            const isActive = location.pathname.startsWith(item.path);
             return (
               <button
                 key={item.name}
-                onClick={() => handleNavigate(item.page)}
+                onClick={() => handleNavigate(item.path)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
                   isActive
                     ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
