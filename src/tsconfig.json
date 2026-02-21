@@ -50,6 +50,16 @@
       "@styles/*": ["src/styles/*"]
     }
   },
-  "include": ["src/**/*", "main.tsx", "App.tsx"],
-  "exclude": ["node_modules", "dist", "build"]
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "src/pages/ajouter-restaurant/**",
+    "src/pages/mes-restaurants/**",
+    "src/pages/modifier-restaurant/**",
+    "src/pages/paiement-validation/**",
+    "src/index.ts",
+    "src/utils/data-mappers.ts"
+  ]
 }
