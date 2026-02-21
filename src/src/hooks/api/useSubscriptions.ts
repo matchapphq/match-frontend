@@ -1,1 +1,1 @@
-export * from '../../../hooks/useSubscriptions';
+export { useSubscription as useSubscriptions, useCancelSubscription } from './useAccount';

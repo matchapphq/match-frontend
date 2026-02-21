@@ -6,4 +6,4 @@
 export { ThemeProvider, useTheme } from './context/ThemeContext';
 
 // Types (re-export from global types)
-export type { ThemeMode } from '@types';
+export type ThemeMode = 'light' | 'dark';

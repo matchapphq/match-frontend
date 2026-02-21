@@ -2,4 +2,4 @@
  * Compte pages exports
  */
 
-export { MonCompte } from './MonCompte';
+export { Compte as MonCompte } from './MonCompte';
