@@ -7,7 +7,7 @@ export function Footer() {
           <a href="/terms" className="hover:text-[#5a03cf] transition-colors">
             Conditions
           </a>
-          <a href="#" className="hover:text-[#5a03cf] transition-colors">
+          <a href="/privacy" className="hover:text-[#5a03cf] transition-colors">
             Confidentialité
           </a>
           <a href="#" className="hover:text-[#5a03cf] transition-colors">

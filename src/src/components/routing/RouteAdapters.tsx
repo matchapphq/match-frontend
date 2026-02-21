@@ -20,6 +20,7 @@ import { Register as RawRegister } from '../../features/authentication/pages/Reg
 import { ReferralPage as RawReferralPage } from '../../features/parrainage/pages/ReferralPage';
 import { AppPresentation as RawAppPresentation } from '../../pages/app-presentation/AppPresentation';
 import { Terms as RawTerms } from '../../pages/terms/Terms';
+import { Privacy as RawPrivacy } from '../../pages/privacy/Privacy';
 
 // ─── Onboarding pages ─────────────────────────────────────────
 import { OnboardingWelcome as RawOnboardingWelcome } from '../../features/onboarding/pages/OnboardingWelcome';
@@ -148,6 +149,10 @@ export function AppPresentation() {
 
 export function Terms() {
   return <RawTerms />;
+}
+
+export function Privacy() {
+  return <RawPrivacy />;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

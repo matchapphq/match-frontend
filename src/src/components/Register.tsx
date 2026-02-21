@@ -252,7 +252,7 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
                   conditions d'utilisation
                 </a>
                 {' '}et la{' '}
-                <a href="#" className="text-[#5a03cf] hover:underline">
+                <a href="/privacy" className="text-[#5a03cf] hover:underline">
                   politique de confidentialité
                 </a>
               </label>
