@@ -20,7 +20,7 @@ export function PublicOnly({ children }: { children: React.ReactNode }) {
     if (currentUser && !currentUser.hasCompletedOnboarding) {
       return <Navigate to="/onboarding" replace />;
     }
-    return <Navigate to="/tableau-de-bord" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

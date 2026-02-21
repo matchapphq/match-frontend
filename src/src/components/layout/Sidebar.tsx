@@ -24,16 +24,16 @@ import { useAuth } from '../../features/authentication/context/AuthContext';
 import { useTheme } from '../../features/theme/context/ThemeContext';
 
 const navigation = [
-  { name: 'Dashboard', icon: LayoutDashboard, path: '/tableau-de-bord' },
-  { name: 'Mes matchs', icon: Trophy, path: '/mes-matchs' },
+  { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { name: 'Mes matchs', icon: Trophy, path: '/my-matches' },
   { name: 'Réservations', icon: CalendarCheck, path: '/reservations' },
-  { name: 'Mes lieux', icon: UtensilsCrossed, path: '/mes-restaurants' },
-  { name: 'Booster', icon: Zap, path: '/booster' },
-  { name: 'Parrainage', icon: Gift, path: '/parrainage' },
+  { name: 'Mes lieux', icon: UtensilsCrossed, path: '/my-venues' },
+  { name: 'Booster', icon: Zap, path: '/boost' },
+  { name: 'Parrainage', icon: Gift, path: '/referral' },
 ];
 
 const bottomNavigation = [
-  { name: 'Paramètres', icon: Settings, path: '/compte' },
+  { name: 'Paramètres', icon: Settings, path: '/account' },
 ];
 
 export function Sidebar() {

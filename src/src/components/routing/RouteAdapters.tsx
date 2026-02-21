@@ -80,8 +80,8 @@ export function LandingPage() {
   const navigate = useNavigate();
   return (
     <RawLandingPage
-      onGetStarted={() => navigate('/connexion')}
-      onReferral={() => navigate('/parrainage-public')}
+      onGetStarted={() => navigate('/login')}
+      onReferral={() => navigate('/public-referral')}
       onAppPresentation={() => navigate('/presentation')}
     />
   );
@@ -105,7 +105,7 @@ export function Login() {
     <RawLogin
       onLogin={handleLogin}
       onGoogleLogin={handleGoogleLogin}
-      onSwitchToRegister={() => navigate('/inscription')}
+      onSwitchToRegister={() => navigate('/register')}
       onBackToLanding={() => navigate('/')}
     />
   );
@@ -123,7 +123,7 @@ export function Register() {
   return (
     <RawRegister
       onRegister={handleRegister}
-      onSwitchToLogin={() => navigate('/connexion')}
+      onSwitchToLogin={() => navigate('/login')}
       onBackToLanding={() => navigate('/')}
     />
   );
@@ -134,7 +134,7 @@ export function ReferralPage() {
   return (
     <RawReferralPage
       onBackToLanding={() => navigate('/')}
-      onGoToLogin={() => navigate('/connexion')}
+      onGoToLogin={() => navigate('/login')}
     />
   );
 }
@@ -153,9 +153,9 @@ export function OnboardingWelcome() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const onContinue = (page: PageType) => {
-    if (page === 'ajouter-restaurant') navigate('/onboarding/ajouter-restaurant');
-    else if (page === 'facturation') navigate('/onboarding/facturation');
-    else navigate('/tableau-de-bord');
+    if (page === 'ajouter-restaurant') navigate('/onboarding/add-venue');
+    else if (page === 'facturation') navigate('/onboarding/billing');
+    else navigate('/dashboard');
   };
   return (
     <RawOnboardingWelcome
@@ -169,7 +169,7 @@ export function OnboardingWelcome() {
 export function OnboardingAjouterRestaurant() {
   const navigate = useNavigate();
   const onNavigate = (page: PageType) => {
-    if (page === 'infos-etablissement') navigate('/onboarding/infos');
+    if (page === 'infos-etablissement') navigate('/onboarding/info');
     else navigate(resolvePagePath(page));
   };
   return (
@@ -184,12 +184,12 @@ export function OnboardingAjouterRestaurant() {
 export function OnboardingInfosEtablissement() {
   const navigate = useNavigate();
   const onNavigate = (page: PageType) => {
-    if (page === 'paiement-validation') navigate('/onboarding/paiement');
+    if (page === 'paiement-validation') navigate('/onboarding/payment');
     else navigate(resolvePagePath(page));
   };
   return (
     <RawInfosEtablissement
-      onBack={() => navigate('/onboarding/ajouter-restaurant')}
+      onBack={() => navigate('/onboarding/add-venue')}
       onNavigate={onNavigate}
     />
   );
@@ -210,7 +210,7 @@ export function OnboardingPaiementValidation() {
   const navigate = useNavigate();
   return (
     <RawPaiementValidation
-      onBack={() => navigate('/onboarding/infos')}
+      onBack={() => navigate('/onboarding/info')}
       onNavigate={(page) => {
         if (page === 'confirmation-onboarding') navigate('/onboarding/confirmation');
         else navigate(resolvePagePath(page));
@@ -224,7 +224,7 @@ export function OnboardingConfirmationOnboarding() {
   return (
     <RawConfirmationOnboarding
       onNavigate={(page) => {
-        if (page === 'dashboard') navigate('/tableau-de-bord');
+        if (page === 'dashboard') navigate('/dashboard');
         else navigate(resolvePagePath(page));
       }}
     />
@@ -250,7 +250,7 @@ export function Dashboard() {
 }
 
 export function ListeMatchs() {
-  const goBack = useGoBack('/tableau-de-bord');
+  const goBack = useGoBack('/dashboard');
   return <RawListeMatchs onBack={goBack} />;
 }
 
@@ -261,14 +261,14 @@ export function MesMatchs() {
 
 export function MatchDetail() {
   const { id } = useParams<{ id: string }>();
-  const goBack = useGoBack('/mes-matchs');
+  const goBack = useGoBack('/my-matches');
   const navigate = useNavigate();
   const onNavigate = useOnNavigate();
   return (
     <RawMatchDetail
       matchId={id ? Number(id) : null}
       onBack={goBack}
-      onEditMatch={() => navigate(`/mes-matchs/${id}/modifier`)}
+      onEditMatch={() => navigate(`/my-matches/${id}/edit`)}
       onNavigate={onNavigate}
     />
   );
@@ -276,12 +276,12 @@ export function MatchDetail() {
 
 export function ModifierMatch() {
   const { id } = useParams<{ id: string }>();
-  const goBack = useGoBack('/mes-matchs');
+  const goBack = useGoBack('/my-matches');
   return <RawModifierMatch matchId={id ?? null} onBack={goBack} />;
 }
 
 export function ProgrammerMatch() {
-  const goBack = useGoBack('/tableau-de-bord');
+  const goBack = useGoBack('/dashboard');
   return <RawProgrammerMatch onBack={goBack} />;
 }
 
@@ -298,9 +298,9 @@ export function AjouterRestaurant() {
   const navigate = useNavigate();
   return (
     <RawAjouterRestaurant
-      onBack={() => navigate('/mes-restaurants')}
+      onBack={() => navigate('/my-venues')}
       onNavigate={(page) => {
-        if (page === 'infos-etablissement') navigate('/mes-restaurants/ajouter/infos');
+        if (page === 'infos-etablissement') navigate('/my-venues/add/info');
         else navigate(resolvePagePath(page));
       }}
     />
@@ -311,9 +311,9 @@ export function InfosEtablissement() {
   const navigate = useNavigate();
   return (
     <RawInfosEtablissement
-      onBack={() => navigate('/mes-restaurants/ajouter')}
+      onBack={() => navigate('/my-venues/add')}
       onNavigate={(page) => {
-        if (page === 'paiement-validation') navigate('/mes-restaurants/ajouter/paiement');
+        if (page === 'paiement-validation') navigate('/my-venues/add/payment');
         else navigate(resolvePagePath(page));
       }}
       isAddingVenue={true}
@@ -325,8 +325,8 @@ export function Facturation() {
   const navigate = useNavigate();
   return (
     <RawFacturation
-      onBack={() => navigate('/mes-restaurants/ajouter')}
-      onNavigate={(page) => navigate(resolvePagePath(page))}
+      onBack={() => navigate('/my-venues/add')}
+      onNavigate={(page: PageType) => navigate(resolvePagePath(page))}
     />
   );
 }
@@ -335,9 +335,9 @@ export function PaiementValidation() {
   const navigate = useNavigate();
   return (
     <RawPaiementValidation
-      onBack={() => navigate('/mes-restaurants/ajouter/infos')}
+      onBack={() => navigate('/my-venues/add/info')}
       onNavigate={(page) => {
-        if (page === 'confirmation-onboarding') navigate('/mes-restaurants/ajouter/confirmation');
+        if (page === 'confirmation-onboarding') navigate('/my-venues/add/confirmation');
         else navigate(resolvePagePath(page));
       }}
       isAddingVenue={true}
@@ -350,8 +350,8 @@ export function ConfirmationOnboarding() {
   return (
     <RawConfirmationOnboarding
       onNavigate={(page) => {
-        if (page === 'dashboard') navigate('/tableau-de-bord');
-        else if (page === 'mes-restaurants') navigate('/mes-restaurants');
+        if (page === 'dashboard') navigate('/dashboard');
+        else if (page === 'mes-restaurants') navigate('/my-venues');
         else navigate(resolvePagePath(page));
       }}
       isAddingVenue={true}
@@ -361,13 +361,13 @@ export function ConfirmationOnboarding() {
 
 export function RestaurantDetail() {
   const { id } = useParams<{ id: string }>();
-  const goBack = useGoBack('/mes-restaurants');
+  const goBack = useGoBack('/my-venues');
   return <RawRestaurantDetail restaurantId={id ? Number(id) : null} onBack={goBack} />;
 }
 
 export function ModifierRestaurant() {
   const { id } = useParams<{ id: string }>();
-  const goBack = useGoBack('/mes-restaurants');
+  const goBack = useGoBack('/my-venues');
   return <RawModifierRestaurant restaurantId={id ? Number(id) : null} onBack={goBack} />;
 }
 
@@ -376,7 +376,7 @@ export function ModifierRestaurant() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export function Booster() {
-  const goBack = useGoBack('/tableau-de-bord');
+  const goBack = useGoBack('/dashboard');
   const onNavigate = useOnNavigate();
   const [searchParams] = useSearchParams();
   const purchaseSuccess = searchParams.get('success') === 'true';
@@ -385,17 +385,17 @@ export function Booster() {
 }
 
 export function AcheterBoosts() {
-  const goBack = useGoBack('/booster');
+  const goBack = useGoBack('/boost');
   return <RawAcheterBoosts onBack={goBack} />;
 }
 
 export function Parrainage() {
-  const goBack = useGoBack('/tableau-de-bord');
+  const goBack = useGoBack('/dashboard');
   return <RawParrainage onBack={goBack} />;
 }
 
 export function MesAvis() {
-  const goBack = useGoBack('/tableau-de-bord');
+  const goBack = useGoBack('/dashboard');
   return <RawMesAvis onBack={goBack} />;
 }
 
@@ -405,36 +405,36 @@ export function Compte() {
 }
 
 export function CompteInfos() {
-  const goBack = useGoBack('/compte');
+  const goBack = useGoBack('/account');
   return <RawCompteInfos onBack={goBack} />;
 }
 
 export function CompteFacturation() {
-  const goBack = useGoBack('/compte');
+  const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
   return <RawCompteFacturation onBack={goBack} onNavigate={onNavigate} />;
 }
 
 export function CompteNotifications() {
-  const goBack = useGoBack('/compte');
+  const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
   return <RawCompteNotifications onBack={goBack} onNavigate={onNavigate} />;
 }
 
 export function CompteSecurite() {
-  const goBack = useGoBack('/compte');
+  const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
   return <RawCompteSecurite onBack={goBack} onNavigate={onNavigate} />;
 }
 
 export function CompteDonnees() {
-  const goBack = useGoBack('/compte');
+  const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
   return <RawCompteDonnees onBack={goBack} onNavigate={onNavigate} />;
 }
 
 export function CompteAide() {
-  const goBack = useGoBack('/compte');
+  const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
   return <RawCompteAide onBack={goBack} onNavigate={onNavigate} />;
 }
@@ -452,7 +452,7 @@ export function NotificationCenter() {
 }
 
 export function QRScanner() {
-  const goBack = useGoBack('/tableau-de-bord');
+  const goBack = useGoBack('/dashboard');
   const onNavigate = useOnNavigate();
   return <RawQRScanner onBack={goBack} onNavigate={onNavigate} />;
 }

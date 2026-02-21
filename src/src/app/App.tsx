@@ -108,7 +108,7 @@ function StripeReturnHandler() {
         await queryClient.invalidateQueries({ queryKey: ['boost-summary'] });
         await queryClient.invalidateQueries({ queryKey: ['available-boosts'] });
         await queryClient.invalidateQueries({ queryKey: ['boost-history'] });
-        navigate('/booster?success=true', { replace: true });
+        navigate('/boost?success=true', { replace: true });
         return;
       }
 
@@ -117,8 +117,10 @@ function StripeReturnHandler() {
       clearCheckoutState();
 
       if (checkoutState?.type === 'add-venue') {
-        navigate('/onboarding/confirmation', { replace: true });
+        // Adding a venue from "My Venues" → show confirmation then redirect to /my-venues
+        navigate('/my-venues/add/confirmation', { replace: true });
       } else {
+        // Onboarding flow → complete onboarding then show confirmation
         await completeOnboarding();
         navigate('/onboarding/confirmation', { replace: true });
       }
@@ -139,7 +141,7 @@ function StripeReturnHandler() {
       cleanCheckoutUrl();
       clearCheckoutState();
       if (checkoutState?.type === 'add-venue') {
-        navigate('/mes-restaurants', { replace: true });
+        navigate('/my-venues', { replace: true });
       }
       return;
     }
@@ -172,46 +174,46 @@ function AppRoutes() {
     <Routes>
       {/* ── Public routes ── */}
       <Route path="/" element={<PublicOnly><LandingPage /></PublicOnly>} />
-      <Route path="/connexion" element={<PublicOnly><Login /></PublicOnly>} />
-      <Route path="/inscription" element={<PublicOnly><Register /></PublicOnly>} />
-      <Route path="/parrainage-public" element={<PublicOnly><ReferralPage /></PublicOnly>} />
+      <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
+      <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
+      <Route path="/public-referral" element={<PublicOnly><ReferralPage /></PublicOnly>} />
       <Route path="/presentation" element={<AppPresentation />} />
 
       {/* ── Onboarding routes (auth required, onboarding NOT complete) ── */}
       <Route path="/onboarding" element={<RequireAuth><OnboardingWelcome /></RequireAuth>} />
-      <Route path="/onboarding/ajouter-restaurant" element={<RequireAuth><OnboardingAjouterRestaurant /></RequireAuth>} />
-      <Route path="/onboarding/infos" element={<RequireAuth><OnboardingInfosEtablissement /></RequireAuth>} />
-      <Route path="/onboarding/facturation" element={<RequireAuth><OnboardingFacturation /></RequireAuth>} />
-      <Route path="/onboarding/paiement" element={<RequireAuth><OnboardingPaiementValidation /></RequireAuth>} />
+      <Route path="/onboarding/add-venue" element={<RequireAuth><OnboardingAjouterRestaurant /></RequireAuth>} />
+      <Route path="/onboarding/info" element={<RequireAuth><OnboardingInfosEtablissement /></RequireAuth>} />
+      <Route path="/onboarding/billing" element={<RequireAuth><OnboardingFacturation /></RequireAuth>} />
+      <Route path="/onboarding/payment" element={<RequireAuth><OnboardingPaiementValidation /></RequireAuth>} />
       <Route path="/onboarding/confirmation" element={<RequireAuth><OnboardingConfirmationOnboarding /></RequireAuth>} />
 
       {/* ── Authenticated routes (with sidebar layout) ── */}
       <Route element={<RequireAuth><RequireOnboarding><AuthenticatedLayout /></RequireOnboarding></RequireAuth>}>
-        <Route path="/tableau-de-bord" element={<Dashboard />} />
-        <Route path="/matchs" element={<ListeMatchs />} />
-        <Route path="/matchs/programmer" element={<ProgrammerMatch />} />
-        <Route path="/mes-matchs" element={<MesMatchs />} />
-        <Route path="/mes-matchs/:id" element={<MatchDetail />} />
-        <Route path="/mes-matchs/:id/modifier" element={<ModifierMatch />} />
-        <Route path="/mes-restaurants" element={<MesRestaurants />} />
-        <Route path="/mes-restaurants/ajouter" element={<AjouterRestaurant />} />
-        <Route path="/mes-restaurants/ajouter/infos" element={<InfosEtablissement />} />
-        <Route path="/mes-restaurants/ajouter/facturation" element={<Facturation />} />
-        <Route path="/mes-restaurants/ajouter/paiement" element={<PaiementValidation />} />
-        <Route path="/mes-restaurants/ajouter/confirmation" element={<ConfirmationOnboarding />} />
-        <Route path="/mes-restaurants/:id" element={<RestaurantDetail />} />
-        <Route path="/mes-restaurants/:id/modifier" element={<ModifierRestaurant />} />
-        <Route path="/booster" element={<Booster />} />
-        <Route path="/booster/acheter" element={<AcheterBoosts />} />
-        <Route path="/parrainage" element={<Parrainage />} />
-        <Route path="/mes-avis" element={<MesAvis />} />
-        <Route path="/compte" element={<Compte />} />
-        <Route path="/compte/infos" element={<CompteInfos />} />
-        <Route path="/compte/facturation" element={<CompteFacturation />} />
-        <Route path="/compte/notifications" element={<CompteNotifications />} />
-        <Route path="/compte/securite" element={<CompteSecurite />} />
-        <Route path="/compte/donnees" element={<CompteDonnees />} />
-        <Route path="/compte/aide" element={<CompteAide />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/matches" element={<ListeMatchs />} />
+        <Route path="/matches/schedule" element={<ProgrammerMatch />} />
+        <Route path="/my-matches" element={<MesMatchs />} />
+        <Route path="/my-matches/:id" element={<MatchDetail />} />
+        <Route path="/my-matches/:id/edit" element={<ModifierMatch />} />
+        <Route path="/my-venues" element={<MesRestaurants />} />
+        <Route path="/my-venues/add" element={<AjouterRestaurant />} />
+        <Route path="/my-venues/add/info" element={<InfosEtablissement />} />
+        <Route path="/my-venues/add/billing" element={<Facturation />} />
+        <Route path="/my-venues/add/payment" element={<PaiementValidation />} />
+        <Route path="/my-venues/add/confirmation" element={<ConfirmationOnboarding />} />
+        <Route path="/my-venues/:id" element={<RestaurantDetail />} />
+        <Route path="/my-venues/:id/edit" element={<ModifierRestaurant />} />
+        <Route path="/boost" element={<Booster />} />
+        <Route path="/boost/purchase" element={<AcheterBoosts />} />
+        <Route path="/referral" element={<Parrainage />} />
+        <Route path="/my-reviews" element={<MesAvis />} />
+        <Route path="/account" element={<Compte />} />
+        <Route path="/account/info" element={<CompteInfos />} />
+        <Route path="/account/billing" element={<CompteFacturation />} />
+        <Route path="/account/notifications" element={<CompteNotifications />} />
+        <Route path="/account/security" element={<CompteSecurite />} />
+        <Route path="/account/data" element={<CompteDonnees />} />
+        <Route path="/account/help" element={<CompteAide />} />
         <Route path="/reservations" element={<Reservations />} />
         <Route path="/notifications" element={<NotificationCenter />} />
         <Route path="/qr-scanner" element={<QRScanner />} />

@@ -32,7 +32,7 @@ export function AuthenticatedLayout() {
           message="🎉 Nouveau : Le système de réservations est maintenant disponible !"
           action={{
             label: "Découvrir",
-            onClick: () => navigate('/reservations')
+            onClick: () => navigate('/reservations') // already English
           }}
         />
 
