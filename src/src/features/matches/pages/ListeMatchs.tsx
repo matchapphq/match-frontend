@@ -110,7 +110,7 @@ export function ListeMatchs({ onBack }: ListeMatchsProps) {
                   <td className="px-6 py-4 text-gray-600">
                     {match.statut === 'à venir'
                       ? `${match.places} places`
-                      : `${match.spectateurs} spectateurs`}
+                      : `${match.places} spectateurs`}
                   </td>
                 </tr>
               ))}
