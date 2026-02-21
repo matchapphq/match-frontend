@@ -24,6 +24,7 @@ export function ShareReferralModal({
   isVenueOwner = false,
 }: ShareReferralModalProps) {
   const [customMessage, setCustomMessage] = useState('');
+  const canUseNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   if (!isOpen) return null;
 
@@ -55,18 +56,19 @@ export function ShareReferralModal({
   };
 
   const shareViaNativeAPI = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Code de parrainage Match',
-          text: message,
-          url: referralLink,
-        });
-      } catch (error) {
-        // User cancelled or error
-      }
-    } else {
+    if (!canUseNativeShare) {
       toast.error('Partage non supporté sur ce navigateur');
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: 'Code de parrainage Match',
+        text: message,
+        url: referralLink,
+      });
+    } catch (error) {
+      // User cancelled or error
     }
   };
 
@@ -178,7 +180,7 @@ export function ShareReferralModal({
         </div>
 
         {/* Share Button (Native API) */}
-        {navigator.share && (
+        {canUseNativeShare && (
           <button
             onClick={shareViaNativeAPI}
             className="w-full px-6 py-3 bg-gradient-to-r from-[#9cff02] to-[#5a03cf] text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"

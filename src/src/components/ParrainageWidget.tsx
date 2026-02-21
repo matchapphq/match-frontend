@@ -9,22 +9,17 @@ import {
   Gift, 
   Copy, 
   Users, 
-  TrendingUp, 
-  Check, 
-  ExternalLink,
-  Share2,
-  Mail,
-  MessageSquare
+  TrendingUp,
 } from 'lucide-react';
-import { useState } from 'react';
 import { 
   mockVenueOwnerReferralCode, 
   mockVenueOwnerReferralStats,
 } from '../data/mockData';
 import { useToast } from '../context/ToastContext';
+import type { PageType } from '../types';
 
 interface ParrainageWidgetProps {
-  onNavigate?: (page: string) => void;
+  onNavigate?: (page: PageType) => void;
 }
 
 export function ParrainageWidget({ onNavigate }: ParrainageWidgetProps) {
@@ -38,7 +33,7 @@ export function ParrainageWidget({ onNavigate }: ParrainageWidgetProps) {
   const statsData = isVenueOwner ? mockVenueOwnerReferralStats : null;
 
   const referralCode = codeData ? codeData.referral_code : null;
-  const stats = statsData;
+  const stats = statsData ?? { total_converted: 0, total_rewards_earned: 0 };
 
   const copyToClipboard = () => {
     if (referralCode) {
