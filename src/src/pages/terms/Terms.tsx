@@ -42,11 +42,21 @@ export function Terms() {
         )}
 
         <div className="text-center mb-8">
-          <img
-            src={logo}
-            alt="Match"
-            className="h-10 mx-auto mb-4 dark:brightness-150"
-            style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
+          <div
+            role="img"
+            aria-label="Match"
+            className="h-10 w-[178px] mx-auto mb-4"
+            style={{
+              background: 'linear-gradient(90deg, #7a13ff 0%, #4310d8 52%, #020143 100%)',
+              WebkitMaskImage: `url(${logo})`,
+              maskImage: `url(${logo})`,
+              WebkitMaskRepeat: 'no-repeat',
+              maskRepeat: 'no-repeat',
+              WebkitMaskPosition: 'center',
+              maskPosition: 'center',
+              WebkitMaskSize: 'contain',
+              maskSize: 'contain',
+            }}
           />
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 dark:bg-gray-900/70 border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 mb-4">
             <FileText className="w-4 h-4 text-[#5a03cf]" />
