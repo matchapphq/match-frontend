@@ -12,8 +12,8 @@ interface RegisterProps {
 
 export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: RegisterProps) {
   const [formData, setFormData] = useState({
-    prenom: '',
-    nom: '',
+    firstName: '',
+    lastName: '',
     email: '',
     telephone: '',
     password: '',

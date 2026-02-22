@@ -32,6 +32,7 @@ interface LoginProps {
   onLogin: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
   onGoogleLogin?: (idToken: string) => Promise<boolean>;
   onSwitchToRegister: () => void;
+  onForgotPassword: () => void;
   onBackToLanding?: () => void;
 }
 
@@ -231,7 +232,11 @@ export function Login({ onLogin, onGoogleLogin, onSwitchToRegister, onBackToLand
                 />
                 Se souvenir de moi
               </label>
-              <button type="button" className="text-[#5a03cf] hover:underline">
+              <button 
+                type="button" 
+                onClick={onForgotPassword}
+                className="text-[#5a03cf] hover:underline"
+              >
                 Mot de passe oublié ?
               </button>
             </div>
