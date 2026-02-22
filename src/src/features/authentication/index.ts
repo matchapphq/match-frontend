@@ -7,6 +7,7 @@
 export { Login } from './pages/Login';
 export { Register } from './pages/Register';
 export { LandingPage } from './pages/LandingPage';
+export { ForgotPassword } from './pages/ForgotPassword';
 
 // Context & Hooks
 export { AuthProvider, useAuth } from './context/AuthContext';
