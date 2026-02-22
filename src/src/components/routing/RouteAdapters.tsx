@@ -91,22 +91,23 @@ export function LandingPage() {
 
 export function Login() {
   const navigate = useNavigate();
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
 
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     const result = await login(email, password);
     return result.success;
   };
 
-  const handleGoogleLogin = async (idToken: string): Promise<boolean> => {
-    const result = await loginWithGoogle(idToken);
-    return result.success;
-  };
+  // OAuth Google temporairement désactivé côté front.
+  // const handleGoogleLogin = async (idToken: string): Promise<boolean> => {
+  //   const result = await loginWithGoogle(idToken);
+  //   return result.success;
+  // };
 
   return (
     <RawLogin
       onLogin={handleLogin}
-      onGoogleLogin={handleGoogleLogin}
+      // onGoogleLogin={handleGoogleLogin}
       onSwitchToRegister={() => navigate('/register')}
       onBackToLanding={() => navigate('/')}
     />
