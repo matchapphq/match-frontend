@@ -62,7 +62,7 @@ function loadGoogleScript(): Promise<void> {
   });
 }
 
-export function Login({ onLogin, onGoogleLogin, onSwitchToRegister, onBackToLanding }: LoginProps) {
+export function Login({ onLogin, onGoogleLogin, onForgotPassword, onSwitchToRegister, onBackToLanding }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
