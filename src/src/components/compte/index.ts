@@ -6,4 +6,4 @@ export { CompteSecurite } from './CompteSecurite';
 export { CompteAide } from './CompteAide';
 export { CompteDonnees } from './CompteDonnees';
 // CompteFacturation is re-exported from /components/compte/ (large file)
-export { CompteFacturation } from './CompteFacturation';
+export { CompteFacturation } from '../../../components/compte/CompteFacturation';

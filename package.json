@@ -47,6 +47,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.55.0",
     "react-resizable-panels": "^2.1.7",
+    "react-router-dom": "^7.13.0",
     "recharts": "^2.15.2",
     "sonner": "^2.0.3",
     "tailwind-merge": "*",
@@ -55,10 +56,12 @@
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@vitejs/plugin-react-swc": "^3.10.2",
+    "typescript": "^5.9.3",
     "vite": "6.3.5"
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "typecheck": "tsc -p src/tsconfig.json --noEmit"
   }
 }

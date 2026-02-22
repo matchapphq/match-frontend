@@ -35,7 +35,7 @@ export function SideMenu({ isOpen, onClose, onNavigate }: SideMenuProps) {
         <nav className="space-y-2">
           <button
             onClick={() => {
-              onNavigate?.('Dashboard');
+              onNavigate?.('dashboard');
               onClose();
             }}
             className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -44,7 +44,7 @@ export function SideMenu({ isOpen, onClose, onNavigate }: SideMenuProps) {
           </button>
           <button
             onClick={() => {
-              onNavigate?.('Mes Matchs');
+              onNavigate?.('mes-matchs');
               onClose();
             }}
             className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -53,7 +53,7 @@ export function SideMenu({ isOpen, onClose, onNavigate }: SideMenuProps) {
           </button>
           <button
             onClick={() => {
-              onNavigate?.('Réservations');
+              onNavigate?.('reservations');
               onClose();
             }}
             className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

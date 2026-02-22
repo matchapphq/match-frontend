@@ -22,14 +22,15 @@ export function Booster({ onBack, onNavigate, purchaseSuccess, purchasedCount }:
   
   // Handle purchase success prop changes
   useEffect(() => {
-    if (purchaseSuccess) {
-      setShowSuccessBanner(true);
-      // Auto-hide after 8 seconds
-      const timer = setTimeout(() => {
-        setShowSuccessBanner(false);
-      }, 8000);
-      return () => clearTimeout(timer);
-    }
+    if (!purchaseSuccess) return;
+
+    setShowSuccessBanner(true);
+    // Auto-hide after 8 seconds
+    const timer = window.setTimeout(() => {
+      setShowSuccessBanner(false);
+    }, 8000);
+
+    return () => window.clearTimeout(timer);
   }, [purchaseSuccess]);
   
   // Fetch boost summary (available boosts, stats)

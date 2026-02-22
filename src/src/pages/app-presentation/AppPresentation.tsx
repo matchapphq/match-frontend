@@ -405,10 +405,10 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
               {t('app.footer.rights')}
             </div>
             <div className="flex items-center gap-6">
-              <a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
+              <a href="/terms" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
                 {t('app.footer.terms')}
               </a>
-              <a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
+              <a href="/privacy" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
                 {t('app.footer.privacy')}
               </a>
             </div>

@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { ShareReferralModal } from '../../components/ShareReferralModal';
 import { ArrowLeft, Copy, Share2, Users, TrendingUp, Gift } from 'lucide-react';
 import {

@@ -5,4 +5,4 @@
  * Located at root level for now, will be migrated later.
  */
 
-export * from '../../../hooks/useAuth';
+export { useAuth } from '../../features/authentication/context/AuthContext';

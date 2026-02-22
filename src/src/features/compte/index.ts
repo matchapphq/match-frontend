@@ -3,4 +3,4 @@
  */
 
 // Pages
-export { MonCompte } from './pages/MonCompte';
+export { Compte as MonCompte } from './pages/MonCompte';

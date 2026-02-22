@@ -58,7 +58,10 @@ export const formatTime = (date: Date | string): string => {
  * parseDate('10/12/2024') // Date object
  */
 export const parseDate = (dateStr: string): Date => {
-  const [day, month, year] = dateStr.split('/').map(Number);
+  const [day = NaN, month = NaN, year = NaN] = dateStr.split('/').map(Number);
+  if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) {
+    return new Date(NaN);
+  }
   return new Date(year, month - 1, day);
 };
 
@@ -146,8 +149,17 @@ export const addDays = (date: Date, days: number): Date => {
  * parseDateAndTime('10/12/2024', '21:00') // Date object for Dec 10, 2024 at 21:00
  */
 export const parseDateAndTime = (dateStr: string, timeStr: string): Date => {
-  const [day, month, year] = dateStr.split('/').map(Number);
-  const [hours, minutes] = timeStr.split(':').map(Number);
+  const [day = NaN, month = NaN, year = NaN] = dateStr.split('/').map(Number);
+  const [hours = NaN, minutes = NaN] = timeStr.split(':').map(Number);
+  if (
+    !Number.isFinite(day) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(year) ||
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes)
+  ) {
+    return new Date(NaN);
+  }
   return new Date(year, month - 1, day, hours, minutes);
 };
 

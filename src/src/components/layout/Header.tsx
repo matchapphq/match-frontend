@@ -21,13 +21,13 @@ export function Header({ currentPage, onNavigate }: HeaderProps) {
           </button>
           <button 
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            onClick={() => onNavigate?.('Notifications')}
+            onClick={() => onNavigate?.('notification-center')}
           >
             <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
           <button 
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            onClick={() => onNavigate?.('Mon Compte')}
+            onClick={() => onNavigate?.('compte')}
           >
             <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>

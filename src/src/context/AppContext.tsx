@@ -96,7 +96,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const handleReservationAction = (reservationId: number, action: 'acceptée' | 'refusée') => {
     const updatedClients = clients.map(client => {
       if (client.id === reservationId) {
-        return { ...client, statut: action === 'acceptée' ? 'confirmé' : 'refusé' };
+        const nextStatus: Client['statut'] = action === 'acceptée' ? 'confirmé' : 'refusé';
+        return { ...client, statut: nextStatus };
       }
       return client;
     });

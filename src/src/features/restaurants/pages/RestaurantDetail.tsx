@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../api/client';
 
 interface RestaurantDetailProps {
-  restaurantId: number | null;
+  restaurantId: string | null;
   onBack: () => void;
   onNavigate?: (page: string) => void;
 }
@@ -13,31 +13,43 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
     queryKey: ['venue', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return null;
-      
-      const [venueRes, analyticsRes] = await Promise.all([
-        apiClient.get(`/venues/${restaurantId}`),
-        apiClient.get(`/venues/${restaurantId}/analytics/overview`)
-      ]);
 
-      const v = venueRes.data.venue;
-      const stats = analyticsRes.data.analytics;
-      const rating = venueRes.data.rating;
-      const photos = venueRes.data.photos;
+      const venueRes = await apiClient.get(`/venues/${restaurantId}`);
+      const v = venueRes.data?.venue ?? venueRes.data;
+      if (!v) return null;
+
+      let stats: any = null;
+      try {
+        const analyticsRes = await apiClient.get(`/venues/${restaurantId}/analytics/overview`);
+        stats = analyticsRes.data?.overview ?? analyticsRes.data?.analytics ?? null;
+      } catch (analyticsError) {
+        // Analytics should not block venue details rendering
+        console.warn('Failed to fetch venue analytics overview:', analyticsError);
+      }
+
+      const photos = v.photos ?? venueRes.data?.photos ?? [];
+      const primaryPhoto = Array.isArray(photos)
+        ? (photos.find((p: any) => p?.is_primary) ?? photos[0])
+        : null;
+      const ratingAverage = Number(v.average_rating ?? venueRes.data?.rating?.average ?? 0);
+      const ratingCount = Number(v.total_reviews ?? venueRes.data?.rating?.count ?? 0);
+      const status = v.status ?? (v.is_active ? 'active' : 'pending');
+      const address = [v.street_address, v.city].filter(Boolean).join(', ');
 
       return {
-        nom: v.name,
-        adresse: `${v.street_address}, ${v.city}`,
+        nom: v.name || 'Établissement',
+        adresse: address || 'Adresse non renseignée',
         telephone: v.phone || 'Non renseigné',
-        email: v.email || 'Non renseigné', // assuming email might be in venue object
-        capaciteMax: v.capacity || 0,
-        note: rating?.average || 0,
-        totalAvis: rating?.count || 0,
-        image: photos?.[0]?.url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+        email: v.email || 'Non renseigné',
+        capaciteMax: Number(v.capacity) || 0,
+        note: Number.isFinite(ratingAverage) ? ratingAverage : 0,
+        totalAvis: Number.isFinite(ratingCount) ? ratingCount : 0,
+        image: primaryPhoto?.url || primaryPhoto?.photo_url || v.cover_image_url || v.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
         horaires: 'Lun-Dim: 11h00 - 02h00', // Placeholder, needs parsing logic for opening_hours
         tarif: '30€/mois', // Placeholder
-        statut: 'actif', // Placeholder
+        statut: status === 'active' ? 'actif' : status === 'inactive' ? 'inactif' : 'en_attente',
         matchsDiffuses: stats?.top_matches?.length || 0, // Using top matches count as proxy
-        clientsAccueillis: stats?.total_reservations || 0,
+        clientsAccueillis: Number(stats?.total_reservations ?? v.total_reservations ?? 0) || 0,
       };
     },
     enabled: !!restaurantId,

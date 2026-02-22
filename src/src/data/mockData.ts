@@ -469,14 +469,14 @@ export const mockAllMatches = [
 
 // Match detail reservations (MatchDetail page)
 export const mockMatchDetailReservations: Reservation[] = [
-  { id: 1, matchId: 3, matchNom: 'PSG vs OM', nom: 'Dupont', prenom: 'Jean', email: 'jean.dupont@email.fr', telephone: '06 12 34 56 78', places: 2, nombrePlaces: 2, dateReservation: '10/12/2024', statut: 'confirmé' },
-  { id: 2, matchId: 3, matchNom: 'PSG vs OM', nom: 'Martin', prenom: 'Sophie', email: 'sophie.martin@email.fr', telephone: '06 23 45 67 89', places: 1, nombrePlaces: 1, dateReservation: '11/12/2024', statut: 'confirmé' },
-  { id: 3, matchId: 3, matchNom: 'PSG vs OM', nom: 'Bernard', prenom: 'Luc', email: 'luc.bernard@email.fr', telephone: '06 34 56 78 90', places: 4, nombrePlaces: 4, dateReservation: '12/12/2024', statut: 'confirmé' },
-  { id: 4, matchId: 3, matchNom: 'PSG vs OM', nom: 'Petit', prenom: 'Marie', email: 'marie.petit@email.fr', telephone: '06 45 67 89 01', places: 3, nombrePlaces: 3, dateReservation: '12/12/2024', statut: 'confirmé' },
-  { id: 5, matchId: 3, matchNom: 'PSG vs OM', nom: 'Moreau', prenom: 'Thomas', email: 'thomas.moreau@email.fr', telephone: '06 56 78 90 12', places: 2, nombrePlaces: 2, dateReservation: '13/12/2024', statut: 'en attente' },
-  { id: 6, matchId: 3, matchNom: 'PSG vs OM', nom: 'Laurent', prenom: 'Julie', email: 'julie.laurent@email.fr', telephone: '06 67 89 01 23', places: 5, nombrePlaces: 5, dateReservation: '13/12/2024', statut: 'en attente' },
-  { id: 7, matchId: 3, matchNom: 'PSG vs OM', nom: 'Simon', prenom: 'Pierre', email: 'pierre.simon@email.fr', telephone: '06 78 90 12 34', places: 2, nombrePlaces: 2, dateReservation: '14/12/2024', statut: 'en attente' },
-  { id: 8, matchId: 3, matchNom: 'PSG vs OM', nom: 'Rousseau', prenom: 'Claire', email: 'claire.rousseau@email.fr', telephone: '06 89 01 23 45', places: 1, nombrePlaces: 1, dateReservation: '09/12/2024', statut: 'refusé' },
+  { id: 1, matchId: 3, matchNom: 'PSG vs OM', clientNom: 'Jean Dupont', nom: 'Dupont', prenom: 'Jean', email: 'jean.dupont@email.fr', telephone: '06 12 34 56 78', places: 2, nombrePlaces: 2, dateReservation: '10/12/2024', statut: 'confirmé' },
+  { id: 2, matchId: 3, matchNom: 'PSG vs OM', clientNom: 'Sophie Martin', nom: 'Martin', prenom: 'Sophie', email: 'sophie.martin@email.fr', telephone: '06 23 45 67 89', places: 1, nombrePlaces: 1, dateReservation: '11/12/2024', statut: 'confirmé' },
+  { id: 3, matchId: 3, matchNom: 'PSG vs OM', clientNom: 'Luc Bernard', nom: 'Bernard', prenom: 'Luc', email: 'luc.bernard@email.fr', telephone: '06 34 56 78 90', places: 4, nombrePlaces: 4, dateReservation: '12/12/2024', statut: 'confirmé' },
+  { id: 4, matchId: 3, matchNom: 'PSG vs OM', clientNom: 'Marie Petit', nom: 'Petit', prenom: 'Marie', email: 'marie.petit@email.fr', telephone: '06 45 67 89 01', places: 3, nombrePlaces: 3, dateReservation: '12/12/2024', statut: 'confirmé' },
+  { id: 5, matchId: 3, matchNom: 'PSG vs OM', clientNom: 'Thomas Moreau', nom: 'Moreau', prenom: 'Thomas', email: 'thomas.moreau@email.fr', telephone: '06 56 78 90 12', places: 2, nombrePlaces: 2, dateReservation: '13/12/2024', statut: 'en attente' },
+  { id: 6, matchId: 3, matchNom: 'PSG vs OM', clientNom: 'Julie Laurent', nom: 'Laurent', prenom: 'Julie', email: 'julie.laurent@email.fr', telephone: '06 67 89 01 23', places: 5, nombrePlaces: 5, dateReservation: '13/12/2024', statut: 'en attente' },
+  { id: 7, matchId: 3, matchNom: 'PSG vs OM', clientNom: 'Pierre Simon', nom: 'Simon', prenom: 'Pierre', email: 'pierre.simon@email.fr', telephone: '06 78 90 12 34', places: 2, nombrePlaces: 2, dateReservation: '14/12/2024', statut: 'en attente' },
+  { id: 8, matchId: 3, matchNom: 'PSG vs OM', clientNom: 'Claire Rousseau', nom: 'Rousseau', prenom: 'Claire', email: 'claire.rousseau@email.fr', telephone: '06 89 01 23 45', places: 1, nombrePlaces: 1, dateReservation: '09/12/2024', statut: 'refusé' },
 ];
 
 // All reservations (Reservations page)

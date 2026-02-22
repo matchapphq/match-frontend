@@ -7,7 +7,7 @@ interface NotificationBellProps {
   unreadCount?: number;
 }
 
-export function NotificationBell({ onNavigate, unreadCount = 3 }: NotificationBellProps) {
+export function NotificationBell({ onNavigate, unreadCount = 0 }: NotificationBellProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
