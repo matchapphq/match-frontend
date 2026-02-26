@@ -8,7 +8,7 @@ import { useAuth } from '../../features/authentication/context/AuthContext';
 import { useAppNavigate } from '../../hooks/useAppNavigate';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../api/client';
-import { API_ENDPOINTS } from '../../utils/api-constants';
+import { sendSessionHeartbeat as triggerSessionHeartbeat } from '../../utils/session-heartbeat';
 import type { PageType } from '../../types';
 
 /**
@@ -45,7 +45,7 @@ export function AuthenticatedLayout() {
 
   const sendSessionHeartbeat = useCallback(() => {
     if (!isAuthenticated || !currentUser) return;
-    apiClient.post(API_ENDPOINTS.USERS_ME_SESSION_HEARTBEAT).catch(() => undefined);
+    triggerSessionHeartbeat().catch(() => undefined);
   }, [isAuthenticated, currentUser]);
 
   useEffect(() => {

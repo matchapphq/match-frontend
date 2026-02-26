@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PageType } from '../../types';
 import {
   ArrowLeft,
@@ -10,10 +10,11 @@ import {
   Tablet,
   AlertTriangle,
   CheckCircle2,
-  Clock3,
   LogOut,
+  RefreshCw,
 } from 'lucide-react';
 import {
+  type UserSession,
   useRevokeOtherSessions,
   useRevokeSession,
   useSessions,
@@ -21,6 +22,7 @@ import {
 } from '../../hooks/api/useAccount';
 import { useAuth } from '../../features/authentication/context/AuthContext';
 import { toast } from 'sonner';
+import { sendSessionHeartbeat } from '../../utils/session-heartbeat';
 
 interface CompteSecuriteProps {
   onBack?: () => void;
@@ -29,7 +31,11 @@ interface CompteSecuriteProps {
 
 export function CompteSecurite({ onBack }: CompteSecuriteProps) {
   const { logout, isLoggingOut } = useAuth();
-  const { data: sessions = [], isLoading: isSessionsLoading } = useSessions();
+  const {
+    data: sessions = [],
+    isLoading: isSessionsLoading,
+    refetch: refetchSessions,
+  } = useSessions();
   const updatePasswordMutation = useUpdatePassword();
   const revokeSessionMutation = useRevokeSession();
   const revokeOtherSessionsMutation = useRevokeOtherSessions();
@@ -38,6 +44,28 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [isRefreshingSessions, setIsRefreshingSessions] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncCurrentSession = async () => {
+      try {
+        await sendSessionHeartbeat();
+      } catch {
+      } finally {
+        if (!cancelled) {
+          await refetchSessions();
+        }
+      }
+    };
+
+    syncCurrentSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refetchSessions]);
 
   const otherSessionsCount = sessions.filter((session) => !session.is_current).length;
 
@@ -79,6 +107,17 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
     if (/Firefox\//i.test(device)) return 'Firefox';
     if (/Safari\//i.test(device) && !/Chrome\//i.test(device)) return 'Safari';
     return 'Navigateur';
+  };
+
+  const formatSessionLocation = (session: UserSession) => {
+    const city = session.location?.city?.trim();
+    const region = session.location?.region?.trim();
+    const country = session.location?.country?.trim();
+    const locationLabel = [city, region, country].filter(Boolean).join(', ');
+
+    if (!locationLabel) return 'Lieu indisponible';
+    if (session.is_current) return `Lieu actuel · ${locationLabel}`;
+    return locationLabel;
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -151,6 +190,23 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
 
   const handleLogoutCurrentSession = async () => {
     await logout();
+  };
+
+  const handleRefreshSessions = async () => {
+    if (isRefreshingSessions) return;
+
+    setIsRefreshingSessions(true);
+    try {
+      await sendSessionHeartbeat().catch(() => undefined);
+      const result = await refetchSessions();
+      if (result.error) {
+        throw result.error;
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Impossible d’actualiser les sessions'));
+    } finally {
+      setIsRefreshingSessions(false);
+    }
   };
 
   return (
@@ -352,9 +408,14 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                 Contrôlez les appareils actuellement connectés à votre compte.
               </p>
             </div>
-            <button className="hidden sm:inline-flex items-center gap-2 px-3 py-2 text-sm rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
-              <Clock3 className="w-4 h-4" />
-              Historique
+            <button
+              type="button"
+              onClick={handleRefreshSessions}
+              disabled={isRefreshingSessions || isSessionsLoading}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshingSessions ? 'animate-spin' : ''}`} />
+              {isRefreshingSessions ? 'Actualisation...' : 'Actualiser'}
             </button>
           </div>
 
@@ -391,7 +452,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                           {session.is_current ? 'Session actuelle' : 'Session active'}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          Lieu : {session.is_current ? 'Ici' : 'Lieu indisponible'}
+                          Lieu : {formatSessionLocation(session)}
                         </p>
                         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                           Dernière activité : {formatSessionDate(session.updated_at)}

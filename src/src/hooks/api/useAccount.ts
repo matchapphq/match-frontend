@@ -65,6 +65,11 @@ export interface UpdatePasswordData {
 export interface UserSession {
   id: string;
   device: string;
+  location?: {
+    city?: string | null;
+    region?: string | null;
+    country?: string | null;
+  };
   created_at: string;
   updated_at: string;
   is_current: boolean;
