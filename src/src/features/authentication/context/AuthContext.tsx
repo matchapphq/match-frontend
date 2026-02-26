@@ -16,6 +16,7 @@ export interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   apiStatus: 'checking' | 'online' | 'offline';
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (idToken: string) => Promise<{ success: boolean; error?: string }>;
@@ -182,6 +183,7 @@ function getPhoneErrorMessage(country: GooglePhoneCountry): string {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false); // Prevent double init in StrictMode
@@ -497,23 +499,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    setIsLoggingOut(true);
     try {
-      if (apiStatus === 'online') {
-        await api.logout();
+      try {
+        if (apiStatus === 'online') {
+          await api.logout();
+        }
+      } catch (error) {
+        console.warn('Logout API call failed:', error);
       }
-    } catch (error) {
-      console.warn('Logout API call failed:', error);
+
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      clearAuthTokens();
+    } finally {
+      setIsLoggingOut(false);
     }
-    
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    clearAuthTokens();
   };
 
   return (
     <AuthContext.Provider value={{ 
       isAuthenticated, 
       isLoading,
+      isLoggingOut,
       apiStatus,
       login, 
       loginWithGoogle,

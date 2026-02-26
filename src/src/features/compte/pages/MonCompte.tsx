@@ -20,7 +20,7 @@ interface CompteProps {
 }
 
 export function Compte({ onNavigate }: CompteProps) {
-  const { logout, currentUser } = useAuth();
+  const { logout, currentUser, isLoggingOut } = useAuth();
 
   const menuSections = [
     { 
@@ -164,10 +164,11 @@ export function Compte({ onNavigate }: CompteProps) {
         {/* Logout Button */}
         <button 
           onClick={logout}
-          className="w-full bg-white dark:bg-gray-900 border-2 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-2xl p-5 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-900 transition-all flex items-center justify-center gap-2 group"
+          disabled={isLoggingOut}
+          className="w-full bg-white dark:bg-gray-900 border-2 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-2xl p-5 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-900 transition-all flex items-center justify-center gap-2 group disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-          Se déconnecter
+          {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
         </button>
       </div>
     </div>
