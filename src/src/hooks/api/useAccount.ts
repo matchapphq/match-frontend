@@ -59,6 +59,15 @@ export interface Invoice {
 export interface UpdatePasswordData {
   current_password: string;
   new_password: string;
+  confirm_password: string;
+}
+
+export interface UserSession {
+  id: string;
+  device: string;
+  created_at: string;
+  updated_at: string;
+  is_current: boolean;
 }
 
 // ==================== Hooks ====================
@@ -165,10 +174,57 @@ export function usePaymentPortal() {
  * Update password
  */
 export function useUpdatePassword() {
-  return useMutation<{ success: boolean }, Error, UpdatePasswordData>({
+  return useMutation<{ message: string }, Error, UpdatePasswordData>({
     mutationFn: async (data) => {
-      const response = await apiClient.put('/auth/update-password', data);
+      const response = await apiClient.put(API_ENDPOINTS.USERS_ME_PASSWORD, data);
       return response.data;
+    },
+  });
+}
+
+/**
+ * Get active user sessions
+ */
+export function useSessions() {
+  return useQuery<UserSession[]>({
+    queryKey: ['user-sessions'],
+    queryFn: async () => {
+      const response = await apiClient.get(API_ENDPOINTS.USERS_ME_SESSIONS);
+      return response.data?.sessions || [];
+    },
+  });
+}
+
+/**
+ * Revoke a single session
+ */
+export function useRevokeSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, Error, string>({
+    mutationFn: async (sessionId) => {
+      const response = await apiClient.delete(API_ENDPOINTS.USERS_ME_SESSION(sessionId));
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-sessions'] });
+    },
+  });
+}
+
+/**
+ * Revoke all other sessions
+ */
+export function useRevokeOtherSessions() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string; revoked: number; kept_session_id: string | null }, Error, void>({
+    mutationFn: async () => {
+      const response = await apiClient.delete(API_ENDPOINTS.USERS_ME_SESSIONS_OTHERS);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-sessions'] });
     },
   });
 }

@@ -13,7 +13,12 @@ import {
   Clock3,
   LogOut,
 } from 'lucide-react';
-import { useUpdatePassword } from '../../hooks/api/useAccount';
+import {
+  useRevokeOtherSessions,
+  useRevokeSession,
+  useSessions,
+  useUpdatePassword,
+} from '../../hooks/api/useAccount';
 import { toast } from 'sonner';
 
 interface CompteSecuriteProps {
@@ -22,41 +27,50 @@ interface CompteSecuriteProps {
 }
 
 export function CompteSecurite({ onBack }: CompteSecuriteProps) {
+  const { data: sessions = [], isLoading: isSessionsLoading } = useSessions();
   const updatePasswordMutation = useUpdatePassword();
+  const revokeSessionMutation = useRevokeSession();
+  const revokeOtherSessionsMutation = useRevokeOtherSessions();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
 
-  const sessions = [
-    {
-      device: 'MacBook Pro',
-      location: 'Paris, France',
-      platform: 'Chrome · macOS',
-      lastActivity: 'Session actuelle • Dernière activité : il y a 2 min',
-      active: true,
-      icon: Laptop,
-    },
-    {
-      device: 'iPhone 13',
-      location: 'Lyon, France',
-      platform: 'Safari · iOS',
-      lastActivity: 'Dernière activité : il y a 2 jours',
-      active: false,
-      icon: Smartphone,
-    },
-    {
-      device: 'iPad Air',
-      location: 'Marseille, France',
-      platform: 'Safari · iPadOS',
-      lastActivity: 'Dernière activité : il y a 5 jours',
-      active: false,
-      icon: Tablet,
-    },
-  ];
+  const otherSessionsCount = sessions.filter((session) => !session.is_current).length;
+
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    return error instanceof Error && error.message ? error.message : fallback;
+  };
+
+  const formatSessionDate = (value: string) => {
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) return 'date indisponible';
+    return parsedDate.toLocaleString('fr-FR', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  };
+
+  const getSessionIcon = (device: string) => {
+    const lowerDevice = device.toLowerCase();
+    if (lowerDevice.includes('ipad') || lowerDevice.includes('tablet')) return Tablet;
+    if (lowerDevice.includes('iphone') || lowerDevice.includes('android') || lowerDevice.includes('mobile')) return Smartphone;
+    return Laptop;
+  };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!currentPassword.trim()) {
+      toast.error('Le mot de passe actuel est requis');
+      return;
+    }
+
+    if (!newPassword.trim()) {
+      toast.error('Le nouveau mot de passe est requis');
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
       toast.error('Les mots de passe ne correspondent pas');
@@ -72,13 +86,44 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
       await updatePasswordMutation.mutateAsync({
         current_password: currentPassword,
         new_password: newPassword,
+        confirm_password: confirmPassword,
       });
       toast.success('Mot de passe mis à jour avec succès');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      toast.error('Erreur lors de la mise à jour du mot de passe');
+      toast.error(getErrorMessage(error, 'Erreur lors de la mise à jour du mot de passe'));
+    }
+  };
+
+  const handleRevokeSession = async (sessionId: string) => {
+    setRevokingSessionId(sessionId);
+    try {
+      await revokeSessionMutation.mutateAsync(sessionId);
+      toast.success('Session déconnectée');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Impossible de déconnecter cette session'));
+    } finally {
+      setRevokingSessionId(null);
+    }
+  };
+
+  const handleRevokeOtherSessions = async () => {
+    if (otherSessionsCount === 0) {
+      toast.info('Aucune autre session active');
+      return;
+    }
+
+    try {
+      const result = await revokeOtherSessionsMutation.mutateAsync();
+      if (result.revoked === 0) {
+        toast.info('Aucune autre session active');
+      } else {
+        toast.success(`${result.revoked} session${result.revoked > 1 ? 's' : ''} déconnectée${result.revoked > 1 ? 's' : ''}`);
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Impossible de déconnecter les autres sessions'));
     }
   };
 
@@ -105,8 +150,12 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                 Retour
               </button>
             )}
-            <button className="px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white text-sm rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-[#5a03cf]/20">
-              <LogOut className="w-4 h-4" />
+            <button
+              onClick={handleRevokeOtherSessions}
+              disabled={revokeOtherSessionsMutation.isPending || isSessionsLoading || otherSessionsCount === 0}
+              className="px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white text-sm rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-[#5a03cf]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {revokeOtherSessionsMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
               Déconnecter les autres sessions
             </button>
           </div>
@@ -136,7 +185,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
               <Laptop className="w-5 h-5 text-green-600 dark:text-green-400" />
               <span className="text-xs font-medium text-green-600 dark:text-green-400">Sessions</span>
             </div>
-            <div className="text-2xl text-green-700 dark:text-green-300">{sessions.length}</div>
+            <div className="text-2xl text-green-700 dark:text-green-300">{isSessionsLoading ? '…' : sessions.length}</div>
             <p className="text-xs text-green-600 dark:text-green-400 mt-1">Appareils connectés</p>
           </div>
 
@@ -238,8 +287,12 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                   Statut actuel: désactivée
                 </p>
               </div>
-              <button className="w-full px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white rounded-xl transition-all text-sm font-medium">
-                Activer la 2FA
+              <button
+                type="button"
+                onClick={() => toast.info('La 2FA sera disponible prochainement')}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white rounded-xl transition-all text-sm font-medium"
+              >
+                Activer la 2FA (bientôt)
               </button>
             </div>
 
@@ -280,42 +333,60 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
           </div>
 
           <div className="p-6 space-y-3">
-            {sessions.map((session) => {
-              const SessionIcon = session.icon;
-              return (
-                <div
-                  key={`${session.device}-${session.location}`}
-                  className="group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-[#5a03cf]/30 hover:shadow-sm transition-all"
-                >
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center flex-shrink-0">
-                      <SessionIcon className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm text-gray-900 dark:text-white truncate">
-                        {session.device} <span className="text-gray-400">•</span> {session.location}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        {session.platform}
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                        {session.lastActivity}
-                      </p>
-                    </div>
-                  </div>
+            {isSessionsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-500 dark:text-gray-400" />
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="text-sm text-gray-600 dark:text-gray-400 py-8 text-center">
+                Aucune session active trouvée.
+              </div>
+            ) : (
+              sessions.map((session) => {
+                const SessionIcon = getSessionIcon(session.device);
+                const isRevoking = revokingSessionId === session.id;
 
-                  {session.active ? (
-                    <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-900/40">
-                      Session active
-                    </span>
-                  ) : (
-                    <button className="self-start sm:self-auto text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">
-                      Déconnecter
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+                return (
+                  <div
+                    key={session.id}
+                    className="group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-[#5a03cf]/30 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center flex-shrink-0">
+                        <SessionIcon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm text-gray-900 dark:text-white truncate">
+                          {session.device || 'Appareil inconnu'}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          {session.is_current ? 'Session actuelle' : 'Session active'}
+                        </p>
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                          Dernière activité : {formatSessionDate(session.updated_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {session.is_current ? (
+                      <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-900/40">
+                        Session active
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRevokeSession(session.id)}
+                        disabled={isRevoking}
+                        className="self-start sm:self-auto text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                      >
+                        {isRevoking && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Déconnecter
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
