@@ -116,7 +116,6 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
     const locationLabel = [city, region, country].filter(Boolean).join(', ');
 
     if (!locationLabel) return 'Lieu indisponible';
-    if (session.is_current) return `Lieu actuel · ${locationLabel}`;
     return locationLabel;
   };
 
@@ -452,7 +451,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                           {session.is_current ? 'Session actuelle' : 'Session active'}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          Lieu : {formatSessionLocation(session)}
+                          {session.is_current ? 'Lieu actuel' : 'Lieu'} : {formatSessionLocation(session)}
                         </p>
                         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                           Dernière activité : {formatSessionDate(session.updated_at)}
