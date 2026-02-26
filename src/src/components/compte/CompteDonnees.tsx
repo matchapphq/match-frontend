@@ -91,8 +91,8 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
   };
 
   const handleSubmitExportRequest = async () => {
-    const message = exportMessage.trim();
-    if (!message) {
+    const message = exportMessage;
+    if (!message.trim()) {
       setExportSubmitError('Veuillez ajouter un message pour préciser votre demande.');
       return;
     }
