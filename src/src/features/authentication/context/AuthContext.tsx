@@ -29,6 +29,19 @@ interface AuthContextType {
   refreshUserData: () => Promise<void>;
 }
 
+type ForcedLogoutReason =
+  | 'session_invalidated'
+  | 'session_inactive'
+  | 'session_expired'
+  | 'session_security'
+  | 'missing_refresh_token'
+  | 'token_refresh_failed';
+
+type ForcedLogoutNotice = {
+  title: string;
+  message: string;
+};
+
 export interface RegisterData {
   email: string;
   password: string;
@@ -180,6 +193,44 @@ function getPhoneErrorMessage(country: GooglePhoneCountry): string {
     : 'Numéro invalide. Format attendu: 06 12 34 56 78';
 }
 
+function getForcedLogoutNotice(reason: ForcedLogoutReason, backendError?: string | null): ForcedLogoutNotice {
+  switch (reason) {
+    case 'session_invalidated':
+      return {
+        title: 'Session invalidée',
+        message: 'Cette session a été révoquée depuis un autre appareil. Veuillez vous reconnecter.',
+      };
+    case 'session_inactive':
+      return {
+        title: 'Session expirée (inactivité)',
+        message: 'Votre session a expiré après une période d’inactivité. Reconnectez-vous pour continuer.',
+      };
+    case 'session_expired':
+      return {
+        title: 'Session expirée',
+        message: 'Votre session a expiré. Veuillez vous reconnecter.',
+      };
+    case 'session_security':
+      return {
+        title: 'Déconnexion de sécurité',
+        message: 'Une anomalie de session a été détectée. Par sécurité, vous avez été déconnecté.',
+      };
+    case 'missing_refresh_token':
+      return {
+        title: 'Session indisponible',
+        message: 'Les informations de session sont incomplètes sur cet appareil. Veuillez vous reconnecter.',
+      };
+    case 'token_refresh_failed':
+    default:
+      return {
+        title: 'Session interrompue',
+        message: backendError
+          ? `Votre session a été interrompue (${backendError}). Veuillez vous reconnecter.`
+          : 'Votre session a été interrompue. Veuillez vous reconnecter.',
+      };
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -193,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [googlePhoneInput, setGooglePhoneInput] = useState('');
   const [googlePhoneError, setGooglePhoneError] = useState('');
   const [isSavingGooglePhone, setIsSavingGooglePhone] = useState(false);
+  const [forcedLogoutNotice, setForcedLogoutNotice] = useState<ForcedLogoutNotice | null>(null);
   const googleCountryPickerRef = useRef<HTMLDivElement | null>(null);
 
   const persistAuthTokens = (token?: string, refreshToken?: string) => {
@@ -259,13 +311,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, [checkApiHealth, hasInitialized]);
 
-  // Listen for logout events from API client (token refresh failed)
+  // Listen for logout events from API client (forced logout/session invalidation)
   useEffect(() => {
-    const handleForceLogout = (event: CustomEvent) => {
-      console.warn('Force logout triggered:', event.detail?.reason);
+    const handleForceLogout = (rawEvent: Event) => {
+      const event = rawEvent as CustomEvent<{ reason?: ForcedLogoutReason; backend_error?: string | null }>;
+      const reason = event.detail?.reason ?? 'token_refresh_failed';
+      const backendError = event.detail?.backend_error ?? null;
+
+      console.warn('Force logout triggered:', reason, backendError);
       setIsAuthenticated(false);
       setCurrentUser(null);
       clearAuthTokens();
+      setForcedLogoutNotice(getForcedLogoutNotice(reason, backendError));
     };
 
     window.addEventListener('auth:logout', handleForceLogout as EventListener);
@@ -310,6 +367,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsGoogleCountryMenuOpen(false);
     setGooglePhoneInput('');
     setGooglePhoneError('');
+  };
+
+  const closeForcedLogoutModal = () => {
+    setForcedLogoutNotice(null);
   };
 
   const changeGooglePhoneCountry = (nextCountry: GooglePhoneCountry) => {
@@ -648,6 +709,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+      {forcedLogoutNotice && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            onClick={closeForcedLogoutModal}
+          />
+          <div className="relative w-full max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/70 dark:border-gray-700/70 shadow-2xl">
+            <h2 className="text-xl text-gray-900 dark:text-white mb-2">{forcedLogoutNotice.title}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
+              {forcedLogoutNotice.message}
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeForcedLogoutModal}
+                className="px-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         </div>,
         document.body
