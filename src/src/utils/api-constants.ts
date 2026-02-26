@@ -125,6 +125,9 @@ export const API_ENDPOINTS = {
   
   NOTIFICATION_READ: (notificationId: string) => `/notifications/${notificationId}/read`,
   NOTIFICATION_DELETE: (notificationId: string) => `/notifications/${notificationId}`,
+
+  // ==================== Support ====================
+  SUPPORT_DATA_EXPORT_REQUEST: '/support/data-export-request',
   
   // ==================== Subscriptions ====================
   SUBSCRIPTIONS_PLANS: '/subscriptions/plans',

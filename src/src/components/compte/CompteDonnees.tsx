@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Database,
   FileDown,
+  Loader2,
   ShieldCheck,
   Cookie,
   Trash2,
@@ -13,6 +14,9 @@ import {
   BarChart3,
   Megaphone,
 } from 'lucide-react';
+import apiClient from '../../api/client';
+import { useToast } from '../../context/ToastContext';
+import { API_ENDPOINTS } from '../../utils/api-constants';
 
 interface CompteDonneesProps {
   onNavigate?: (page: PageType) => void;
@@ -20,12 +24,17 @@ interface CompteDonneesProps {
 }
 
 export function CompteDonnees({ onBack }: CompteDonneesProps) {
+  const toast = useToast();
   const [settings, setSettings] = useState({
     emailNotifications: true,
     smsNotifications: false,
     analyticsConsent: true,
     marketingConsent: false,
   });
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportMessage, setExportMessage] = useState('');
+  const [isSubmittingExportRequest, setIsSubmittingExportRequest] = useState(false);
+  const [exportSubmitError, setExportSubmitError] = useState<string | null>(null);
 
   const enabledConsentCount = Object.values(settings).filter(Boolean).length;
 
@@ -70,6 +79,47 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const handleOpenExportModal = () => {
+    setExportSubmitError(null);
+    setShowExportModal(true);
+  };
+
+  const handleCloseExportModal = () => {
+    if (isSubmittingExportRequest) return;
+    setExportSubmitError(null);
+    setShowExportModal(false);
+  };
+
+  const handleSubmitExportRequest = async () => {
+    const message = exportMessage.trim();
+    if (!message) {
+      setExportSubmitError('Veuillez ajouter un message pour préciser votre demande.');
+      return;
+    }
+
+    setIsSubmittingExportRequest(true);
+    setExportSubmitError(null);
+    try {
+      await apiClient.post(
+        API_ENDPOINTS.SUPPORT_DATA_EXPORT_REQUEST,
+        { message },
+        { timeout: 15000 }
+      );
+      toast.success('Demande envoyée à data@matchapp.fr');
+      setShowExportModal(false);
+      setExportMessage('');
+    } catch (error: any) {
+      const rawMessage = typeof error?.message === 'string' ? error.message : '';
+      const messageFromApi = rawMessage.toLowerCase().includes('timeout')
+        ? 'La demande prend trop de temps. Réessayez dans quelques secondes.'
+        : rawMessage || 'Impossible d’envoyer la demande pour le moment.';
+      setExportSubmitError(messageFromApi);
+      toast.error(messageFromApi);
+    } finally {
+      setIsSubmittingExportRequest(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 pb-24 lg:pb-0">
       <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8">
@@ -94,7 +144,11 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
               </button>
             )}
 
-            <button className="px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white text-sm rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-[#5a03cf]/20">
+            <button
+              type="button"
+              onClick={handleOpenExportModal}
+              className="px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white text-sm rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-[#5a03cf]/20"
+            >
               <FileDown className="w-4 h-4" />
               Demander un export
             </button>
@@ -200,7 +254,11 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                 <li>• Historique des matchs diffusés</li>
                 <li>• Données d&apos;utilisation</li>
               </ul>
-              <button className="w-full px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white rounded-xl transition-all text-sm font-medium">
+              <button
+                type="button"
+                onClick={handleOpenExportModal}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white rounded-xl transition-all text-sm font-medium"
+              >
                 Demander un export
               </button>
             </div>
@@ -276,6 +334,64 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
           </div>
         </div>
       </div>
+
+      {showExportModal && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            onClick={handleCloseExportModal}
+          />
+          <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-[0_18px_45px_-20px_rgba(0,0,0,0.45)]">
+            <h2 className="text-xl text-gray-900 dark:text-white mb-2">Demande d&apos;export RGPD</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Votre demande sera transmise à <span className="text-gray-900 dark:text-gray-100">data@matchapp.fr</span>.
+              Ajoutez un message pour préciser le contexte de votre demande.
+            </p>
+
+            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+              Message
+            </label>
+            <textarea
+              value={exportMessage}
+              onChange={(e) => {
+                setExportMessage(e.target.value);
+                if (exportSubmitError) {
+                  setExportSubmitError(null);
+                }
+              }}
+              rows={5}
+              placeholder="Exemple: Je souhaite recevoir l'ensemble de mes données personnelles liées à mon compte."
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5a03cf] transition-all resize-none"
+              disabled={isSubmittingExportRequest}
+            />
+            {exportSubmitError && (
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+                {exportSubmitError}
+              </p>
+            )}
+
+            <div className="mt-5 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCloseExportModal}
+                disabled={isSubmittingExportRequest}
+                className="px-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitExportRequest}
+                disabled={isSubmittingExportRequest}
+                className="px-4 py-2 text-sm bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {isSubmittingExportRequest && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isSubmittingExportRequest ? 'Envoi...' : 'Envoyer la demande'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
