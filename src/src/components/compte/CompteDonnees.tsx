@@ -1,15 +1,25 @@
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import { PageType } from '../../types';
-import { useAuth } from '../../features/authentication/context/AuthContext';
-import { ArrowLeft } from 'lucide-react';
+import {
+  ArrowLeft,
+  Database,
+  FileDown,
+  ShieldCheck,
+  Cookie,
+  Trash2,
+  AlertTriangle,
+  Bell,
+  MessageSquare,
+  BarChart3,
+  Megaphone,
+} from 'lucide-react';
 
 interface CompteDonneesProps {
   onNavigate?: (page: PageType) => void;
   onBack?: () => void;
 }
 
-export function CompteDonnees({ onNavigate, onBack }: CompteDonneesProps) {
-  const { currentUser } = useAuth();
+export function CompteDonnees({ onBack }: CompteDonneesProps) {
   const [settings, setSettings] = useState({
     emailNotifications: true,
     smsNotifications: false,
@@ -17,274 +27,254 @@ export function CompteDonnees({ onNavigate, onBack }: CompteDonneesProps) {
     marketingConsent: false,
   });
 
+  const enabledConsentCount = Object.values(settings).filter(Boolean).length;
+
+  const consentItems: Array<{
+    key: keyof typeof settings;
+    title: string;
+    description: string;
+    icon: ComponentType<{ className?: string }>;
+    iconClass: string;
+  }> = [
+    {
+      key: 'emailNotifications',
+      title: 'Notifications par email',
+      description: 'Recevoir des emails concernant vos matchs et réservations.',
+      icon: Bell,
+      iconClass: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
+    },
+    {
+      key: 'smsNotifications',
+      title: 'Notifications par SMS',
+      description: 'Recevoir des SMS pour les événements importants.',
+      icon: MessageSquare,
+      iconClass: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
+    },
+    {
+      key: 'analyticsConsent',
+      title: 'Analyse et statistiques',
+      description: 'Autoriser la collecte de données pour améliorer votre expérience.',
+      icon: BarChart3,
+      iconClass: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400',
+    },
+    {
+      key: 'marketingConsent',
+      title: 'Communications marketing',
+      description: 'Recevoir des offres et nouveautés de Match.',
+      icon: Megaphone,
+      iconClass: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400',
+    },
+  ];
+
   const handleToggle = (key: keyof typeof settings) => {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      {/* Bouton retour aux paramètres */}
-      {onBack && (
-        <button
-          onClick={onBack}
-          className="mb-6 flex items-center gap-2 px-4 py-2 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-white/90 dark:hover:bg-gray-800/90 transition-all"
-          style={{ fontWeight: '600' }}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retourner aux paramètres du compte
-        </button>
-      )}
-
-      {/* Header de la page */}
-      <div className="mb-12">
-        <h1 className="text-5xl italic mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
-          Données & confidentialité
-        </h1>
-        <p className="text-lg text-gray-700 dark:text-gray-300">Gérez vos données personnelles et vos préférences de confidentialité</p>
-      </div>
-
-      {/* Export des données */}
-      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-        <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-          Export des données
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">Téléchargez une copie de toutes vos données personnelles</p>
-        
-        <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30 mb-4">
-          <p className="text-gray-700 dark:text-gray-300 mb-2" style={{ fontWeight: '600' }}>
-            Vos données exportables incluent :
-          </p>
-          <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span>Informations de profil et compte</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span>Établissements et paramètres</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span>Historique des matchs diffusés</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span>Statistiques et données d'utilisation</span>
-            </li>
-          </ul>
-        </div>
-
-        <button 
-          className="px-6 py-3 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm"
-          style={{ fontWeight: '600' }}
-        >
-          Demander un export
-        </button>
-      </div>
-
-      {/* Consentements */}
-      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-        <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-          Consentements
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">Gérez vos préférences de communication et d'utilisation des données</p>
-
-        <div className="space-y-4">
-          <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-gray-900 dark:text-white mb-1" style={{ fontWeight: '600' }}>
-                Notifications par email
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Recevoir des emails concernant vos matchs et réservations
-              </p>
-            </div>
-            <button
-              onClick={() => handleToggle('emailNotifications')}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                settings.emailNotifications ? 'bg-gradient-to-r from-[#5a03cf] to-[#9cff02]' : 'bg-gray-300 dark:bg-gray-700'
-              }`}
-            >
-              <span
-                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  settings.emailNotifications ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
+    <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950 pb-24 lg:pb-0">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 sm:mb-8">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl text-gray-900 dark:text-white mb-1">
+              Données & confidentialité
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+              Contrôlez vos données personnelles, vos consentements et vos droits RGPD.
+            </p>
           </div>
 
-          <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-gray-900 dark:text-white mb-1" style={{ fontWeight: '600' }}>
-                Notifications par SMS
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Recevoir des SMS pour les événements importants
-              </p>
-            </div>
-            <button
-              onClick={() => handleToggle('smsNotifications')}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                settings.smsNotifications ? 'bg-gradient-to-r from-[#5a03cf] to-[#9cff02]' : 'bg-gray-300 dark:bg-gray-700'
-              }`}
-            >
-              <span
-                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  settings.smsNotifications ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Retour
+              </button>
+            )}
 
-          <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-gray-900 dark:text-white mb-1" style={{ fontWeight: '600' }}>
-                Analyse et statistiques
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Autoriser la collecte de données pour améliorer votre expérience
-              </p>
-            </div>
-            <button
-              onClick={() => handleToggle('analyticsConsent')}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                settings.analyticsConsent ? 'bg-gradient-to-r from-[#5a03cf] to-[#9cff02]' : 'bg-gray-300 dark:bg-gray-700'
-              }`}
-            >
-              <span
-                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  settings.analyticsConsent ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
-          <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-gray-900 dark:text-white mb-1" style={{ fontWeight: '600' }}>
-                Communications marketing
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Recevoir des offres et nouveautés de Match
-              </p>
-            </div>
-            <button
-              onClick={() => handleToggle('marketingConsent')}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                settings.marketingConsent ? 'bg-gradient-to-r from-[#5a03cf] to-[#9cff02]' : 'bg-gray-300 dark:bg-gray-700'
-              }`}
-            >
-              <span
-                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  settings.marketingConsent ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
+            <button className="px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white text-sm rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-[#5a03cf]/20">
+              <FileDown className="w-4 h-4" />
+              Demander un export
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Cookies */}
-      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-        <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-          Cookies et tracking
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">Informations sur l'utilisation des cookies</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 sm:mb-8">
+          <div className="bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 rounded-2xl p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Database className="w-5 h-5 text-[#5a03cf]" />
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Données</span>
+            </div>
+            <div className="text-2xl text-gray-900 dark:text-white">4</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Blocs exportables</p>
+          </div>
 
-        <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30 mb-4">
-          <p className="text-gray-700 dark:text-gray-300 mb-3">
-            Match utilise des cookies pour améliorer votre expérience. Nous utilisons :
-          </p>
-          <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span><span style={{ fontWeight: '600' }}>Cookies essentiels</span> - nécessaires au fonctionnement du site</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span><span style={{ fontWeight: '600' }}>Cookies de performance</span> - pour améliorer les fonctionnalités</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span><span style={{ fontWeight: '600' }}>Cookies analytiques</span> - pour comprendre l'utilisation du site</span>
-            </li>
-          </ul>
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 rounded-2xl p-4 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Consentements</span>
+            </div>
+            <div className="text-2xl text-blue-700 dark:text-blue-300">{enabledConsentCount}/4</div>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Actifs</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/10 rounded-2xl p-4 border border-emerald-200 dark:border-emerald-800">
+            <div className="flex items-center gap-2 mb-2">
+              <Cookie className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cookies</span>
+            </div>
+            <div className="text-2xl text-emerald-700 dark:text-emerald-300">Standard</div>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Préférences à ajuster</p>
+          </div>
+
         </div>
 
-        <button 
-          className="px-6 py-3 text-[#5a03cf] bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl hover:bg-white/70 dark:hover:bg-gray-700/70 transition-all"
-          style={{ fontWeight: '600' }}
-        >
-          Gérer les préférences
-        </button>
-      </div>
+        <div className="grid lg:grid-cols-3 gap-6 mb-6">
+          <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="text-lg text-gray-900 dark:text-white mb-1">Consentements</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Gérez vos préférences de communication et d&apos;utilisation des données.
+              </p>
+            </div>
 
-      {/* RGPD */}
-      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-        <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-          Vos droits RGPD
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">Conformément au RGPD, vous disposez de plusieurs droits</p>
+            <div className="p-6 space-y-3">
+              {consentItems.map((item) => {
+                const Icon = item.icon;
+                const enabled = settings[item.key];
 
-        <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30">
-          <ul className="space-y-3 text-gray-700 dark:text-gray-300">
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span><span style={{ fontWeight: '600' }}>Droit d'accès</span> - accédez à vos données personnelles</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span><span style={{ fontWeight: '600' }}>Droit de rectification</span> - corrigez vos données inexactes</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span><span style={{ fontWeight: '600' }}>Droit à l'effacement</span> - supprimez vos données</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span><span style={{ fontWeight: '600' }}>Droit à la portabilité</span> - récupérez vos données</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#5a03cf] mt-1">•</span>
-              <span><span style={{ fontWeight: '600' }}>Droit d'opposition</span> - refusez le traitement de vos données</span>
-            </li>
-          </ul>
+                return (
+                  <div
+                    key={item.key}
+                    className="flex items-center justify-between gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${item.iconClass}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm text-gray-900 dark:text-white mb-1">
+                          {item.title}
+                        </p>
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleToggle(item.key)}
+                      aria-pressed={enabled}
+                      className={`relative w-14 h-8 rounded-full transition-colors flex-shrink-0 ${
+                        enabled ? 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef]' : 'bg-gray-300 dark:bg-gray-700'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
+                          enabled ? 'translate-x-6' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+              <div className="w-12 h-12 bg-[#5a03cf]/10 text-[#5a03cf] rounded-xl flex items-center justify-center mb-3">
+                <FileDown className="w-6 h-6" />
+              </div>
+              <h3 className="text-base text-gray-900 dark:text-white mb-1">
+                Export des données
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Téléchargez une copie de vos informations personnelles.
+              </p>
+              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                <li>• Profil et données de compte</li>
+                <li>• Établissements et paramètres</li>
+                <li>• Historique des matchs diffusés</li>
+                <li>• Données d&apos;utilisation</li>
+              </ul>
+              <button className="w-full px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white rounded-xl transition-all text-sm font-medium">
+                Demander un export
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
+              <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-3">
+                <Cookie className="w-6 h-6" />
+              </div>
+              <h3 className="text-base text-gray-900 dark:text-white mb-0.5">
+                Cookies et tracking
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Match utilise des cookies essentiels, de performance et analytiques.
+              </p>
+              <button className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-colors text-sm font-medium">
+                Gérer les préférences
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Suppression du compte */}
-      <div className="bg-red-50/50 dark:bg-red-900/20 backdrop-blur-xl rounded-xl shadow-sm border border-red-200/30 dark:border-red-900/50 p-6">
-        <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#dc2626' }}>
-          Suppression du compte
-        </h2>
-        <p className="text-gray-700 dark:text-gray-300 mb-6">Cette action est irréversible. Toutes vos données seront définitivement supprimées.</p>
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="text-lg text-gray-900 dark:text-white mb-1">Vos droits RGPD</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Conformément au RGPD, vous disposez de plusieurs droits.
+              </p>
+            </div>
+            <div className="p-6">
+              <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                <li>• <span className="text-gray-900 dark:text-white">Droit d&apos;accès</span> - accéder à vos données personnelles</li>
+                <li>• <span className="text-gray-900 dark:text-white">Droit de rectification</span> - corriger des données inexactes</li>
+                <li>• <span className="text-gray-900 dark:text-white">Droit à l&apos;effacement</span> - demander la suppression de vos données</li>
+                <li>• <span className="text-gray-900 dark:text-white">Droit à la portabilité</span> - récupérer une copie de vos données</li>
+                <li>• <span className="text-gray-900 dark:text-white">Droit d&apos;opposition</span> - refuser certains traitements</li>
+              </ul>
+            </div>
+          </div>
 
-        <div className="bg-white/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-red-200/30 dark:border-red-900/50 mb-4">
-          <p className="text-gray-700 dark:text-gray-300 mb-2" style={{ fontWeight: '600' }}>
-            Avant de supprimer votre compte :
-          </p>
-          <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-            <li className="flex items-start gap-3">
-              <span className="text-red-500 dark:text-red-400 mt-1">•</span>
-              <span>Annulez tous vos abonnements actifs</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-red-500 dark:text-red-400 mt-1">•</span>
-              <span>Exportez vos données si nécessaire</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-red-500 dark:text-red-400 mt-1">•</span>
-              <span>Contactez le support en cas de questions</span>
-            </li>
-          </ul>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-red-200 dark:border-red-900/50 shadow-sm">
+            <div className="p-6 border-b border-red-100 dark:border-red-900/30">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg text-red-700 dark:text-red-300 mb-1">Suppression du compte</h2>
+                  <p className="text-sm text-red-600/90 dark:text-red-300/90">
+                    Cette action est irréversible.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40">
+                <p className="text-sm text-red-700 dark:text-red-300 flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Avant de supprimer votre compte :
+                </p>
+                <ul className="space-y-2 text-sm text-red-700/90 dark:text-red-300/90">
+                  <li>• Annulez tous vos abonnements actifs</li>
+                  <li>• Exportez vos données si nécessaire</li>
+                  <li>• Contactez le support en cas de doute</li>
+                </ul>
+              </div>
+
+              <button className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors text-sm font-medium flex items-center justify-center gap-2">
+                <Trash2 className="w-4 h-4" />
+                Supprimer mon compte
+              </button>
+            </div>
+          </div>
         </div>
-
-        <button 
-          className="px-6 py-3 bg-red-500/90 dark:bg-red-600/90 text-white rounded-xl hover:bg-red-600 dark:hover:bg-red-700 transition-all shadow-sm"
-          style={{ fontWeight: '600' }}
-        >
-          Supprimer mon compte
-        </button>
       </div>
     </div>
   );
