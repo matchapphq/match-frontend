@@ -19,6 +19,7 @@ import {
   useSessions,
   useUpdatePassword,
 } from '../../hooks/api/useAccount';
+import { useAuth } from '../../features/authentication/context/AuthContext';
 import { toast } from 'sonner';
 
 interface CompteSecuriteProps {
@@ -27,6 +28,7 @@ interface CompteSecuriteProps {
 }
 
 export function CompteSecurite({ onBack }: CompteSecuriteProps) {
+  const { logout, isLoggingOut } = useAuth();
   const { data: sessions = [], isLoading: isSessionsLoading } = useSessions();
   const updatePasswordMutation = useUpdatePassword();
   const revokeSessionMutation = useRevokeSession();
@@ -57,6 +59,26 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
     if (lowerDevice.includes('ipad') || lowerDevice.includes('tablet')) return Tablet;
     if (lowerDevice.includes('iphone') || lowerDevice.includes('android') || lowerDevice.includes('mobile')) return Smartphone;
     return Laptop;
+  };
+
+  const getSessionDeviceName = (device: string) => {
+    const lowerDevice = device.toLowerCase();
+    if (lowerDevice.includes('iphone')) return 'iPhone';
+    if (lowerDevice.includes('ipad')) return 'iPad';
+    if (lowerDevice.includes('android')) return 'Android';
+    if (lowerDevice.includes('windows')) return 'PC Windows';
+    if (lowerDevice.includes('macintosh') || lowerDevice.includes('mac os')) return 'Mac';
+    if (lowerDevice.includes('linux')) return 'PC Linux';
+    return 'Appareil';
+  };
+
+  const getSessionBrowserName = (device: string) => {
+    if (/Edg\//i.test(device)) return 'Edge';
+    if (/OPR\/|Opera/i.test(device)) return 'Opera';
+    if (/Chrome\//i.test(device) && !/Edg\//i.test(device)) return 'Chrome';
+    if (/Firefox\//i.test(device)) return 'Firefox';
+    if (/Safari\//i.test(device) && !/Chrome\//i.test(device)) return 'Safari';
+    return 'Navigateur';
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -125,6 +147,10 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
     } catch (error) {
       toast.error(getErrorMessage(error, 'Impossible de déconnecter les autres sessions'));
     }
+  };
+
+  const handleLogoutCurrentSession = async () => {
+    await logout();
   };
 
   return (
@@ -345,6 +371,8 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
               sessions.map((session) => {
                 const SessionIcon = getSessionIcon(session.device);
                 const isRevoking = revokingSessionId === session.id;
+                const deviceName = getSessionDeviceName(session.device);
+                const browserName = getSessionBrowserName(session.device);
 
                 return (
                   <div
@@ -356,11 +384,14 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                         <SessionIcon className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm text-gray-900 dark:text-white truncate">
-                          {session.device || 'Appareil inconnu'}
+                        <p className="text-sm text-gray-900 dark:text-white truncate" title={session.device}>
+                          {deviceName} · {browserName}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                           {session.is_current ? 'Session actuelle' : 'Session active'}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          Lieu : {session.is_current ? 'Ici' : 'Lieu indisponible'}
                         </p>
                         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                           Dernière activité : {formatSessionDate(session.updated_at)}
@@ -369,9 +400,15 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                     </div>
 
                     {session.is_current ? (
-                      <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-900/40">
-                        Session active
-                      </span>
+                      <button
+                        type="button"
+                        onClick={handleLogoutCurrentSession}
+                        disabled={isLoggingOut}
+                        className="self-start sm:self-auto text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                      >
+                        {isLoggingOut && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {isLoggingOut ? 'Déconnexion...' : 'Me déconnecter'}
+                      </button>
                     ) : (
                       <button
                         type="button"
