@@ -85,7 +85,7 @@ export function useUserProfile() {
     queryKey: ['user-profile'],
     queryFn: async () => {
       const response = await apiClient.get(API_ENDPOINTS.USERS_ME);
-      return response.data;
+      return response.data?.user ?? response.data;
     },
   });
 }

@@ -601,7 +601,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={closeGooglePhoneModal}
           />
-          <div className="relative w-full max-w-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/60 dark:border-gray-700/60 shadow-2xl">
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-[0_18px_45px_-20px_rgba(0,0,0,0.45)]">
             <h2 className="text-xl text-gray-900 dark:text-white mb-2">Complétez votre compte</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
               Ajoutez votre numéro de téléphone pour finaliser votre connexion Google.
@@ -719,7 +719,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             className="absolute inset-0 bg-black/45 backdrop-blur-sm"
             onClick={closeForcedLogoutModal}
           />
-          <div className="relative w-full max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/70 dark:border-gray-700/70 shadow-2xl">
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-[0_18px_45px_-20px_rgba(0,0,0,0.45)]">
             <h2 className="text-xl text-gray-900 dark:text-white mb-2">{forcedLogoutNotice.title}</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
               {forcedLogoutNotice.message}
