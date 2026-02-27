@@ -36,7 +36,7 @@ type ConsentSettings = {
 export function CompteDonnees({ onBack }: CompteDonneesProps) {
   const { logout, isLoggingOut } = useAuth();
   const toast = useToast();
-  const { data: privacyPreferences, isLoading: isPrivacyPreferencesLoading } = usePrivacyPreferences();
+  const { data: privacyPreferences } = usePrivacyPreferences();
   const updatePrivacyPreferencesMutation = useUpdatePrivacyPreferences();
   const hasHydratedConsentRef = useRef(false);
   const [settings, setSettings] = useState<ConsentSettings>({
@@ -149,7 +149,11 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     },
   ];
 
-  const handleToggle = (key: keyof typeof settings) => {
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    return error instanceof Error && error.message ? error.message : fallback;
+  };
+
+  const handleToggle = async (key: keyof typeof settings) => {
     if (!areConsentSettingsReady || legalUpdatesByEmail === null) return;
 
     const currentValue = settings[key];
@@ -164,28 +168,35 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
       marketingConsent,
       [key]: nextValue,
     };
-    setSettings(nextSettings);
 
-    updatePrivacyPreferencesMutation.mutate({
-      analytics_consent: nextSettings.analyticsConsent,
-      marketing_consent: nextSettings.marketingConsent,
-      legal_updates_email: legalUpdatesByEmail,
-    });
+    try {
+      await updatePrivacyPreferencesMutation.mutateAsync({
+        analytics_consent: nextSettings.analyticsConsent,
+        marketing_consent: nextSettings.marketingConsent,
+        legal_updates_email: legalUpdatesByEmail,
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Impossible de mettre a jour vos preferences de confidentialite.'));
+    }
   };
 
-  const handleToggleLegalUpdatesByEmail = () => {
+  const handleToggleLegalUpdatesByEmail = async () => {
     if (!areConsentSettingsReady || legalUpdatesByEmail === null) return;
     const analyticsConsent = settings.analyticsConsent;
     const marketingConsent = settings.marketingConsent;
     if (analyticsConsent === null || marketingConsent === null) return;
 
     const nextValue = !legalUpdatesByEmail;
-    setLegalUpdatesByEmail(nextValue);
-    updatePrivacyPreferencesMutation.mutate({
-      analytics_consent: analyticsConsent,
-      marketing_consent: marketingConsent,
-      legal_updates_email: nextValue,
-    });
+
+    try {
+      await updatePrivacyPreferencesMutation.mutateAsync({
+        analytics_consent: analyticsConsent,
+        marketing_consent: marketingConsent,
+        legal_updates_email: nextValue,
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Impossible de mettre a jour vos preferences de confidentialite.'));
+    }
   };
 
   const handleOpenExportModal = () => {
@@ -374,19 +385,29 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm text-gray-900 dark:text-white mb-1">
+                        <p
+                          id={`consent-${item.key}-label`}
+                          className="text-sm text-gray-900 dark:text-white mb-1"
+                        >
                           {item.title}
                         </p>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                        <p
+                          id={`consent-${item.key}-description`}
+                          className="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
+                        >
                           {item.description}
                         </p>
                       </div>
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => handleToggle(item.key)}
                       disabled={isDisabled}
-                      aria-pressed={enabled}
+                      role="switch"
+                      aria-checked={enabled}
+                      aria-labelledby={`consent-${item.key}-label`}
+                      aria-describedby={`consent-${item.key}-description`}
                       className={`relative w-14 h-8 rounded-full transition-colors flex-shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${
                         enabled ? 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef]' : 'bg-gray-300 dark:bg-gray-700'
                       }`}
@@ -427,14 +448,19 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                   </div>
 
                   <div className="mt-4 flex items-center justify-between gap-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p
+                      id="legal-updates-email-label"
+                      className="text-sm text-gray-600 dark:text-gray-400"
+                    >
                       Recevoir un e-mail lorsque ces documents sont mis à jour ?
                     </p>
                     <button
                       type="button"
                       onClick={handleToggleLegalUpdatesByEmail}
                       disabled={!areConsentSettingsReady || updatePrivacyPreferencesMutation.isPending}
-                      aria-pressed={legalUpdatesByEmail === true}
+                      role="switch"
+                      aria-checked={legalUpdatesByEmail === true}
+                      aria-labelledby="legal-updates-email-label"
                       className={`relative w-14 h-8 rounded-full transition-colors flex-shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${
                         legalUpdatesByEmail ? 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef]' : 'bg-gray-300 dark:bg-gray-700'
                       }`}

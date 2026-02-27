@@ -193,7 +193,7 @@ function getPhoneErrorMessage(country: GooglePhoneCountry): string {
     : 'Numéro invalide. Format attendu: 06 12 34 56 78';
 }
 
-function getForcedLogoutNotice(reason: ForcedLogoutReason, backendError?: string | null): ForcedLogoutNotice {
+function getForcedLogoutNotice(reason: ForcedLogoutReason): ForcedLogoutNotice {
   switch (reason) {
     case 'session_invalidated':
       return {
@@ -224,9 +224,7 @@ function getForcedLogoutNotice(reason: ForcedLogoutReason, backendError?: string
     default:
       return {
         title: 'Session interrompue',
-        message: backendError
-          ? `Votre session a été interrompue (${backendError}). Veuillez vous reconnecter.`
-          : 'Votre session a été interrompue. Veuillez vous reconnecter.',
+        message: 'Votre session a été interrompue. Veuillez vous reconnecter.',
       };
   }
 }
@@ -318,11 +316,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const reason = event.detail?.reason ?? 'token_refresh_failed';
       const backendError = event.detail?.backend_error ?? null;
 
-      console.warn('Force logout triggered:', reason, backendError);
+      if (backendError) {
+        console.warn('Force logout triggered:', reason, backendError);
+      } else {
+        console.warn('Force logout triggered:', reason);
+      }
       setIsAuthenticated(false);
       setCurrentUser(null);
       clearAuthTokens();
-      setForcedLogoutNotice(getForcedLogoutNotice(reason, backendError));
+      setForcedLogoutNotice(getForcedLogoutNotice(reason));
     };
 
     window.addEventListener('auth:logout', handleForceLogout as EventListener);

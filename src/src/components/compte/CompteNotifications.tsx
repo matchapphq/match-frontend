@@ -197,7 +197,11 @@ export function CompteNotifications({ onBack }: CompteNotificationsProps) {
               </p>
             </div>
             <button
+              type="button"
               onClick={() => setSmsReservations(!smsReservations)}
+              role="switch"
+              aria-checked={smsReservations}
+              aria-label="Recevoir un SMS lors d'une nouvelle reservation"
               className={`relative w-14 h-8 rounded-full transition-colors ${
                 smsReservations ? 'bg-gradient-to-r from-[#5a03cf] to-[#9cff02]' : 'bg-gray-300 dark:bg-gray-700'
               }`}
