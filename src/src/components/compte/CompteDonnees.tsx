@@ -59,6 +59,11 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     settings.marketingConsent !== null &&
     legalUpdatesByEmail !== null;
   const enabledConsentCount = [settings.analyticsConsent, settings.marketingConsent].filter((value) => value === true).length;
+  const accountDeletionGraceDays = privacyPreferences?.account_deletion_grace_days ?? null;
+  const accountDeletionGraceLabel =
+    accountDeletionGraceDays === null
+      ? 'le délai de réactivation'
+      : `${accountDeletionGraceDays} jour${accountDeletionGraceDays > 1 ? 's' : ''}`;
   const cookieStatus = useMemo(() => {
     if (!areConsentSettingsReady) return 'Chargement';
     if (settings.analyticsConsent && settings.marketingConsent) return 'Complet';
@@ -303,7 +308,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
         timeout: 20000,
       });
 
-      toast.success('Compte désactivé. Vous pourrez le réactiver en vous reconnectant pendant le délai prévu.');
+      toast.success(`Compte désactivé. Vous pourrez le réactiver en vous reconnectant pendant ${accountDeletionGraceLabel}.`);
       setShowDeleteModal(false);
       await logout();
     } catch (error: any) {
@@ -541,7 +546,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                 Règles appliquées en cas de désactivation du compte.
               </p>
               <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li>• Données conservées pendant le délai de réactivation</li>
+                <li>{`• Données conservées pendant ${accountDeletionGraceLabel}`}</li>
                 <li>• Réactivation possible en se reconnectant</li>
                 <li>• Suppression définitive après ce délai</li>
               </ul>
@@ -577,7 +582,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                 <div>
                   <h2 className="text-lg text-red-700 dark:text-red-300 mb-1">Suppression du compte</h2>
                   <p className="text-sm text-red-600/90 dark:text-red-300/90">
-                    Désactivation immédiate avec conservation des données pendant le délai de réactivation.
+                    {`Désactivation immédiate avec conservation des données pendant ${accountDeletionGraceLabel}.`}
                   </p>
                 </div>
               </div>
@@ -675,8 +680,8 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
           <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-[0_18px_45px_-20px_rgba(0,0,0,0.45)]">
             <h2 className="text-xl text-red-700 dark:text-red-300 mb-2">Confirmer la désactivation du compte</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Votre compte sera désactivé immédiatement. Vos données seront conservées pendant le délai de réactivation puis supprimées définitivement.
-              Si vous changez d&apos;avis, reconnectez-vous simplement avant la fin de ce délai pour réactiver le compte.
+              {`Votre compte sera désactivé immédiatement. Vos données seront conservées pendant ${accountDeletionGraceLabel} puis supprimées définitivement. `}
+              {`Si vous changez d'avis, reconnectez-vous simplement avant la fin de ce délai pour réactiver le compte.`}
             </p>
 
             <div className="space-y-4">

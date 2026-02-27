@@ -36,6 +36,7 @@ export interface PrivacyPreferences {
   analytics_consent: boolean;
   marketing_consent: boolean;
   legal_updates_email: boolean;
+  account_deletion_grace_days: number;
 }
 
 export interface SubscriptionInfo {
