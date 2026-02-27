@@ -15,6 +15,7 @@ export function CompteNotifications({ onBack }: CompteNotificationsProps) {
   
   const [emailReservations, setEmailReservations] = useState(true);
   const [emailMatchs, setEmailMatchs] = useState(true);
+  const [smsReservations, setSmsReservations] = useState(false);
   const [pushReservations, setPushReservations] = useState(true);
   const [pushRappels, setPushRappels] = useState(false);
   
@@ -23,6 +24,7 @@ export function CompteNotifications({ onBack }: CompteNotificationsProps) {
     if (preferences) {
       setEmailReservations(preferences.email_reservations ?? true);
       setEmailMatchs(preferences.email_updates ?? true);
+      setSmsReservations(preferences.sms_reservations ?? false);
       setPushReservations(preferences.push_reservations ?? true);
       setPushRappels(preferences.push_updates ?? false);
     }
@@ -33,6 +35,7 @@ export function CompteNotifications({ onBack }: CompteNotificationsProps) {
       await updateMutation.mutateAsync({
         email_reservations: emailReservations,
         email_updates: emailMatchs,
+        sms_reservations: smsReservations,
         push_reservations: pushReservations,
         push_updates: pushRappels,
       });
@@ -169,6 +172,39 @@ export function CompteNotifications({ onBack }: CompteNotificationsProps) {
               <span
                 className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
                   pushRappels ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Notifications par SMS */}
+      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-8 mb-6">
+        <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
+          Notifications par SMS
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">Alertes importantes envoyées par SMS</p>
+
+        <div className="space-y-4">
+          <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-gray-900 dark:text-white mb-1" style={{ fontWeight: '600' }}>
+                Réservations en temps réel
+              </p>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                Recevez un SMS lors d&apos;une nouvelle réservation
+              </p>
+            </div>
+            <button
+              onClick={() => setSmsReservations(!smsReservations)}
+              className={`relative w-14 h-8 rounded-full transition-colors ${
+                smsReservations ? 'bg-gradient-to-r from-[#5a03cf] to-[#9cff02]' : 'bg-gray-300 dark:bg-gray-700'
+              }`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
+                  smsReservations ? 'translate-x-6' : 'translate-x-0'
                 }`}
               />
             </button>

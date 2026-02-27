@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { PageType } from '../../types';
 import {
   ArrowLeft,
@@ -9,8 +9,6 @@ import {
   Cookie,
   Trash2,
   AlertTriangle,
-  Bell,
-  MessageSquare,
   BarChart3,
   Megaphone,
 } from 'lucide-react';
@@ -24,12 +22,46 @@ interface CompteDonneesProps {
   onBack?: () => void;
 }
 
+const COOKIE_CONSENT_STORAGE_KEY = 'match-cookie-consent-v1';
+const COOKIE_CONSENT_COOKIE_NAME = 'match_cookie_consent';
+const COOKIE_CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
+const readCookieValue = (cookieName: string): string | null => {
+  if (typeof document === 'undefined') return null;
+
+  const parts = document.cookie.split(';').map((part) => part.trim());
+  const prefix = `${cookieName}=`;
+  const matched = parts.find((part) => part.startsWith(prefix));
+  if (!matched) return null;
+
+  return matched.slice(prefix.length);
+};
+
+const parseCookieConsent = (
+  raw: string | null,
+): { analyticsConsent: boolean; marketingConsent: boolean } | null => {
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw));
+    const analyticsConsent = typeof parsed?.analyticsConsent === 'boolean' ? parsed.analyticsConsent : null;
+    const marketingConsent = typeof parsed?.marketingConsent === 'boolean' ? parsed.marketingConsent : null;
+
+    if (analyticsConsent === null || marketingConsent === null) {
+      return null;
+    }
+
+    return { analyticsConsent, marketingConsent };
+  } catch {
+    return null;
+  }
+};
+
 export function CompteDonnees({ onBack }: CompteDonneesProps) {
   const { logout, isLoggingOut } = useAuth();
   const toast = useToast();
+  const hasHydratedConsentRef = useRef(false);
   const [settings, setSettings] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
     analyticsConsent: true,
     marketingConsent: false,
   });
@@ -41,10 +73,66 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
   const [deleteReason, setDeleteReason] = useState('Je n’utilise plus Match');
   const [deleteDetails, setDeleteDetails] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
+  const [legalUpdatesByEmail, setLegalUpdatesByEmail] = useState(true);
   const [deleteSubmitError, setDeleteSubmitError] = useState<string | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const enabledConsentCount = Object.values(settings).filter(Boolean).length;
+  const cookieStatus = useMemo(() => {
+    if (settings.analyticsConsent && settings.marketingConsent) return 'Personnalisés';
+    if (!settings.analyticsConsent && !settings.marketingConsent) return 'Essentiels';
+    return 'Partiels';
+  }, [settings.analyticsConsent, settings.marketingConsent]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const localRaw = window.localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY);
+    const cookieRaw = readCookieValue(COOKIE_CONSENT_COOKIE_NAME);
+
+    const fromLocalStorage = parseCookieConsent(localRaw);
+    const fromCookie = parseCookieConsent(cookieRaw);
+    const consent = fromLocalStorage ?? fromCookie;
+
+    if (!consent) {
+      hasHydratedConsentRef.current = true;
+      return;
+    }
+
+    setSettings((prev) => ({
+      ...prev,
+      analyticsConsent: consent.analyticsConsent,
+      marketingConsent: consent.marketingConsent,
+    }));
+    hasHydratedConsentRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedConsentRef.current || typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
+    const payload = {
+      analyticsConsent: settings.analyticsConsent,
+      marketingConsent: settings.marketingConsent,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const serialized = JSON.stringify(payload);
+    window.localStorage.setItem(COOKIE_CONSENT_STORAGE_KEY, serialized);
+
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${COOKIE_CONSENT_COOKIE_NAME}=${encodeURIComponent(serialized)}; Path=/; Max-Age=${COOKIE_CONSENT_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+
+    window.dispatchEvent(
+      new CustomEvent('match:cookie-consent-updated', {
+        detail: {
+          analyticsConsent: settings.analyticsConsent,
+          marketingConsent: settings.marketingConsent,
+        },
+      }),
+    );
+  }, [settings.analyticsConsent, settings.marketingConsent]);
 
   const consentItems: Array<{
     key: keyof typeof settings;
@@ -53,20 +141,6 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     icon: ComponentType<{ className?: string }>;
     iconClass: string;
   }> = [
-    {
-      key: 'emailNotifications',
-      title: 'Notifications par email',
-      description: 'Recevoir des emails concernant vos matchs et réservations.',
-      icon: Bell,
-      iconClass: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
-    },
-    {
-      key: 'smsNotifications',
-      title: 'Notifications par SMS',
-      description: 'Recevoir des SMS pour les événements importants.',
-      icon: MessageSquare,
-      iconClass: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
-    },
     {
       key: 'analyticsConsent',
       title: 'Analyse et statistiques',
@@ -233,7 +307,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
               <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Consentements</span>
             </div>
-            <div className="text-2xl text-blue-700 dark:text-blue-300">{enabledConsentCount}/4</div>
+            <div className="text-2xl text-blue-700 dark:text-blue-300">{enabledConsentCount}/2</div>
             <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Actifs</p>
           </div>
 
@@ -242,8 +316,8 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
               <Cookie className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cookies</span>
             </div>
-            <div className="text-2xl text-emerald-700 dark:text-emerald-300">Standard</div>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Préférences à ajuster</p>
+            <div className="text-2xl text-emerald-700 dark:text-emerald-300">{cookieStatus}</div>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Préférences enregistrées</p>
           </div>
 
         </div>
@@ -253,7 +327,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
             <div className="p-6 border-b border-gray-100 dark:border-gray-800">
               <h2 className="text-lg text-gray-900 dark:text-white mb-1">Consentements</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Gérez vos préférences de communication et d&apos;utilisation des données.
+                Gérez vos préférences d&apos;analyse et de marketing.
               </p>
             </div>
 
@@ -297,6 +371,53 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                   </div>
                 );
               })}
+
+              <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
+                <p className="mt-6 text-sm text-gray-900 dark:text-white mb-3">
+                  Ce qui reste toujours actif
+                </p>
+                <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                  <li>• Cookies essentiels pour la connexion et la sécurité</li>
+                </ul>
+
+                <div className="mt-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-900 dark:text-white mb-2">Documents légaux</p>
+                  <div className="flex flex-wrap gap-2">
+                    <a
+                      href="/terms"
+                      className="px-3 py-1.5 text-sm rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      Conditions d&apos;utilisation
+                    </a>
+                    <a
+                      href="/privacy"
+                      className="px-3 py-1.5 text-sm rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      Politique de confidentialité
+                    </a>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Recevoir un e-mail lorsque ces documents sont mis à jour ?
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setLegalUpdatesByEmail((prev) => !prev)}
+                      aria-pressed={legalUpdatesByEmail}
+                      className={`relative w-14 h-8 rounded-full transition-colors flex-shrink-0 ${
+                        legalUpdatesByEmail ? 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef]' : 'bg-gray-300 dark:bg-gray-700'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${
+                          legalUpdatesByEmail ? 'translate-x-6' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -327,18 +448,20 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
             </div>
 
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
-              <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-3">
-                <Cookie className="w-6 h-6" />
+              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mb-3">
+                <Database className="w-6 h-6" />
               </div>
               <h3 className="text-base text-gray-900 dark:text-white mb-0.5">
-                Cookies et tracking
+                Conservation des données
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Match utilise des cookies essentiels, de performance et analytiques.
+                Règles appliquées en cas de désactivation du compte.
               </p>
-              <button className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-colors text-sm font-medium">
-                Gérer les préférences
-              </button>
+              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                <li>• Données conservées 30 jours après désactivation</li>
+                <li>• Réactivation possible en se reconnectant</li>
+                <li>• Suppression définitive après ce délai</li>
+              </ul>
             </div>
           </div>
         </div>
