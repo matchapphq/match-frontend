@@ -294,7 +294,12 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
             )}
             <button
               onClick={handleRevokeOtherSessions}
-              disabled={revokeOtherSessionsMutation.isPending || isSessionsLoading || otherSessionsCount === 0}
+              disabled={
+                revokeOtherSessionsMutation.isPending ||
+                revokeSessionMutation.isPending ||
+                isSessionsLoading ||
+                otherSessionsCount === 0
+              }
               className="px-4 py-2.5 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] hover:from-[#6a13df] hover:to-[#8a33ff] text-white text-sm rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-[#5a03cf]/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {revokeOtherSessionsMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
@@ -570,7 +575,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                       <button
                         type="button"
                         onClick={() => handleRevokeSession(session.id)}
-                        disabled={isRevoking}
+                        disabled={isRevoking || revokeOtherSessionsMutation.isPending}
                         className="self-start sm:self-auto text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
                       >
                         {isRevoking && <Loader2 className="w-4 h-4 animate-spin" />}

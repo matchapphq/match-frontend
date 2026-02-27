@@ -176,7 +176,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
         legal_updates_email: legalUpdatesByEmail,
       });
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Impossible de mettre a jour vos preferences de confidentialite.'));
+      toast.error(getErrorMessage(error, 'Impossible de mettre à jour vos préférences de confidentialité.'));
     }
   };
 
@@ -195,7 +195,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
         legal_updates_email: nextValue,
       });
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Impossible de mettre a jour vos preferences de confidentialite.'));
+      toast.error(getErrorMessage(error, 'Impossible de mettre à jour vos préférences de confidentialité.'));
     }
   };
 
