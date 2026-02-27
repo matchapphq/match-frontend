@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { PageType } from '../../types';
 import {
   ArrowLeft,
@@ -38,7 +38,6 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
   const toast = useToast();
   const { data: privacyPreferences } = usePrivacyPreferences();
   const updatePrivacyPreferencesMutation = useUpdatePrivacyPreferences();
-  const hasHydratedConsentRef = useRef(false);
   const [settings, setSettings] = useState<ConsentSettings>({
     analyticsConsent: null,
     marketingConsent: null,
@@ -67,30 +66,12 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     return 'Partiels';
   }, [areConsentSettingsReady, settings.analyticsConsent, settings.marketingConsent]);
 
-  useEffect(() => {
-    if (!privacyPreferences) return;
-
-    setSettings({
-      analyticsConsent: privacyPreferences.analytics_consent,
-      marketingConsent: privacyPreferences.marketing_consent,
-    });
-    setLegalUpdatesByEmail(privacyPreferences.legal_updates_email);
-    hasHydratedConsentRef.current = true;
-  }, [privacyPreferences]);
-
-  useEffect(() => {
-    if (
-      !hasHydratedConsentRef.current ||
-      !areConsentSettingsReady ||
-      typeof window === 'undefined' ||
-      typeof document === 'undefined'
-    ) {
-      return;
-    }
+  const persistConsentPreferences = (analyticsConsent: boolean, marketingConsent: boolean) => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
     const payload = {
-      analyticsConsent: settings.analyticsConsent,
-      marketingConsent: settings.marketingConsent,
+      analyticsConsent,
+      marketingConsent,
       updatedAt: new Date().toISOString(),
     };
 
@@ -103,28 +84,43 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     window.dispatchEvent(
       new CustomEvent('match:cookie-consent-updated', {
         detail: {
-          analyticsConsent: settings.analyticsConsent,
-          marketingConsent: settings.marketingConsent,
+          analyticsConsent,
+          marketingConsent,
         },
       }),
     );
-  }, [areConsentSettingsReady, settings.analyticsConsent, settings.marketingConsent]);
+  };
 
-  useEffect(() => {
-    if (legalUpdatesByEmail === null || typeof window === 'undefined') return;
+  const persistLegalUpdatesPreference = (enabled: boolean) => {
+    if (typeof window === 'undefined') return;
 
     const payload = {
-      enabled: legalUpdatesByEmail,
+      enabled,
       updatedAt: new Date().toISOString(),
     };
     window.localStorage.setItem(LEGAL_UPDATES_STORAGE_KEY, JSON.stringify(payload));
 
     window.dispatchEvent(
       new CustomEvent('match:legal-updates-preference-updated', {
-        detail: { legalUpdatesByEmail },
+        detail: { legalUpdatesByEmail: enabled },
       }),
     );
-  }, [legalUpdatesByEmail]);
+  };
+
+  useEffect(() => {
+    if (!privacyPreferences) return;
+
+    setSettings({
+      analyticsConsent: privacyPreferences.analytics_consent,
+      marketingConsent: privacyPreferences.marketing_consent,
+    });
+    setLegalUpdatesByEmail(privacyPreferences.legal_updates_email);
+    persistConsentPreferences(
+      privacyPreferences.analytics_consent,
+      privacyPreferences.marketing_consent,
+    );
+    persistLegalUpdatesPreference(privacyPreferences.legal_updates_email);
+  }, [privacyPreferences]);
 
   const consentItems: Array<{
     key: keyof typeof settings;
@@ -176,11 +172,21 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     setSettings(nextSettings);
 
     try {
-      await updatePrivacyPreferencesMutation.mutateAsync({
+      const updatedPreferences = await updatePrivacyPreferencesMutation.mutateAsync({
         analytics_consent: nextSettings.analyticsConsent,
         marketing_consent: nextSettings.marketingConsent,
         legal_updates_email: legalUpdatesByEmail,
       });
+      setSettings({
+        analyticsConsent: updatedPreferences.analytics_consent,
+        marketingConsent: updatedPreferences.marketing_consent,
+      });
+      setLegalUpdatesByEmail(updatedPreferences.legal_updates_email);
+      persistConsentPreferences(
+        updatedPreferences.analytics_consent,
+        updatedPreferences.marketing_consent,
+      );
+      persistLegalUpdatesPreference(updatedPreferences.legal_updates_email);
     } catch (error) {
       setSettings(previousSettings);
       toast.error(getErrorMessage(error, 'Impossible de mettre à jour vos préférences de confidentialité.'));
@@ -199,11 +205,21 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     setLegalUpdatesByEmail(nextValue);
 
     try {
-      await updatePrivacyPreferencesMutation.mutateAsync({
+      const updatedPreferences = await updatePrivacyPreferencesMutation.mutateAsync({
         analytics_consent: analyticsConsent,
         marketing_consent: marketingConsent,
         legal_updates_email: nextValue,
       });
+      setSettings({
+        analyticsConsent: updatedPreferences.analytics_consent,
+        marketingConsent: updatedPreferences.marketing_consent,
+      });
+      setLegalUpdatesByEmail(updatedPreferences.legal_updates_email);
+      persistConsentPreferences(
+        updatedPreferences.analytics_consent,
+        updatedPreferences.marketing_consent,
+      );
+      persistLegalUpdatesPreference(updatedPreferences.legal_updates_email);
     } catch (error) {
       setLegalUpdatesByEmail(previousLegalUpdatesByEmail);
       toast.error(getErrorMessage(error, 'Impossible de mettre à jour vos préférences de confidentialité.'));
@@ -287,7 +303,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
         timeout: 20000,
       });
 
-      toast.success('Compte désactivé. Vous pouvez le réactiver en vous reconnectant sous 30 jours.');
+      toast.success('Compte désactivé. Vous pourrez le réactiver en vous reconnectant pendant le délai prévu.');
       setShowDeleteModal(false);
       await logout();
     } catch (error: any) {
@@ -525,7 +541,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                 Règles appliquées en cas de désactivation du compte.
               </p>
               <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li>• Données conservées 30 jours après désactivation</li>
+                <li>• Données conservées pendant le délai de réactivation</li>
                 <li>• Réactivation possible en se reconnectant</li>
                 <li>• Suppression définitive après ce délai</li>
               </ul>
@@ -561,7 +577,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                 <div>
                   <h2 className="text-lg text-red-700 dark:text-red-300 mb-1">Suppression du compte</h2>
                   <p className="text-sm text-red-600/90 dark:text-red-300/90">
-                    Désactivation immédiate avec conservation des données pendant 30 jours.
+                    Désactivation immédiate avec conservation des données pendant le délai de réactivation.
                   </p>
                 </div>
               </div>
@@ -659,8 +675,8 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
           <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-[0_18px_45px_-20px_rgba(0,0,0,0.45)]">
             <h2 className="text-xl text-red-700 dark:text-red-300 mb-2">Confirmer la désactivation du compte</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Votre compte sera désactivé immédiatement. Vos données seront conservées 30 jours puis supprimées définitivement.
-              Si vous changez d&apos;avis, reconnectez-vous simplement avant ce délai pour réactiver le compte.
+              Votre compte sera désactivé immédiatement. Vos données seront conservées pendant le délai de réactivation puis supprimées définitivement.
+              Si vous changez d&apos;avis, reconnectez-vous simplement avant la fin de ce délai pour réactiver le compte.
             </p>
 
             <div className="space-y-4">
