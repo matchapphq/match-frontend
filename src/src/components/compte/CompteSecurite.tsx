@@ -49,6 +49,8 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
   const [showPasswordChangedModal, setShowPasswordChangedModal] = useState(false);
   const [isApplyingPasswordSecurityAction, setIsApplyingPasswordSecurityAction] = useState(false);
   const hasPasswordMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
+  const hasSameAsCurrentPassword =
+    currentPassword.trim().length > 0 && newPassword.trim().length > 0 && currentPassword.trim() === newPassword.trim();
   const hasMinLength = newPassword.length >= 8;
   const hasUppercase = /[A-Z]/.test(newPassword);
   const hasLowercase = /[a-z]/.test(newPassword);
@@ -161,6 +163,11 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
       return;
     }
 
+    if (hasSameAsCurrentPassword) {
+      toast.error('Le nouveau mot de passe doit être différent du mot de passe actuel');
+      return;
+    }
+
     if (!hasMinLength || !hasUppercase || !hasLowercase || !hasNumber || !hasSpecialChar) {
       toast.error('Le mot de passe doit contenir 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial');
       return;
@@ -181,7 +188,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setShowPasswordChangedModal(true);
+      setShowPasswordChangedModal(otherSessionsCount > 0);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Erreur lors de la mise à jour du mot de passe'));
     }
@@ -243,16 +250,20 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
     setShowPasswordChangedModal(false);
   };
 
-  const handleLogoutAllSessionsAfterPasswordChange = async () => {
+  const handleRevokeOtherSessionsAfterPasswordChange = async () => {
     if (isApplyingPasswordSecurityAction || isLoggingOut) return;
 
     setIsApplyingPasswordSecurityAction(true);
     try {
-      await revokeOtherSessionsMutation.mutateAsync();
+      const result = await revokeOtherSessionsMutation.mutateAsync();
+      if (result.revoked > 0) {
+        toast.success(`${result.revoked} session${result.revoked > 1 ? 's' : ''} déconnectée${result.revoked > 1 ? 's' : ''}`);
+      } else {
+        toast.info('Aucune autre session active');
+      }
       setShowPasswordChangedModal(false);
-      await logout();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Impossible de déconnecter toutes les sessions'));
+      toast.error(getErrorMessage(error, 'Impossible de déconnecter les autres sessions'));
     } finally {
       setIsApplyingPasswordSecurityAction(false);
     }
@@ -348,7 +359,11 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5a03cf] transition-all"
+                  className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 transition-all ${
+                    hasSameAsCurrentPassword
+                      ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                      : 'border-gray-200 dark:border-gray-700 focus:ring-[#5a03cf]'
+                  }`}
                 />
               </div>
 
@@ -362,7 +377,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 transition-all ${
-                      hasPasswordMismatch
+                      hasPasswordMismatch || hasSameAsCurrentPassword
                         ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                         : 'border-gray-200 dark:border-gray-700 focus:ring-[#5a03cf]'
                     }`}
@@ -581,9 +596,9 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
               Mot de passe modifié
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-              Votre mot de passe a été changé avec succès. Voulez-vous déconnecter toutes les sessions pour sécuriser votre compte ?
+              Votre mot de passe a été changé avec succès. Voulez-vous déconnecter les autres sessions pour sécuriser votre compte&nbsp;?
             </p>
-            <div className="flex items-center justify-end gap-3">
+            <div className="mt-4 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={handleClosePasswordChangedModal}
@@ -594,12 +609,12 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
               </button>
               <button
                 type="button"
-                onClick={handleLogoutAllSessionsAfterPasswordChange}
+                onClick={handleRevokeOtherSessionsAfterPasswordChange}
                 disabled={isApplyingPasswordSecurityAction || isLoggingOut}
                 className="px-4 py-2 text-sm bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
                 {(isApplyingPasswordSecurityAction || isLoggingOut) && <Loader2 className="w-4 h-4 animate-spin" />}
-                Déconnecter toutes les sessions
+                Déconnecter les autres sessions
               </button>
             </div>
           </div>
