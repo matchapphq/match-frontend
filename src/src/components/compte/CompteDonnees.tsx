@@ -260,7 +260,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
         data: {
           reason: deleteReason,
           details: deleteDetails.trim() || undefined,
-          password: deletePassword.trim(),
+          password: deletePassword,
         },
         timeout: 20000,
       });

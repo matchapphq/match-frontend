@@ -50,7 +50,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
   const [isApplyingPasswordSecurityAction, setIsApplyingPasswordSecurityAction] = useState(false);
   const hasPasswordMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
   const hasSameAsCurrentPassword =
-    currentPassword.trim().length > 0 && newPassword.trim().length > 0 && currentPassword.trim() === newPassword.trim();
+    currentPassword.length > 0 && newPassword.length > 0 && currentPassword === newPassword;
   const hasMinLength = newPassword.length >= 8;
   const hasUppercase = /[A-Z]/.test(newPassword);
   const hasLowercase = /[a-z]/.test(newPassword);
@@ -180,7 +180,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
     
     try {
       await updatePasswordMutation.mutateAsync({
-        current_password: currentPassword.trim(),
+        current_password: currentPassword,
         new_password: newPassword,
         confirm_password: confirmPassword,
       });
