@@ -383,8 +383,8 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                   Avant de supprimer votre compte :
                 </p>
                 <ul className="space-y-2 text-sm text-red-700/90 dark:text-red-300/90">
-                  <li>• Vos données seront supprimées définitivement après 30 jours</li>
-                  <li>• Vous pouvez réactiver le compte en vous reconnectant avant ce délai</li>
+                  <li>• Sauvegardez les informations que vous souhaitez conserver</li>
+                  <li>• Annulez vos abonnements en cours</li>
                   <li>• Contactez le support en cas de doute</li>
                 </ul>
               </div>
