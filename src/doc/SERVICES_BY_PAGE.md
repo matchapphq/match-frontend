@@ -611,31 +611,40 @@ const handleValidate = async (code: string) => {
 
 ## Compte utilisateur
 
-### `/pages/compte/Compte.tsx`
-**Services:** `users.service.ts`, `subscriptions.service.ts`, `notifications.service.ts`
+### `/src/features/compte/pages/MonCompte.tsx` and `/src/components/compte/*.tsx`
+**Services:** `useAccount.ts`, `api/client.ts`, `services/api.ts`
 
 ```typescript
-import { getMyProfile, updateProfile, getNotificationPreferences, updateNotificationPreferences } from '../services/users.service';
-import { getMySubscription, cancelSubscription, updatePaymentMethod } from '../services/subscriptions.service';
+import {
+  useUserProfile,
+  useNotificationPreferences,
+  usePrivacyPreferences,
+  useSessions,
+  useUpdatePassword,
+  useRevokeSession,
+  useRevokeOtherSessions,
+} from '../hooks/api/useAccount';
 
-// Load user data
-const loadUserData = async () => {
-  const [profile, subscription, notifPrefs] = await Promise.all([
-    getMyProfile(authToken),
-    getMySubscription(authToken),
-    getNotificationPreferences(authToken),
-  ]);
-};
+// Profile and account settings
+const profile = useUserProfile();
+const notificationPreferences = useNotificationPreferences();
+const privacyPreferences = usePrivacyPreferences();
+const sessions = useSessions();
 
-// Update profile
-const handleUpdateProfile = async (data) => {
-  await updateProfile(data, authToken);
-};
+// Security actions
+await updatePasswordMutation.mutateAsync({
+  current_password,
+  new_password,
+  confirm_password,
+});
+await revokeSessionMutation.mutateAsync(sessionId);
+await revokeOtherSessionsMutation.mutateAsync();
 
-// Cancel subscription
-const handleCancelSubscription = async () => {
-  await cancelSubscription({ cancel_at_period_end: true }, authToken);
-};
+// Privacy / GDPR
+await apiClient.post('/support/data-export-request', { message });
+await apiClient.delete('/users/me', {
+  data: { reason, details, password },
+});
 ```
 
 ### `/pages/mes-avis/MesAvis.tsx`
