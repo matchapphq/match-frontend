@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { PageType } from '../../types';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useNotificationPreferences, useUpdateNotificationPreferences } from '../../hooks/api/useAccount';
-import { toast } from 'sonner';
+import { useToast } from '../../context/ToastContext';
 
 interface CompteNotificationsProps {
   onBack?: () => void;
@@ -12,6 +12,7 @@ interface CompteNotificationsProps {
 export function CompteNotifications({ onBack }: CompteNotificationsProps) {
   const { data: preferences, isLoading } = useNotificationPreferences();
   const updateMutation = useUpdateNotificationPreferences();
+  const toast = useToast();
   
   const [emailReservations, setEmailReservations] = useState(true);
   const [emailMatchs, setEmailMatchs] = useState(true);

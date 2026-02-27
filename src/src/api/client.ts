@@ -1,18 +1,11 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../utils/api-constants';
+import type { LogoutReason } from '../features/authentication/types/logout';
 
 // Extend axios config to track retry attempts
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
-
-type LogoutReason =
-  | 'session_invalidated'
-  | 'session_inactive'
-  | 'session_expired'
-  | 'session_security'
-  | 'missing_refresh_token'
-  | 'token_refresh_failed';
 
 const extractBackendError = (error: unknown): string | null => {
   if (!error || typeof error !== 'object') return null;

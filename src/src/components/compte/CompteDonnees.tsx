@@ -168,6 +168,12 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
       marketingConsent,
       [key]: nextValue,
     };
+    const previousSettings = {
+      analyticsConsent,
+      marketingConsent,
+    };
+
+    setSettings(nextSettings);
 
     try {
       await updatePrivacyPreferencesMutation.mutateAsync({
@@ -176,6 +182,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
         legal_updates_email: legalUpdatesByEmail,
       });
     } catch (error) {
+      setSettings(previousSettings);
       toast.error(getErrorMessage(error, 'Impossible de mettre à jour vos préférences de confidentialité.'));
     }
   };
@@ -187,6 +194,9 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     if (analyticsConsent === null || marketingConsent === null) return;
 
     const nextValue = !legalUpdatesByEmail;
+    const previousLegalUpdatesByEmail = legalUpdatesByEmail;
+
+    setLegalUpdatesByEmail(nextValue);
 
     try {
       await updatePrivacyPreferencesMutation.mutateAsync({
@@ -195,6 +205,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
         legal_updates_email: nextValue,
       });
     } catch (error) {
+      setLegalUpdatesByEmail(previousLegalUpdatesByEmail);
       toast.error(getErrorMessage(error, 'Impossible de mettre à jour vos préférences de confidentialité.'));
     }
   };
@@ -423,7 +434,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
               })}
 
               <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
-                <p className="mt-6 text-sm text-gray-900 dark:text-white mb-3">
+                <p className="text-sm text-gray-900 dark:text-white mb-3">
                   Ce qui reste toujours actif
                 </p>
                 <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">

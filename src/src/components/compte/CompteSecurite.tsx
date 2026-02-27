@@ -129,7 +129,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
   const getSessionBrowserName = (device: string) => {
     if (/Edg\//i.test(device)) return 'Edge';
     if (/OPR\/|Opera/i.test(device)) return 'Opera';
-    if (/Chrome\//i.test(device) && !/Edg\//i.test(device)) return 'Chrome';
+    if (/Chrome\//i.test(device)) return 'Chrome';
     if (/Firefox\//i.test(device)) return 'Firefox';
     if (/Safari\//i.test(device) && !/Chrome\//i.test(device)) return 'Safari';
     return 'Navigateur';

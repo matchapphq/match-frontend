@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import api, { ApiUser } from '../../../services/api';
+import type { LogoutReason as ForcedLogoutReason } from '../types/logout';
 
 export interface User {
   id: string;
@@ -28,14 +29,6 @@ interface AuthContextType {
   checkApiHealth: () => Promise<boolean>;
   refreshUserData: () => Promise<void>;
 }
-
-type ForcedLogoutReason =
-  | 'session_invalidated'
-  | 'session_inactive'
-  | 'session_expired'
-  | 'session_security'
-  | 'missing_refresh_token'
-  | 'token_refresh_failed';
 
 type ForcedLogoutNotice = {
   title: string;
