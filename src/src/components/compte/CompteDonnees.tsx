@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../api/client';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../features/authentication/context/AuthContext';
 import { API_ENDPOINTS } from '../../utils/api-constants';
 
 interface CompteDonneesProps {
@@ -24,6 +25,7 @@ interface CompteDonneesProps {
 }
 
 export function CompteDonnees({ onBack }: CompteDonneesProps) {
+  const { logout, isLoggingOut } = useAuth();
   const toast = useToast();
   const [settings, setSettings] = useState({
     emailNotifications: true,
@@ -35,6 +37,12 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
   const [exportMessage, setExportMessage] = useState('');
   const [isSubmittingExportRequest, setIsSubmittingExportRequest] = useState(false);
   const [exportSubmitError, setExportSubmitError] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('Je n’utilise plus Match');
+  const [deleteDetails, setDeleteDetails] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteSubmitError, setDeleteSubmitError] = useState<string | null>(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const enabledConsentCount = Object.values(settings).filter(Boolean).length;
 
@@ -117,6 +125,61 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
       toast.error(messageFromApi);
     } finally {
       setIsSubmittingExportRequest(false);
+    }
+  };
+
+  const handleOpenDeleteModal = () => {
+    setDeleteReason('Je n’utilise plus Match');
+    setDeleteDetails('');
+    setDeletePassword('');
+    setDeleteSubmitError(null);
+    setShowDeleteModal(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (isDeletingAccount || isLoggingOut) return;
+    setDeleteSubmitError(null);
+    setShowDeleteModal(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      setDeleteSubmitError('Veuillez renseigner votre mot de passe pour confirmer la suppression.');
+      return;
+    }
+    if (deletePassword.trim().length < 6) {
+      setDeleteSubmitError('Le mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setDeleteSubmitError(null);
+    try {
+      await apiClient.delete(API_ENDPOINTS.USERS_ME, {
+        data: {
+          reason: deleteReason,
+          details: deleteDetails.trim() || undefined,
+          password: deletePassword.trim(),
+        },
+        timeout: 20000,
+      });
+
+      toast.success('Compte désactivé. Vous pouvez le réactiver en vous reconnectant sous 30 jours.');
+      setShowDeleteModal(false);
+      await logout();
+    } catch (error: any) {
+      const rawMessage = typeof error?.message === 'string' ? error.message : '';
+      const normalized = rawMessage.trim().toLowerCase();
+      const messageFromApi =
+        normalized === 'invalid password'
+          ? 'Mot de passe incorrect.'
+          : normalized === 'password is required'
+            ? 'Mot de passe requis.'
+            : rawMessage || 'Impossible de supprimer le compte pour le moment.';
+      setDeleteSubmitError(messageFromApi);
+      toast.error(messageFromApi);
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -308,7 +371,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                 <div>
                   <h2 className="text-lg text-red-700 dark:text-red-300 mb-1">Suppression du compte</h2>
                   <p className="text-sm text-red-600/90 dark:text-red-300/90">
-                    Cette action est irréversible.
+                    Désactivation immédiate avec conservation des données pendant 30 jours.
                   </p>
                 </div>
               </div>
@@ -320,15 +383,19 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                   Avant de supprimer votre compte :
                 </p>
                 <ul className="space-y-2 text-sm text-red-700/90 dark:text-red-300/90">
-                  <li>• Annulez tous vos abonnements actifs</li>
-                  <li>• Exportez vos données si nécessaire</li>
+                  <li>• Vos données seront supprimées définitivement après 30 jours</li>
+                  <li>• Vous pouvez réactiver le compte en vous reconnectant avant ce délai</li>
                   <li>• Contactez le support en cas de doute</li>
                 </ul>
               </div>
 
-              <button className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors text-sm font-medium flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={handleOpenDeleteModal}
+                className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors text-sm font-medium flex items-center justify-center gap-2"
+              >
                 <Trash2 className="w-4 h-4" />
-                Supprimer mon compte
+                Désactiver mon compte
               </button>
             </div>
           </div>
@@ -387,6 +454,100 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
               >
                 {isSubmittingExportRequest && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isSubmittingExportRequest ? 'Envoi...' : 'Envoyer la demande'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            onClick={handleCloseDeleteModal}
+          />
+          <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-[0_18px_45px_-20px_rgba(0,0,0,0.45)]">
+            <h2 className="text-xl text-red-700 dark:text-red-300 mb-2">Confirmer la désactivation du compte</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Votre compte sera désactivé immédiatement. Vos données seront conservées 30 jours puis supprimées définitivement.
+              Si vous changez d&apos;avis, reconnectez-vous simplement avant ce délai pour réactiver le compte.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                  Raison principale
+                </label>
+                <select
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  disabled={isDeletingAccount || isLoggingOut}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                >
+                  <option>Je n’utilise plus Match</option>
+                  <option>Je préfère une autre solution</option>
+                  <option>Je ne suis pas satisfait du service</option>
+                  <option>Autre</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                  Détails (optionnel)
+                </label>
+                <textarea
+                  value={deleteDetails}
+                  onChange={(e) => setDeleteDetails(e.target.value)}
+                  rows={3}
+                  disabled={isDeletingAccount || isLoggingOut}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-all resize-none"
+                  placeholder="Expliquez brièvement votre choix"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                  Mot de passe de confirmation
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => {
+                    setDeletePassword(e.target.value);
+                    if (deleteSubmitError) {
+                      setDeleteSubmitError(null);
+                    }
+                  }}
+                  disabled={isDeletingAccount || isLoggingOut}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                  placeholder="Votre mot de passe actuel"
+                />
+              </div>
+            </div>
+
+            {deleteSubmitError && (
+              <p className="mt-4 text-sm text-red-600 dark:text-red-400">
+                {deleteSubmitError}
+              </p>
+            )}
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCloseDeleteModal}
+                disabled={isDeletingAccount || isLoggingOut}
+                className="px-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={isDeletingAccount || isLoggingOut}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {(isDeletingAccount || isLoggingOut) && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isDeletingAccount || isLoggingOut ? 'Désactivation...' : 'Désactiver le compte'}
               </button>
             </div>
           </div>
