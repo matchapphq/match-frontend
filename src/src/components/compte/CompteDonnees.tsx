@@ -15,6 +15,7 @@ import {
 import apiClient from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../features/authentication/context/AuthContext';
+import { usePrivacyPreferences, useUpdatePrivacyPreferences } from '../../hooks/api/useAccount';
 import { API_ENDPOINTS } from '../../utils/api-constants';
 
 interface CompteDonneesProps {
@@ -25,6 +26,7 @@ interface CompteDonneesProps {
 const COOKIE_CONSENT_STORAGE_KEY = 'match-cookie-consent-v1';
 const COOKIE_CONSENT_COOKIE_NAME = 'match_cookie_consent';
 const COOKIE_CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+const LEGAL_UPDATES_STORAGE_KEY = 'match-legal-updates-preference-v1';
 
 const readCookieValue = (cookieName: string): string | null => {
   if (typeof document === 'undefined') return null;
@@ -60,10 +62,13 @@ const parseCookieConsent = (
 export function CompteDonnees({ onBack }: CompteDonneesProps) {
   const { logout, isLoggingOut } = useAuth();
   const toast = useToast();
+  const { data: privacyPreferences } = usePrivacyPreferences();
+  const updatePrivacyPreferencesMutation = useUpdatePrivacyPreferences();
   const hasHydratedConsentRef = useRef(false);
+  const hasHydratedFromBackendRef = useRef(false);
   const [settings, setSettings] = useState({
     analyticsConsent: true,
-    marketingConsent: false,
+    marketingConsent: true,
   });
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportMessage, setExportMessage] = useState('');
@@ -79,7 +84,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
 
   const enabledConsentCount = Object.values(settings).filter(Boolean).length;
   const cookieStatus = useMemo(() => {
-    if (settings.analyticsConsent && settings.marketingConsent) return 'Personnalisés';
+    if (settings.analyticsConsent && settings.marketingConsent) return 'Complet';
     if (!settings.analyticsConsent && !settings.marketingConsent) return 'Essentiels';
     return 'Partiels';
   }, [settings.analyticsConsent, settings.marketingConsent]);
@@ -95,6 +100,17 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     const consent = fromLocalStorage ?? fromCookie;
 
     if (!consent) {
+      const legalPreferenceRaw = window.localStorage.getItem(LEGAL_UPDATES_STORAGE_KEY);
+      if (legalPreferenceRaw) {
+        try {
+          const parsed = JSON.parse(legalPreferenceRaw);
+          if (typeof parsed?.enabled === 'boolean') {
+            setLegalUpdatesByEmail(parsed.enabled);
+          }
+        } catch {
+          // Keep default when stored value is invalid.
+        }
+      }
       hasHydratedConsentRef.current = true;
       return;
     }
@@ -104,8 +120,34 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
       analyticsConsent: consent.analyticsConsent,
       marketingConsent: consent.marketingConsent,
     }));
+
+    const legalPreferenceRaw = window.localStorage.getItem(LEGAL_UPDATES_STORAGE_KEY);
+    if (legalPreferenceRaw) {
+      try {
+        const parsed = JSON.parse(legalPreferenceRaw);
+        if (typeof parsed?.enabled === 'boolean') {
+          setLegalUpdatesByEmail(parsed.enabled);
+        }
+      } catch {
+        // Keep default when stored value is invalid.
+      }
+    }
+
     hasHydratedConsentRef.current = true;
   }, []);
+
+  useEffect(() => {
+    if (!privacyPreferences || hasHydratedFromBackendRef.current) return;
+
+    setSettings((prev) => ({
+      ...prev,
+      analyticsConsent: privacyPreferences.analytics_consent,
+      marketingConsent: privacyPreferences.marketing_consent,
+    }));
+    setLegalUpdatesByEmail(privacyPreferences.legal_updates_email);
+    hasHydratedFromBackendRef.current = true;
+    hasHydratedConsentRef.current = true;
+  }, [privacyPreferences]);
 
   useEffect(() => {
     if (!hasHydratedConsentRef.current || typeof window === 'undefined' || typeof document === 'undefined') {
@@ -134,6 +176,22 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
     );
   }, [settings.analyticsConsent, settings.marketingConsent]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const payload = {
+      enabled: legalUpdatesByEmail,
+      updatedAt: new Date().toISOString(),
+    };
+    window.localStorage.setItem(LEGAL_UPDATES_STORAGE_KEY, JSON.stringify(payload));
+
+    window.dispatchEvent(
+      new CustomEvent('match:legal-updates-preference-updated', {
+        detail: { legalUpdatesByEmail },
+      }),
+    );
+  }, [legalUpdatesByEmail]);
+
   const consentItems: Array<{
     key: keyof typeof settings;
     title: string;
@@ -158,7 +216,22 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
   ];
 
   const handleToggle = (key: keyof typeof settings) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+    const nextValue = !settings[key];
+    setSettings((prev) => ({ ...prev, [key]: nextValue }));
+
+    const backendField =
+      key === 'analyticsConsent' ? 'analytics_consent' : 'marketing_consent';
+    updatePrivacyPreferencesMutation.mutate({
+      [backendField]: nextValue,
+    } as { analytics_consent?: boolean; marketing_consent?: boolean });
+  };
+
+  const handleToggleLegalUpdatesByEmail = () => {
+    const nextValue = !legalUpdatesByEmail;
+    setLegalUpdatesByEmail(nextValue);
+    updatePrivacyPreferencesMutation.mutate({
+      legal_updates_email: nextValue,
+    });
   };
 
   const handleOpenExportModal = () => {
@@ -403,7 +476,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                     </p>
                     <button
                       type="button"
-                      onClick={() => setLegalUpdatesByEmail((prev) => !prev)}
+                      onClick={handleToggleLegalUpdatesByEmail}
                       aria-pressed={legalUpdatesByEmail}
                       className={`relative w-14 h-8 rounded-full transition-colors flex-shrink-0 ${
                         legalUpdatesByEmail ? 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef]' : 'bg-gray-300 dark:bg-gray-700'

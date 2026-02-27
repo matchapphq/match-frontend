@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
   USERS_ME_SESSIONS_OTHERS: '/users/me/sessions/others',
   USERS_ME_SESSION_HEARTBEAT: '/users/me/session-heartbeat',
   USERS_ME_NOTIFICATION_PREFS: '/users/me/notification-preferences',
+  USERS_ME_PRIVACY_PREFS: '/users/me/privacy-preferences',
   USERS_ME_ONBOARDING_COMPLETE: '/users/me/onboarding-complete',
   USERS_ME_ADDRESSES: '/users/me/addresses',
   USERS_ME_FAVORITE_VENUES: '/users/me/favorite-venues',

@@ -32,6 +32,12 @@ export interface NotificationPreferences {
   sms_reservations: boolean;
 }
 
+export interface PrivacyPreferences {
+  analytics_consent: boolean;
+  marketing_consent: boolean;
+  legal_updates_email: boolean;
+}
+
 export interface SubscriptionInfo {
   id: string;
   status: 'active' | 'canceled' | 'past_due' | 'trialing';
@@ -133,6 +139,40 @@ export function useUpdateNotificationPreferences() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+    },
+  });
+}
+
+/**
+ * Get privacy preferences
+ */
+export function usePrivacyPreferences() {
+  return useQuery<PrivacyPreferences>({
+    queryKey: ['privacy-preferences'],
+    queryFn: async () => {
+      const response = await apiClient.get(API_ENDPOINTS.USERS_ME_PRIVACY_PREFS);
+      return response.data;
+    },
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Update privacy preferences
+ */
+export function useUpdatePrivacyPreferences() {
+  const queryClient = useQueryClient();
+
+  return useMutation<PrivacyPreferences, Error, Partial<PrivacyPreferences>>({
+    mutationFn: async (data) => {
+      const response = await apiClient.put(API_ENDPOINTS.USERS_ME_PRIVACY_PREFS, data);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['privacy-preferences'], data);
     },
   });
 }
