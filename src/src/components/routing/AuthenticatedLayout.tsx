@@ -45,6 +45,10 @@ export function AuthenticatedLayout() {
 
   const sendSessionHeartbeat = useCallback(() => {
     if (!isAuthenticated || !currentUser) return;
+    if (typeof document !== 'undefined') {
+      if (document.visibilityState !== 'visible') return;
+      if (typeof document.hasFocus === 'function' && !document.hasFocus()) return;
+    }
     triggerSessionHeartbeat().catch(() => undefined);
   }, [isAuthenticated, currentUser]);
 

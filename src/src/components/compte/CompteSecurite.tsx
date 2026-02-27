@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageType } from '../../types';
 import {
   ArrowLeft,
@@ -59,6 +59,11 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
     let cancelled = false;
 
     const syncCurrentSession = async () => {
+      if (typeof document !== 'undefined') {
+        if (document.visibilityState !== 'visible') return;
+        if (typeof document.hasFocus === 'function' && !document.hasFocus()) return;
+      }
+
       try {
         await sendSessionHeartbeat();
       } catch {
@@ -77,6 +82,16 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
   }, [refetchSessions]);
 
   const otherSessionsCount = sessions.filter((session) => !session.is_current).length;
+  const lastKnownLocation = useMemo(() => {
+    return sessions
+      .slice()
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .map((session) => [session.location?.city, session.location?.region, session.location?.country]
+        .map((value) => value?.trim())
+        .filter(Boolean)
+        .join(', '))
+      .find((value) => value.length > 0) || null;
+  }, [sessions]);
 
   const getErrorMessage = (error: unknown, fallback: string) => {
     return error instanceof Error && error.message ? error.message : fallback;
@@ -124,8 +139,13 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
     const country = session.location?.country?.trim();
     const locationLabel = [city, region, country].filter(Boolean).join(', ');
 
-    if (!locationLabel) return 'Lieu indisponible';
-    return locationLabel;
+    if (locationLabel) {
+      return { label: locationLabel, isLastKnownFallback: false };
+    }
+    if (lastKnownLocation) {
+      return { label: lastKnownLocation, isLastKnownFallback: true };
+    }
+    return { label: 'Lieu indisponible', isLastKnownFallback: false };
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -493,6 +513,7 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                 const isRevoking = revokingSessionId === session.id;
                 const deviceName = getSessionDeviceName(session.device);
                 const browserName = getSessionBrowserName(session.device);
+                const locationInfo = formatSessionLocation(session);
 
                 return (
                   <div
@@ -511,7 +532,8 @@ export function CompteSecurite({ onBack }: CompteSecuriteProps) {
                           {session.is_current ? 'Session actuelle' : 'Session active'}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          {session.is_current ? 'Lieu actuel' : 'Lieu'} : {formatSessionLocation(session)}
+                          {session.is_current ? 'Lieu actuel' : 'Lieu'} : {locationInfo.label}
+                          {locationInfo.isLastKnownFallback ? ' (dernier lieu connu)' : ''}
                         </p>
                         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                           Dernière activité : {formatSessionDate(session.updated_at)}
