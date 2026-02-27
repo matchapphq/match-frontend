@@ -28,47 +28,20 @@ const COOKIE_CONSENT_COOKIE_NAME = 'match_cookie_consent';
 const COOKIE_CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 const LEGAL_UPDATES_STORAGE_KEY = 'match-legal-updates-preference-v1';
 
-const readCookieValue = (cookieName: string): string | null => {
-  if (typeof document === 'undefined') return null;
-
-  const parts = document.cookie.split(';').map((part) => part.trim());
-  const prefix = `${cookieName}=`;
-  const matched = parts.find((part) => part.startsWith(prefix));
-  if (!matched) return null;
-
-  return matched.slice(prefix.length);
-};
-
-const parseCookieConsent = (
-  raw: string | null,
-): { analyticsConsent: boolean; marketingConsent: boolean } | null => {
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(decodeURIComponent(raw));
-    const analyticsConsent = typeof parsed?.analyticsConsent === 'boolean' ? parsed.analyticsConsent : null;
-    const marketingConsent = typeof parsed?.marketingConsent === 'boolean' ? parsed.marketingConsent : null;
-
-    if (analyticsConsent === null || marketingConsent === null) {
-      return null;
-    }
-
-    return { analyticsConsent, marketingConsent };
-  } catch {
-    return null;
-  }
+type ConsentSettings = {
+  analyticsConsent: boolean | null;
+  marketingConsent: boolean | null;
 };
 
 export function CompteDonnees({ onBack }: CompteDonneesProps) {
   const { logout, isLoggingOut } = useAuth();
   const toast = useToast();
-  const { data: privacyPreferences } = usePrivacyPreferences();
+  const { data: privacyPreferences, isLoading: isPrivacyPreferencesLoading } = usePrivacyPreferences();
   const updatePrivacyPreferencesMutation = useUpdatePrivacyPreferences();
   const hasHydratedConsentRef = useRef(false);
-  const hasHydratedFromBackendRef = useRef(false);
-  const [settings, setSettings] = useState({
-    analyticsConsent: true,
-    marketingConsent: true,
+  const [settings, setSettings] = useState<ConsentSettings>({
+    analyticsConsent: null,
+    marketingConsent: null,
   });
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportMessage, setExportMessage] = useState('');
@@ -78,79 +51,40 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
   const [deleteReason, setDeleteReason] = useState('Je n’utilise plus Match');
   const [deleteDetails, setDeleteDetails] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
-  const [legalUpdatesByEmail, setLegalUpdatesByEmail] = useState(true);
+  const [legalUpdatesByEmail, setLegalUpdatesByEmail] = useState<boolean | null>(null);
   const [deleteSubmitError, setDeleteSubmitError] = useState<string | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
-  const enabledConsentCount = Object.values(settings).filter(Boolean).length;
+  const areConsentSettingsReady =
+    settings.analyticsConsent !== null &&
+    settings.marketingConsent !== null &&
+    legalUpdatesByEmail !== null;
+  const enabledConsentCount = [settings.analyticsConsent, settings.marketingConsent].filter((value) => value === true).length;
   const cookieStatus = useMemo(() => {
+    if (!areConsentSettingsReady) return 'Chargement';
     if (settings.analyticsConsent && settings.marketingConsent) return 'Complet';
     if (!settings.analyticsConsent && !settings.marketingConsent) return 'Essentiels';
     return 'Partiels';
-  }, [settings.analyticsConsent, settings.marketingConsent]);
+  }, [areConsentSettingsReady, settings.analyticsConsent, settings.marketingConsent]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!privacyPreferences) return;
 
-    const localRaw = window.localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY);
-    const cookieRaw = readCookieValue(COOKIE_CONSENT_COOKIE_NAME);
-
-    const fromLocalStorage = parseCookieConsent(localRaw);
-    const fromCookie = parseCookieConsent(cookieRaw);
-    const consent = fromLocalStorage ?? fromCookie;
-
-    if (!consent) {
-      const legalPreferenceRaw = window.localStorage.getItem(LEGAL_UPDATES_STORAGE_KEY);
-      if (legalPreferenceRaw) {
-        try {
-          const parsed = JSON.parse(legalPreferenceRaw);
-          if (typeof parsed?.enabled === 'boolean') {
-            setLegalUpdatesByEmail(parsed.enabled);
-          }
-        } catch {
-          // Keep default when stored value is invalid.
-        }
-      }
-      hasHydratedConsentRef.current = true;
-      return;
-    }
-
-    setSettings((prev) => ({
-      ...prev,
-      analyticsConsent: consent.analyticsConsent,
-      marketingConsent: consent.marketingConsent,
-    }));
-
-    const legalPreferenceRaw = window.localStorage.getItem(LEGAL_UPDATES_STORAGE_KEY);
-    if (legalPreferenceRaw) {
-      try {
-        const parsed = JSON.parse(legalPreferenceRaw);
-        if (typeof parsed?.enabled === 'boolean') {
-          setLegalUpdatesByEmail(parsed.enabled);
-        }
-      } catch {
-        // Keep default when stored value is invalid.
-      }
-    }
-
-    hasHydratedConsentRef.current = true;
-  }, []);
-
-  useEffect(() => {
-    if (!privacyPreferences || hasHydratedFromBackendRef.current) return;
-
-    setSettings((prev) => ({
-      ...prev,
+    setSettings({
       analyticsConsent: privacyPreferences.analytics_consent,
       marketingConsent: privacyPreferences.marketing_consent,
-    }));
+    });
     setLegalUpdatesByEmail(privacyPreferences.legal_updates_email);
-    hasHydratedFromBackendRef.current = true;
     hasHydratedConsentRef.current = true;
   }, [privacyPreferences]);
 
   useEffect(() => {
-    if (!hasHydratedConsentRef.current || typeof window === 'undefined' || typeof document === 'undefined') {
+    if (
+      !hasHydratedConsentRef.current ||
+      !areConsentSettingsReady ||
+      typeof window === 'undefined' ||
+      typeof document === 'undefined'
+    ) {
       return;
     }
 
@@ -174,10 +108,10 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
         },
       }),
     );
-  }, [settings.analyticsConsent, settings.marketingConsent]);
+  }, [areConsentSettingsReady, settings.analyticsConsent, settings.marketingConsent]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (legalUpdatesByEmail === null || typeof window === 'undefined') return;
 
     const payload = {
       enabled: legalUpdatesByEmail,
@@ -216,9 +150,18 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
   ];
 
   const handleToggle = (key: keyof typeof settings) => {
-    const nextValue = !settings[key];
+    if (!areConsentSettingsReady || legalUpdatesByEmail === null) return;
+
+    const currentValue = settings[key];
+    if (currentValue === null) return;
+    const analyticsConsent = settings.analyticsConsent;
+    const marketingConsent = settings.marketingConsent;
+    if (analyticsConsent === null || marketingConsent === null) return;
+
+    const nextValue = !currentValue;
     const nextSettings = {
-      ...settings,
+      analyticsConsent,
+      marketingConsent,
       [key]: nextValue,
     };
     setSettings(nextSettings);
@@ -231,11 +174,16 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
   };
 
   const handleToggleLegalUpdatesByEmail = () => {
+    if (!areConsentSettingsReady || legalUpdatesByEmail === null) return;
+    const analyticsConsent = settings.analyticsConsent;
+    const marketingConsent = settings.marketingConsent;
+    if (analyticsConsent === null || marketingConsent === null) return;
+
     const nextValue = !legalUpdatesByEmail;
     setLegalUpdatesByEmail(nextValue);
     updatePrivacyPreferencesMutation.mutate({
-      analytics_consent: settings.analyticsConsent,
-      marketing_consent: settings.marketingConsent,
+      analytics_consent: analyticsConsent,
+      marketing_consent: marketingConsent,
       legal_updates_email: nextValue,
     });
   };
@@ -413,7 +361,8 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
             <div className="p-6 space-y-3">
               {consentItems.map((item) => {
                 const Icon = item.icon;
-                const enabled = settings[item.key];
+                const enabled = settings[item.key] === true;
+                const isDisabled = !areConsentSettingsReady || updatePrivacyPreferencesMutation.isPending;
 
                 return (
                   <div
@@ -436,8 +385,9 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
 
                     <button
                       onClick={() => handleToggle(item.key)}
+                      disabled={isDisabled}
                       aria-pressed={enabled}
-                      className={`relative w-14 h-8 rounded-full transition-colors flex-shrink-0 ${
+                      className={`relative w-14 h-8 rounded-full transition-colors flex-shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${
                         enabled ? 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef]' : 'bg-gray-300 dark:bg-gray-700'
                       }`}
                     >
@@ -483,8 +433,9 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                     <button
                       type="button"
                       onClick={handleToggleLegalUpdatesByEmail}
-                      aria-pressed={legalUpdatesByEmail}
-                      className={`relative w-14 h-8 rounded-full transition-colors flex-shrink-0 ${
+                      disabled={!areConsentSettingsReady || updatePrivacyPreferencesMutation.isPending}
+                      aria-pressed={legalUpdatesByEmail === true}
+                      className={`relative w-14 h-8 rounded-full transition-colors flex-shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${
                         legalUpdatesByEmail ? 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef]' : 'bg-gray-300 dark:bg-gray-700'
                       }`}
                     >

@@ -153,8 +153,7 @@ export function usePrivacyPreferences() {
       const response = await apiClient.get(API_ENDPOINTS.USERS_ME_PRIVACY_PREFS);
       return response.data;
     },
-    staleTime: Infinity,
-    refetchOnMount: false,
+    refetchOnMount: 'always',
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   });
