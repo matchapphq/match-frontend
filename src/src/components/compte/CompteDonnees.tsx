@@ -217,19 +217,25 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
 
   const handleToggle = (key: keyof typeof settings) => {
     const nextValue = !settings[key];
-    setSettings((prev) => ({ ...prev, [key]: nextValue }));
+    const nextSettings = {
+      ...settings,
+      [key]: nextValue,
+    };
+    setSettings(nextSettings);
 
-    const backendField =
-      key === 'analyticsConsent' ? 'analytics_consent' : 'marketing_consent';
     updatePrivacyPreferencesMutation.mutate({
-      [backendField]: nextValue,
-    } as { analytics_consent?: boolean; marketing_consent?: boolean });
+      analytics_consent: nextSettings.analyticsConsent,
+      marketing_consent: nextSettings.marketingConsent,
+      legal_updates_email: legalUpdatesByEmail,
+    });
   };
 
   const handleToggleLegalUpdatesByEmail = () => {
     const nextValue = !legalUpdatesByEmail;
     setLegalUpdatesByEmail(nextValue);
     updatePrivacyPreferencesMutation.mutate({
+      analytics_consent: settings.analyticsConsent,
+      marketing_consent: settings.marketingConsent,
       legal_updates_email: nextValue,
     });
   };
