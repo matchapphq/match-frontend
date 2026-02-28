@@ -1,5 +1,7 @@
 import { PageType } from '../../../types';
 import { useAuth } from '../../authentication/context/AuthContext';
+import { useUserProfile } from '../../../hooks/api/useAccount';
+import { resolveProfileAvatar } from '../../../utils/profile-avatar';
 import { 
   User, 
   Building2, 
@@ -21,6 +23,8 @@ interface CompteProps {
 
 export function Compte({ onNavigate }: CompteProps) {
   const { logout, currentUser, isLoggingOut } = useAuth();
+  const { data: userProfile } = useUserProfile();
+  const profileAvatar = userProfile?.avatar || userProfile?.avatar_url || currentUser?.avatar;
 
   const menuSections = [
     { 
@@ -94,10 +98,12 @@ export function Compte({ onNavigate }: CompteProps) {
         {/* User Profile Card */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 lg:p-6 xl:p-8 mb-6 lg:mb-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 lg:gap-6">
-            <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] flex items-center justify-center shadow-lg flex-shrink-0">
-              <span className="text-white text-xl lg:text-2xl font-semibold">
-                {currentUser?.prenom?.[0]}{currentUser?.nom?.[0]}
-              </span>
+            <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] flex items-center justify-center shadow-lg flex-shrink-0">
+              <img
+                src={resolveProfileAvatar(profileAvatar)}
+                alt="Photo de profil"
+                className="h-full w-full object-cover"
+              />
             </div>
             <div className="flex-1 min-w-0 w-full sm:w-auto">
               <h2 className="text-lg lg:text-xl text-gray-900 dark:text-white mb-2 font-semibold">
