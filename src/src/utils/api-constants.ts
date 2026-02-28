@@ -21,10 +21,16 @@ export const API_ENDPOINTS = {
   
   // ==================== Users ====================
   USERS_ME: '/users/me',
+  USERS_ME_PASSWORD: '/users/me/password',
+  USERS_ME_SESSIONS: '/users/me/sessions',
+  USERS_ME_SESSIONS_OTHERS: '/users/me/sessions/others',
+  USERS_ME_SESSION_HEARTBEAT: '/users/me/session-heartbeat',
   USERS_ME_NOTIFICATION_PREFS: '/users/me/notification-preferences',
+  USERS_ME_PRIVACY_PREFS: '/users/me/privacy-preferences',
   USERS_ME_ONBOARDING_COMPLETE: '/users/me/onboarding-complete',
   USERS_ME_ADDRESSES: '/users/me/addresses',
   USERS_ME_FAVORITE_VENUES: '/users/me/favorite-venues',
+  USERS_ME_SESSION: (sessionId: string) => `/users/me/sessions/${sessionId}`,
   USERS_ADDRESS: (addressId: string) => `/users/me/addresses/${addressId}`,
   
   // ==================== Onboarding ====================
@@ -120,6 +126,9 @@ export const API_ENDPOINTS = {
   
   NOTIFICATION_READ: (notificationId: string) => `/notifications/${notificationId}/read`,
   NOTIFICATION_DELETE: (notificationId: string) => `/notifications/${notificationId}`,
+
+  // ==================== Support ====================
+  SUPPORT_DATA_EXPORT_REQUEST: '/support/data-export-request',
   
   // ==================== Subscriptions ====================
   SUBSCRIPTIONS_PLANS: '/subscriptions/plans',

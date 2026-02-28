@@ -63,7 +63,7 @@ export function Privacy() {
             <span className="text-sm">Page légale</span>
           </div>
           <h1 className="text-3xl sm:text-4xl text-gray-900 dark:text-white mb-3">Politique de confidentialité</h1>
-          <p className="text-gray-600 dark:text-gray-400">Dernière mise à jour : 22 février 2026</p>
+          <p className="text-gray-600 dark:text-gray-400">Dernière mise à jour : 27 février 2026</p>
         </div>
 
         <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-gray-200/50 dark:border-gray-700/50 shadow-xl space-y-6">
@@ -81,6 +81,9 @@ export function Privacy() {
             <h2 className="text-xl text-gray-900 dark:text-white">2. Données que nous collectons</h2>
             <p className="text-gray-700 dark:text-gray-300">
               Selon votre usage, nous pouvons collecter : nom, prénom, email, numéro de téléphone, photo de profil, rôle de compte, préférences, données de réservation, et données techniques (adresse IP, logs, appareil, navigateur).
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              Pour la gestion des sessions et la sécurité du compte, nous pouvons également traiter une localisation approximative de connexion (ville, région, pays) déduite à partir de l&apos;adresse IP ou de métadonnées réseau fournies par notre infrastructure.
             </p>
           </section>
 
@@ -109,6 +112,9 @@ export function Privacy() {
               Nous traitons vos données pour : créer et sécuriser votre compte, vous authentifier, permettre les réservations et fonctionnalités de l&apos;application, améliorer le service, répondre au support client et respecter nos obligations légales.
             </p>
             <p className="text-gray-700 dark:text-gray-300">
+              Les données techniques de session, y compris la localisation approximative de connexion lorsqu&apos;elle est disponible, peuvent être utilisées pour détecter des anomalies d&apos;accès, afficher vos sessions actives et renforcer la protection du compte.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
               Nous n&apos;utilisons pas les données Google pour de la revente de données personnelles.
             </p>
           </section>
@@ -131,6 +137,9 @@ export function Privacy() {
             <h2 className="text-xl text-gray-900 dark:text-white">7. Partage des données</h2>
             <p className="text-gray-700 dark:text-gray-300">
               Vos données peuvent être partagées uniquement avec des prestataires techniques nécessaires au fonctionnement de Match (hébergement, infrastructure, outils de communication), dans le respect de contrats de confidentialité et de sécurité.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              Lorsque cela est nécessaire à la sécurité des sessions, une résolution technique de localisation approximative associée à une adresse IP peut être effectuée côté serveur par des prestataires techniques agissant pour notre compte.
             </p>
           </section>
 

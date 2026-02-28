@@ -37,7 +37,7 @@ const bottomNavigation = [
 ];
 
 export function Sidebar() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, isLoggingOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -189,10 +189,11 @@ export function Sidebar() {
               </div>
               <button
                 onClick={logout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm"
+                disabled={isLoggingOut}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <LogOut className="w-5 h-5" />
-                Déconnexion
+                {isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}
               </button>
             </div>
           )}
@@ -200,7 +201,8 @@ export function Sidebar() {
           {isCollapsed && (
             <button
               onClick={logout}
-              className="w-full flex items-center justify-center px-3 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              disabled={isLoggingOut}
+              className="w-full flex items-center justify-center px-3 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               title="Déconnexion"
             >
               <LogOut className="w-5 h-5" />

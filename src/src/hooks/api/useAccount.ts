@@ -32,6 +32,13 @@ export interface NotificationPreferences {
   sms_reservations: boolean;
 }
 
+export interface PrivacyPreferences {
+  analytics_consent: boolean;
+  marketing_consent: boolean;
+  legal_updates_email: boolean;
+  account_deletion_grace_days: number;
+}
+
 export interface SubscriptionInfo {
   id: string;
   status: 'active' | 'canceled' | 'past_due' | 'trialing';
@@ -59,6 +66,20 @@ export interface Invoice {
 export interface UpdatePasswordData {
   current_password: string;
   new_password: string;
+  confirm_password: string;
+}
+
+export interface UserSession {
+  id: string;
+  device: string;
+  location?: {
+    city?: string | null;
+    region?: string | null;
+    country?: string | null;
+  };
+  created_at: string;
+  updated_at: string;
+  is_current: boolean;
 }
 
 // ==================== Hooks ====================
@@ -71,7 +92,7 @@ export function useUserProfile() {
     queryKey: ['user-profile'],
     queryFn: async () => {
       const response = await apiClient.get(API_ENDPOINTS.USERS_ME);
-      return response.data;
+      return response.data?.user ?? response.data;
     },
   });
 }
@@ -124,6 +145,39 @@ export function useUpdateNotificationPreferences() {
 }
 
 /**
+ * Get privacy preferences
+ */
+export function usePrivacyPreferences() {
+  return useQuery<PrivacyPreferences>({
+    queryKey: ['privacy-preferences'],
+    queryFn: async () => {
+      const response = await apiClient.get(API_ENDPOINTS.USERS_ME_PRIVACY_PREFS);
+      return response.data;
+    },
+    refetchOnMount: 'always',
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Update privacy preferences
+ */
+export function useUpdatePrivacyPreferences() {
+  const queryClient = useQueryClient();
+
+  return useMutation<PrivacyPreferences, Error, Partial<PrivacyPreferences>>({
+    mutationFn: async (data) => {
+      const response = await apiClient.put(API_ENDPOINTS.USERS_ME_PRIVACY_PREFS, data);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['privacy-preferences'], data);
+    },
+  });
+}
+
+/**
  * Get current subscription info
  */
 export function useSubscription() {
@@ -165,10 +219,57 @@ export function usePaymentPortal() {
  * Update password
  */
 export function useUpdatePassword() {
-  return useMutation<{ success: boolean }, Error, UpdatePasswordData>({
+  return useMutation<{ message: string }, Error, UpdatePasswordData>({
     mutationFn: async (data) => {
-      const response = await apiClient.put('/auth/update-password', data);
+      const response = await apiClient.put(API_ENDPOINTS.USERS_ME_PASSWORD, data);
       return response.data;
+    },
+  });
+}
+
+/**
+ * Get active user sessions
+ */
+export function useSessions() {
+  return useQuery<UserSession[]>({
+    queryKey: ['user-sessions'],
+    queryFn: async () => {
+      const response = await apiClient.get(API_ENDPOINTS.USERS_ME_SESSIONS);
+      return response.data?.sessions || [];
+    },
+  });
+}
+
+/**
+ * Revoke a single session
+ */
+export function useRevokeSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, Error, string>({
+    mutationFn: async (sessionId) => {
+      const response = await apiClient.delete(API_ENDPOINTS.USERS_ME_SESSION(sessionId));
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-sessions'] });
+    },
+  });
+}
+
+/**
+ * Revoke all other sessions
+ */
+export function useRevokeOtherSessions() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string; revoked: number; kept_session_id: string | null }, Error, void>({
+    mutationFn: async () => {
+      const response = await apiClient.delete(API_ENDPOINTS.USERS_ME_SESSIONS_OTHERS);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-sessions'] });
     },
   });
 }

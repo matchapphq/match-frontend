@@ -78,8 +78,10 @@ class ApiService {
   }
 
   async logout() {
-    return this.request<{ success: boolean }>('/auth/logout', {
+    const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+    return this.request<{ message: string; session_revoked: boolean }>('/auth/logout', {
       method: 'POST',
+      body: refreshToken ? { refresh_token: refreshToken } : undefined,
     });
   }
 
