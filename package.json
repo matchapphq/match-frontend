@@ -1,6 +1,6 @@
 {
   "name": "moderne-match",
-  "version": "0.1.0",
+  "version": "0.8.9",
   "private": true,
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.3",
