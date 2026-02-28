@@ -9,6 +9,7 @@ export interface User {
   nom: string;
   prenom: string;
   telephone?: string;
+  avatar?: string;
   role?: 'user' | 'venue_owner' | 'admin';
   hasCompletedOnboarding: boolean;
   onboardingStep: 'restaurant' | 'facturation' | 'complete';
@@ -53,6 +54,7 @@ function apiUserToUser(apiUser: ApiUser): User {
     nom: apiUser.last_name,
     prenom: apiUser.first_name,
     telephone: apiUser.phone,
+    avatar: apiUser.avatar,
     role: apiUser.role,
     hasCompletedOnboarding: apiUser.has_completed_onboarding ?? false,
     onboardingStep: apiUser.has_completed_onboarding ? 'complete' : 'restaurant',
@@ -423,6 +425,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: response.user.email,
           nom: '',
           prenom: '',
+          avatar: response.user.avatar,
           role: response.user.role,
           hasCompletedOnboarding: false,
           onboardingStep: 'restaurant',
@@ -465,6 +468,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: response.user.email,
           nom: response.user.last_name || '',
           prenom: response.user.first_name || '',
+          avatar: response.user.avatar,
           role: response.user.role,
           hasCompletedOnboarding: false,
           onboardingStep: 'restaurant',
