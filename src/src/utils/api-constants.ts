@@ -129,6 +129,7 @@ export const API_ENDPOINTS = {
 
   // ==================== Support ====================
   SUPPORT_DATA_EXPORT_REQUEST: '/support/data-export-request',
+  MEDIA_AVATAR: '/media/avatar',
   
   // ==================== Subscriptions ====================
   SUBSCRIPTIONS_PLANS: '/subscriptions/plans',
