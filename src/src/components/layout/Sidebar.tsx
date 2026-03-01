@@ -21,7 +21,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 // import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import logo from '../../../assets/logo.png';
 import { useAuth } from '../../features/authentication/context/AuthContext';
+import { useUserProfile } from '../../hooks/api/useAccount';
 import { useTheme } from '../../features/theme/context/ThemeContext';
+import { resolveProfileAvatar } from '../../utils/profile-avatar';
 
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -38,6 +40,7 @@ const bottomNavigation = [
 
 export function Sidebar() {
   const { currentUser, logout, isLoggingOut } = useAuth();
+  const { data: userProfile } = useUserProfile();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -53,6 +56,8 @@ export function Sidebar() {
     navigate(path);
     setIsMobileOpen(false);
   };
+
+  const profileAvatar = userProfile?.avatar || userProfile?.avatar_url || currentUser?.avatar;
 
   return (
     <>
@@ -177,8 +182,12 @@ export function Sidebar() {
           {!isCollapsed && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
               <div className="flex items-center gap-3 px-3 py-2 mb-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] rounded-full flex items-center justify-center text-white text-sm flex-shrink-0">
-                  {currentUser?.prenom?.charAt(0)}
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] flex items-center justify-center text-white text-sm flex-shrink-0">
+                  <img
+                    src={resolveProfileAvatar(profileAvatar)}
+                    alt="Photo de profil"
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">

@@ -633,6 +633,7 @@ export interface ApiUser {
   first_name: string;
   last_name: string;
   phone?: string;
+  avatar?: string;
   role: 'user' | 'venue_owner' | 'admin';
   has_completed_onboarding?: boolean;
   created_at?: string;
