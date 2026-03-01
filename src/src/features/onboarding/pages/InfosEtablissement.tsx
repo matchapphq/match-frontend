@@ -113,7 +113,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
     },
   ]), []);
 
-  const selectedType = etablissementTypes.find((type) => type.value === formData.typeEtablissement) || etablissementTypes[0];
+  const selectedType = etablissementTypes.find((type) => type.value === formData.typeEtablissement) || etablissementTypes[0]!;
   const SelectedTypeIcon = selectedType.icon;
   const successRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/confirmation' : '/onboarding/confirmation'}`;
   const cancelRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/payment' : '/onboarding/payment'}`;

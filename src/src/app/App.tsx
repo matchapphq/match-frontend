@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../features/authentication/context/AuthContext';
@@ -109,11 +109,13 @@ function StripeReturnHandler() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
+  const attemptedRecoverySessionId = useRef<string | null>(null);
 
   const verifyCheckout = useCallback(async (
     stripeSessionId: string,
     checkoutState: CheckoutState | null,
-    checkoutType: 'venue' | 'boost' | null
+    checkoutType: 'venue' | 'boost' | null,
+    mode: 'return' | 'recovery' = 'return',
   ) => {
     if (processing) return;
     setProcessing(true);
@@ -126,6 +128,17 @@ function StripeReturnHandler() {
         await queryClient.invalidateQueries({ queryKey: ['available-boosts'] });
         await queryClient.invalidateQueries({ queryKey: ['boost-history'] });
         navigate('/boost?success=true', { replace: true });
+        return;
+      }
+
+      if (checkoutState?.type === 'billing-subscription') {
+        cleanCheckoutUrl();
+        clearCheckoutState();
+        await refreshUserData();
+        await queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
+        await queryClient.invalidateQueries({ queryKey: ['venue-subscription', checkoutState.venueId] });
+        await queryClient.invalidateQueries({ queryKey: ['venue-invoices', checkoutState.venueId] });
+        navigate(checkoutState.venueId ? `/account/billing?venue=${checkoutState.venueId}` : '/account/billing', { replace: true });
         return;
       }
 
@@ -144,8 +157,10 @@ function StripeReturnHandler() {
       }
     } catch (err) {
       console.error('Error verifying payment:', err);
-      clearCheckoutState();
-      navigate('/', { replace: true });
+      if (mode === 'return') {
+        clearCheckoutState();
+        navigate('/', { replace: true });
+      }
     } finally {
       setProcessing(false);
     }
@@ -160,12 +175,26 @@ function StripeReturnHandler() {
       clearCheckoutState();
       if (checkoutState?.type === 'add-venue') {
         navigate('/my-venues', { replace: true });
+      } else if (checkoutState?.type === 'billing-subscription') {
+        navigate(checkoutState.venueId ? `/account/billing?venue=${checkoutState.venueId}` : '/account/billing', { replace: true });
       }
       return;
     }
 
     if (stripeReturn.success && stripeReturn.sessionId && isAuthenticated && !processing) {
-      verifyCheckout(stripeReturn.sessionId, checkoutState, stripeReturn.type);
+      verifyCheckout(stripeReturn.sessionId, checkoutState, stripeReturn.type, 'return');
+      return;
+    }
+
+    if (
+      isAuthenticated &&
+      !processing &&
+      checkoutState?.sessionId &&
+      (checkoutState.type === 'add-venue' || checkoutState.type === 'onboarding') &&
+      attemptedRecoverySessionId.current !== checkoutState.sessionId
+    ) {
+      attemptedRecoverySessionId.current = checkoutState.sessionId;
+      verifyCheckout(checkoutState.sessionId, checkoutState, 'venue', 'recovery');
     }
   }, [isAuthenticated, processing, verifyCheckout, navigate]);
 
@@ -246,16 +275,3 @@ function AppRoutes() {
     </Routes>
   );
 }
-      if (checkoutState?.type === 'billing-subscription') {
-        cleanCheckoutUrl();
-        clearCheckoutState();
-        await refreshUserData();
-        await queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
-        await queryClient.invalidateQueries({ queryKey: ['venue-subscription', checkoutState.venueId] });
-        await queryClient.invalidateQueries({ queryKey: ['venue-invoices', checkoutState.venueId] });
-        navigate(checkoutState.venueId ? `/account/billing?venue=${checkoutState.venueId}` : '/account/billing', { replace: true });
-        return;
-      }
-
-      } else if (checkoutState?.type === 'billing-subscription') {
-        navigate(checkoutState.venueId ? `/account/billing?venue=${checkoutState.venueId}` : '/account/billing', { replace: true });
