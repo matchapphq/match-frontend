@@ -246,3 +246,16 @@ function AppRoutes() {
     </Routes>
   );
 }
+      if (checkoutState?.type === 'billing-subscription') {
+        cleanCheckoutUrl();
+        clearCheckoutState();
+        await refreshUserData();
+        await queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
+        await queryClient.invalidateQueries({ queryKey: ['venue-subscription', checkoutState.venueId] });
+        await queryClient.invalidateQueries({ queryKey: ['venue-invoices', checkoutState.venueId] });
+        navigate(checkoutState.venueId ? `/account/billing?venue=${checkoutState.venueId}` : '/account/billing', { replace: true });
+        return;
+      }
+
+      } else if (checkoutState?.type === 'billing-subscription') {
+        navigate(checkoutState.venueId ? `/account/billing?venue=${checkoutState.venueId}` : '/account/billing', { replace: true });
