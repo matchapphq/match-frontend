@@ -51,6 +51,7 @@ export const API_ENDPOINTS = {
   PARTNERS_VENUE_MATCH: (venueId: string, matchId: string) => `/partners/venues/${venueId}/matches/${matchId}`,
   PARTNERS_VENUE_CLIENTS: (venueId: string) => `/partners/venues/${venueId}/clients`,
   PARTNERS_VENUE_SUBSCRIPTION: (venueId: string) => `/partners/venues/${venueId}/subscription`,
+  PARTNERS_VENUE_INVOICES: (venueId: string) => `/partners/venues/${venueId}/invoices`,
   PARTNERS_VENUE_PAYMENT_PORTAL: (venueId: string) => `/partners/venues/${venueId}/payment-portal`,
   
   PARTNERS_RESERVATION_UPDATE: (reservationId: string) => `/partners/reservations/${reservationId}`,

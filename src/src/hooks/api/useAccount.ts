@@ -42,25 +42,57 @@ export interface PrivacyPreferences {
 export interface SubscriptionInfo {
   id: string;
   status: 'active' | 'canceled' | 'past_due' | 'trialing';
-  plan_name: string;
-  plan_type: 'mensuel' | 'annuel';
+  plan_name?: string;
+  display_price?: string;
+  plan_type?: 'mensuel' | 'annuel';
   current_period_start: string;
   current_period_end: string;
-  cancel_at_period_end: boolean;
-  amount: number;
+  cancel_at_period_end?: boolean;
+  will_renew?: boolean;
+  auto_renew?: boolean;
+  amount?: number;
+  price?: string;
   currency: string;
+  payment_method?: {
+    type: string;
+    brand: string | null;
+    last4: string | null;
+    exp_month: number | null;
+    exp_year: number | null;
+  } | null;
+  next_billing_at?: string;
 }
 
 export interface Invoice {
   id: string;
-  number: string;
-  amount: number;
-  currency: string;
-  status: 'paid' | 'open' | 'draft' | 'void';
+  invoice_number?: string;
+  number?: string;
+  subscription_id?: string;
+  stripe_subscription_id?: string | null;
+  amount?: number | string;
+  subtotal?: number | string;
+  tax?: number | string;
+  total?: number | string;
+  currency?: string;
+  venue_id?: string;
+  status: 'paid' | 'open' | 'draft' | 'void' | 'pending' | 'overdue' | 'canceled';
+  issue_date?: string;
+  due_date?: string;
   created_at: string;
   paid_at?: string;
+  paid_date?: string;
   pdf_url?: string;
   description?: string;
+}
+
+export interface VenueSubscription extends SubscriptionInfo {
+  plan: string;
+  stripe_subscription_id?: string;
+  canceled_at: string | null;
+  plan_details?: {
+    name: string;
+    features: string[];
+  } | null;
 }
 
 export interface UpdatePasswordData {
@@ -181,11 +213,11 @@ export function useUpdatePrivacyPreferences() {
  * Get current subscription info
  */
 export function useSubscription() {
-  return useQuery<SubscriptionInfo>({
+  return useQuery<SubscriptionInfo | null>({
     queryKey: ['subscription'],
     queryFn: async () => {
       const response = await apiClient.get(API_ENDPOINTS.SUBSCRIPTIONS_ME);
-      return response.data;
+      return response.data?.subscription ?? response.data ?? null;
     },
   });
 }
@@ -203,13 +235,60 @@ export function useInvoices() {
   });
 }
 
+export function useVenueInvoices(venueId?: string) {
+  return useQuery<Invoice[]>({
+    queryKey: ['venue-invoices', venueId],
+    enabled: Boolean(venueId),
+    queryFn: async () => {
+      if (!venueId) return [];
+      const response = await apiClient.get(API_ENDPOINTS.PARTNERS_VENUE_INVOICES(venueId));
+      return response.data?.invoices || response.data || [];
+    },
+  });
+}
+
 /**
  * Get Stripe payment portal URL
  */
 export function usePaymentPortal() {
-  return useMutation<{ url: string }, Error, void>({
+  return useMutation<{ portal_url: string }, Error, void>({
     mutationFn: async () => {
       const response = await apiClient.post(API_ENDPOINTS.SUBSCRIPTIONS_UPDATE_PAYMENT);
+      return response.data;
+    },
+  });
+}
+
+export function useCreateSubscriptionCheckout() {
+  return useMutation<{ checkout_url: string; session_id: string }, Error, { planId: 'monthly' | 'annual'; venueId?: string; successUrl?: string; cancelUrl?: string }>({
+    mutationFn: async ({ planId, venueId, successUrl, cancelUrl }) => {
+      const response = await apiClient.post(API_ENDPOINTS.SUBSCRIPTIONS_CREATE_CHECKOUT, {
+        plan_id: planId,
+        venue_id: venueId,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+      });
+      return response.data;
+    },
+  });
+}
+
+export function useVenueSubscription(venueId?: string) {
+  return useQuery<VenueSubscription | null>({
+    queryKey: ['venue-subscription', venueId],
+    enabled: Boolean(venueId),
+    queryFn: async () => {
+      if (!venueId) return null;
+      const response = await apiClient.get(API_ENDPOINTS.PARTNERS_VENUE_SUBSCRIPTION(venueId));
+      return response.data?.subscription ?? response.data ?? null;
+    },
+  });
+}
+
+export function useVenuePaymentPortal() {
+  return useMutation<{ portal_url: string }, Error, string>({
+    mutationFn: async (venueId) => {
+      const response = await apiClient.post(API_ENDPOINTS.PARTNERS_VENUE_PAYMENT_PORTAL(venueId));
       return response.data;
     },
   });
