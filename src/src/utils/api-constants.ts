@@ -128,6 +128,7 @@ export const API_ENDPOINTS = {
   NOTIFICATION_DELETE: (notificationId: string) => `/notifications/${notificationId}`,
 
   // ==================== Support ====================
+  SUPPORT_CONTACT_REQUEST: '/support/contact-request',
   SUPPORT_DATA_EXPORT_REQUEST: '/support/data-export-request',
   MEDIA_AVATAR: '/media/avatar',
   
