@@ -8,4 +8,10 @@
   Run `npm i` to install the dependencies.
 
   Run `npm run dev` to start the development server.
+
+  ## Account Deactivation Grace Period
+
+  The dashboard does not define the reactivation/deletion grace period locally.
+  It reads `account_deletion_grace_days` from `GET /users/me/privacy-preferences`,
+  which is controlled by the backend env variable `ACCOUNT_DELETION_GRACE_DAYS`.
   

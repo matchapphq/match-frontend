@@ -1,10 +1,62 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../utils/api-constants';
+import type { LogoutReason } from '../features/authentication/types/logout';
 
 // Extend axios config to track retry attempts
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
+
+const extractBackendError = (error: unknown): string | null => {
+  if (!error || typeof error !== 'object') return null;
+
+  const maybeAxiosError = error as AxiosError<{ error?: string; message?: string }>;
+  const responseError = maybeAxiosError.response?.data?.error || maybeAxiosError.response?.data?.message;
+  if (typeof responseError === 'string' && responseError.trim().length > 0) {
+    return responseError.trim();
+  }
+
+  if ('message' in (error as object) && typeof (error as { message?: unknown }).message === 'string') {
+    const value = (error as { message: string }).message.trim();
+    return value.length > 0 ? value : null;
+  }
+
+  return null;
+};
+
+const resolveLogoutReason = (backendError: string | null): LogoutReason => {
+  const normalized = backendError?.trim().toUpperCase() || '';
+
+  if (normalized === 'SESSION_EXPIRED_INACTIVE' || normalized === 'SESSION EXPIRED INACTIVE') {
+    return 'session_inactive';
+  }
+  if (normalized === 'SESSION_HIJACK_DETECTED') {
+    return 'session_security';
+  }
+  if (
+    normalized === 'INVALID_SESSION' ||
+    normalized === 'SESSION INVALID' ||
+    normalized === 'SESSION REVOKED'
+  ) {
+    return 'session_invalidated';
+  }
+  if (normalized === 'INVALID_REFRESH_TOKEN') {
+    return 'session_expired';
+  }
+
+  return 'token_refresh_failed';
+};
+
+const dispatchLogoutEvent = (reason: LogoutReason, backendError?: string | null) => {
+  window.dispatchEvent(
+    new CustomEvent('auth:logout', {
+      detail: {
+        reason,
+        backend_error: backendError || null,
+      },
+    })
+  );
+};
 
 // Token refresh state to prevent multiple simultaneous refresh calls
 let isRefreshing = false;
@@ -87,38 +139,49 @@ apiClient.interceptors.response.use(
 
       try {
         const storedRefreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+        if (!storedRefreshToken) {
+          throw new Error('MISSING_REFRESH_TOKEN');
+        }
 
         // Call refresh token endpoint
         const response = await axios.post(
           `${API_BASE_URL}/auth/refresh-token`,
-          storedRefreshToken ? { refresh_token: storedRefreshToken } : {},
+          { refresh_token: storedRefreshToken },
           { withCredentials: true }
         );
 
         const newToken = response.data.token;
         const newRefreshToken = response.data.refresh_token;
 
-        if (newToken) {
-          // Save new token
-          localStorage.setItem('authToken', newToken);
-          if (newRefreshToken) {
-            localStorage.setItem('refresh_token', newRefreshToken);
-          }
-          
-          // Update authorization header for the original request
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          }
-
-          // Process queued requests with new token
-          processQueue(null, newToken);
-
-          // Retry the original request
-          return apiClient(originalRequest);
+        if (!newToken) {
+          throw new Error('TOKEN_REFRESH_NO_TOKEN');
         }
+
+        // Save new token
+        localStorage.setItem('authToken', newToken);
+        if (newRefreshToken) {
+          localStorage.setItem('refresh_token', newRefreshToken);
+        }
+        
+        // Update authorization header for the original request
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        }
+
+        // Process queued requests with new token
+        processQueue(null, newToken);
+
+        // Retry the original request
+        return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed - clear tokens and redirect to login
-        processQueue(new Error('Token refresh failed'), null);
+        const backendError = extractBackendError(refreshError);
+        const reason: LogoutReason =
+          backendError === 'MISSING_REFRESH_TOKEN'
+            ? 'missing_refresh_token'
+            : resolveLogoutReason(backendError);
+
+        processQueue(new Error(backendError || 'Token refresh failed'), null);
         
         localStorage.removeItem('authToken');
         sessionStorage.removeItem('authToken');
@@ -126,7 +189,7 @@ apiClient.interceptors.response.use(
         sessionStorage.removeItem('refresh_token');
         
         // Dispatch a custom event that the auth context can listen to
-        window.dispatchEvent(new CustomEvent('auth:logout', { detail: { reason: 'token_refresh_failed' } }));
+        dispatchLogoutEvent(reason, backendError);
         
         return Promise.reject(refreshError);
       } finally {

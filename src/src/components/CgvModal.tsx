@@ -156,9 +156,7 @@ export function CgvModal({ isOpen, onClose, onSubscribe }: CgvModalProps) {
                   <span className="text-gray-900 dark:text-white">
                     J'accepte les{' '}
                     <a
-                      href="/cgv-b2b.pdf"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href="/terms-of-sale"
                       className="text-[#5a03cf] hover:text-[#7a23ef] underline inline-flex items-center gap-1"
                       onClick={(e) => e.stopPropagation()}
                     >

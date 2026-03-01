@@ -41,7 +41,17 @@ Pour les détails complets avec exemples de code, voir :
 - `/pages/parrainage/Parrainage.tsx` → `GET /api/referral/my-code`
 
 ### Compte
-- `/pages/compte/Compte.tsx` → `GET /api/auth/me`
+- `/src/features/compte/pages/MonCompte.tsx` → `GET /api/users/me`
+- `/src/components/compte/CompteInfos.tsx` → `PUT /api/users/me`
+- `/src/components/compte/CompteNotifications.tsx` → `GET/PUT /api/users/me/notification-preferences`
+- `/src/components/compte/CompteDonnees.tsx` → `GET/PUT /api/users/me/privacy-preferences`
+- `/src/components/compte/CompteDonnees.tsx` → `POST /api/support/data-export-request`
+- `/src/components/compte/CompteDonnees.tsx` → `DELETE /api/users/me`
+- `/src/components/compte/CompteSecurite.tsx` → `PUT /api/users/me/password`
+- `/src/components/compte/CompteSecurite.tsx` → `GET /api/users/me/sessions`
+- `/src/components/compte/CompteSecurite.tsx` → `DELETE /api/users/me/sessions/others`
+- `/src/components/compte/CompteSecurite.tsx` → `DELETE /api/users/me/sessions/:sessionId`
+- `/src/components/routing/AuthenticatedLayout.tsx` → `POST /api/users/me/session-heartbeat`
 
 ---
 

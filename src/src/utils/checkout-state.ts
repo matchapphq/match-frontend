@@ -6,7 +6,7 @@
  */
 
 export interface CheckoutState {
-  type: 'onboarding' | 'add-venue' | 'boost-purchase';
+  type: 'onboarding' | 'add-venue' | 'boost-purchase' | 'billing-subscription';
   venueId?: string;
   venueName?: string;
   formule?: 'mensuel' | 'annuel';

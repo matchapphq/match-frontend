@@ -224,7 +224,7 @@ export function PaiementValidation({ onBack, onNavigate, selectedFormule = 'mens
                     </a>
                   </span>
                   <span className="block mt-2 text-xs text-gray-600 dark:text-gray-400">
-                    Conformément à la loi française, vous disposez d'un droit de rétractation de 14 jours à compter de la souscription.
+                    Les conditions applicables à votre souscription sont détaillées dans les CGV et les CGU.
                   </span>
                 </label>
               </div>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import api, { ApiUser } from '../../../services/api';
+import type { LogoutReason as ForcedLogoutReason } from '../types/logout';
 
 export interface User {
   id: string;
@@ -8,6 +9,7 @@ export interface User {
   nom: string;
   prenom: string;
   telephone?: string;
+  avatar?: string;
   role?: 'user' | 'venue_owner' | 'admin';
   hasCompletedOnboarding: boolean;
   onboardingStep: 'restaurant' | 'facturation' | 'complete';
@@ -16,6 +18,7 @@ export interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   apiStatus: 'checking' | 'online' | 'offline';
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (idToken: string) => Promise<{ success: boolean; error?: string }>;
@@ -27,6 +30,11 @@ interface AuthContextType {
   checkApiHealth: () => Promise<boolean>;
   refreshUserData: () => Promise<void>;
 }
+
+type ForcedLogoutNotice = {
+  title: string;
+  message: string;
+};
 
 export interface RegisterData {
   email: string;
@@ -46,6 +54,7 @@ function apiUserToUser(apiUser: ApiUser): User {
     nom: apiUser.last_name,
     prenom: apiUser.first_name,
     telephone: apiUser.phone,
+    avatar: apiUser.avatar,
     role: apiUser.role,
     hasCompletedOnboarding: apiUser.has_completed_onboarding ?? false,
     onboardingStep: apiUser.has_completed_onboarding ? 'complete' : 'restaurant',
@@ -179,9 +188,46 @@ function getPhoneErrorMessage(country: GooglePhoneCountry): string {
     : 'Numéro invalide. Format attendu: 06 12 34 56 78';
 }
 
+function getForcedLogoutNotice(reason: ForcedLogoutReason): ForcedLogoutNotice {
+  switch (reason) {
+    case 'session_invalidated':
+      return {
+        title: 'Session invalidée',
+        message: 'Cette session a été révoquée depuis un autre appareil. Veuillez vous reconnecter.',
+      };
+    case 'session_inactive':
+      return {
+        title: 'Session expirée (inactivité)',
+        message: 'Votre session a expiré après une période d’inactivité. Reconnectez-vous pour continuer.',
+      };
+    case 'session_expired':
+      return {
+        title: 'Session expirée',
+        message: 'Votre session a expiré. Veuillez vous reconnecter.',
+      };
+    case 'session_security':
+      return {
+        title: 'Déconnexion de sécurité',
+        message: 'Une anomalie de session a été détectée. Par sécurité, vous avez été déconnecté.',
+      };
+    case 'missing_refresh_token':
+      return {
+        title: 'Session indisponible',
+        message: 'Les informations de session sont incomplètes sur cet appareil. Veuillez vous reconnecter.',
+      };
+    case 'token_refresh_failed':
+    default:
+      return {
+        title: 'Session interrompue',
+        message: 'Votre session a été interrompue. Veuillez vous reconnecter.',
+      };
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false); // Prevent double init in StrictMode
@@ -191,6 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [googlePhoneInput, setGooglePhoneInput] = useState('');
   const [googlePhoneError, setGooglePhoneError] = useState('');
   const [isSavingGooglePhone, setIsSavingGooglePhone] = useState(false);
+  const [forcedLogoutNotice, setForcedLogoutNotice] = useState<ForcedLogoutNotice | null>(null);
   const googleCountryPickerRef = useRef<HTMLDivElement | null>(null);
 
   const persistAuthTokens = (token?: string, refreshToken?: string) => {
@@ -257,13 +304,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, [checkApiHealth, hasInitialized]);
 
-  // Listen for logout events from API client (token refresh failed)
+  // Listen for logout events from API client (forced logout/session invalidation)
   useEffect(() => {
-    const handleForceLogout = (event: CustomEvent) => {
-      console.warn('Force logout triggered:', event.detail?.reason);
+    const handleForceLogout = (rawEvent: Event) => {
+      const event = rawEvent as CustomEvent<{ reason?: ForcedLogoutReason; backend_error?: string | null }>;
+      const reason = event.detail?.reason ?? 'token_refresh_failed';
+      const backendError = event.detail?.backend_error ?? null;
+
+      if (backendError) {
+        console.warn('Force logout triggered:', reason, backendError);
+      } else {
+        console.warn('Force logout triggered:', reason);
+      }
       setIsAuthenticated(false);
       setCurrentUser(null);
       clearAuthTokens();
+      setForcedLogoutNotice(getForcedLogoutNotice(reason));
     };
 
     window.addEventListener('auth:logout', handleForceLogout as EventListener);
@@ -308,6 +364,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsGoogleCountryMenuOpen(false);
     setGooglePhoneInput('');
     setGooglePhoneError('');
+  };
+
+  const closeForcedLogoutModal = () => {
+    setForcedLogoutNotice(null);
   };
 
   const changeGooglePhoneCountry = (nextCountry: GooglePhoneCountry) => {
@@ -365,6 +425,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: response.user.email,
           nom: '',
           prenom: '',
+          avatar: response.user.avatar,
           role: response.user.role,
           hasCompletedOnboarding: false,
           onboardingStep: 'restaurant',
@@ -407,6 +468,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: response.user.email,
           nom: response.user.last_name || '',
           prenom: response.user.first_name || '',
+          avatar: response.user.avatar,
           role: response.user.role,
           hasCompletedOnboarding: false,
           onboardingStep: 'restaurant',
@@ -497,23 +559,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    setIsLoggingOut(true);
     try {
-      if (apiStatus === 'online') {
-        await api.logout();
+      try {
+        if (apiStatus === 'online') {
+          await api.logout();
+        }
+      } catch (error) {
+        console.warn('Logout API call failed:', error);
       }
-    } catch (error) {
-      console.warn('Logout API call failed:', error);
+
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      clearAuthTokens();
+    } finally {
+      setIsLoggingOut(false);
     }
-    
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    clearAuthTokens();
   };
 
   return (
     <AuthContext.Provider value={{ 
       isAuthenticated, 
       isLoading,
+      isLoggingOut,
       apiStatus,
       login, 
       loginWithGoogle,
@@ -532,7 +600,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={closeGooglePhoneModal}
           />
-          <div className="relative w-full max-w-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/60 dark:border-gray-700/60 shadow-2xl">
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-[0_18px_45px_-20px_rgba(0,0,0,0.45)]">
             <h2 className="text-xl text-gray-900 dark:text-white mb-2">Complétez votre compte</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
               Ajoutez votre numéro de téléphone pour finaliser votre connexion Google.
@@ -640,6 +708,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+      {forcedLogoutNotice && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            onClick={closeForcedLogoutModal}
+          />
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-[0_18px_45px_-20px_rgba(0,0,0,0.45)]">
+            <h2 className="text-xl text-gray-900 dark:text-white mb-2">{forcedLogoutNotice.title}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
+              {forcedLogoutNotice.message}
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeForcedLogoutModal}
+                className="px-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         </div>,
         document.body

@@ -21,6 +21,7 @@ import { ReferralPage as RawReferralPage } from '../../features/parrainage/pages
 import { AppPresentation as RawAppPresentation } from '../../pages/app-presentation/AppPresentation';
 import { Terms as RawTerms } from '../../pages/terms/Terms';
 import { Privacy as RawPrivacy } from '../../pages/privacy/Privacy';
+import { Cgv as RawCgv } from '../../pages/cgv/Cgv';
 
 // ─── Onboarding pages ─────────────────────────────────────────
 import { OnboardingWelcome as RawOnboardingWelcome } from '../../features/onboarding/pages/OnboardingWelcome';
@@ -154,6 +155,10 @@ export function Terms() {
 
 export function Privacy() {
   return <RawPrivacy />;
+}
+
+export function Cgv() {
+  return <RawCgv />;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

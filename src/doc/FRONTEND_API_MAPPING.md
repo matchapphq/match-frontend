@@ -95,8 +95,15 @@ This document lists all the frontend pages in the `match-frontend` application a
 | `CompteFacturation.tsx`| Subscription | `/subscriptions/me` | `GET` | Current plan status |
 | | Invoices | `/subscriptions/invoices` | `GET` | Billing history |
 | | Payment Method | `/subscriptions/me/update-payment-method` | `POST` | Stripe Portal |
-| `CompteNotifications.tsx`| Preferences | `/users/me/notification-preferences` | `PUT` | |
-| `CompteSecurite.tsx` | Password | `/auth/update-password` | `PUT` | *Endpoint to be verified* |
+| `CompteNotifications.tsx`| Preferences | `/users/me/notification-preferences` | `GET`, `PUT` | |
+| `CompteDonnees.tsx` | Privacy Preferences | `/users/me/privacy-preferences` | `GET`, `PUT` | Includes `account_deletion_grace_days` |
+| `CompteDonnees.tsx` | GDPR Export Request | `/support/data-export-request` | `POST` | |
+| `CompteDonnees.tsx` | Account Deactivation | `/users/me` | `DELETE` | Soft delete with grace period |
+| `CompteSecurite.tsx` | Password | `/users/me/password` | `PUT` | |
+| `CompteSecurite.tsx` | Sessions | `/users/me/sessions` | `GET` | Active sessions |
+| `CompteSecurite.tsx` | Revoke Other Sessions | `/users/me/sessions/others` | `DELETE` | |
+| `CompteSecurite.tsx` | Revoke One Session | `/users/me/sessions/:sessionId` | `DELETE` | |
+| `AuthenticatedLayout.tsx` | Session Heartbeat | `/users/me/session-heartbeat` | `POST` | Activity refresh |
 
 ## 9. Reviews (Avis)
 

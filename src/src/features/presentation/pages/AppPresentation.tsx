@@ -408,6 +408,9 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
               <a href="/terms" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
                 {t('app.footer.terms')}
               </a>
+              <a href="/terms-of-sale" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
+                {t('app.footer.cgv')}
+              </a>
               <a href="/privacy" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
                 {t('app.footer.privacy')}
               </a>

@@ -1,4 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect } from 'react';
 import { Sidebar } from '../layout/Sidebar';
 import { NotificationBell } from '../layout/NotificationBell';
 import { NotificationBanner } from '../NotificationBanner';
@@ -7,6 +8,7 @@ import { useAuth } from '../../features/authentication/context/AuthContext';
 import { useAppNavigate } from '../../hooks/useAppNavigate';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../api/client';
+import { sendSessionHeartbeat as triggerSessionHeartbeat } from '../../utils/session-heartbeat';
 import type { PageType } from '../../types';
 
 /**
@@ -40,6 +42,38 @@ export function AuthenticatedLayout() {
   const handleBellNavigate = (page: PageType) => {
     navigateTo(page);
   };
+
+  const sendSessionHeartbeat = useCallback(() => {
+    if (!isAuthenticated || !currentUser) return;
+    if (typeof document !== 'undefined') {
+      if (document.visibilityState !== 'visible') return;
+      if (typeof document.hasFocus === 'function' && !document.hasFocus()) return;
+    }
+    triggerSessionHeartbeat().catch(() => undefined);
+  }, [isAuthenticated, currentUser]);
+
+  useEffect(() => {
+    sendSessionHeartbeat();
+  }, [location.pathname, sendSessionHeartbeat]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser) return;
+
+    const onFocus = () => sendSessionHeartbeat();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        sendSessionHeartbeat();
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [isAuthenticated, currentUser, sendSessionHeartbeat]);
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
