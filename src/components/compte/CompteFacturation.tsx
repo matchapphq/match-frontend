@@ -1,9 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageType } from '../../src/types';
-import { useAuth } from '../../src/features/authentication/context/AuthContext';
-import { ArrowLeft, Plus, X, Building, MapPin, Mail, Phone, CreditCard, Loader2 } from 'lucide-react';
+import { saveCheckoutState } from '../../src/utils/checkout-state';
+import {
+  ArrowLeft,
+  Building2,
+  CalendarDays,
+  CreditCard,
+  Loader2,
+  MapPin,
+  Plus,
+  Receipt,
+  ShieldCheck,
+  Wallet,
+} from 'lucide-react';
 import { usePartnerVenues } from '../../src/hooks/api/useVenues';
-import { useInvoices, usePaymentPortal } from '../../src/hooks/api/useAccount';
+import { useCreateSubscriptionCheckout, useVenueInvoices, useVenuePaymentPortal, useVenueSubscription } from '../../src/hooks/api/useAccount';
 import { toast } from 'sonner';
 
 interface CompteFacturationProps {
@@ -11,678 +22,749 @@ interface CompteFacturationProps {
   onBack?: () => void;
 }
 
+type BillingVenue = {
+  id: string;
+  nom: string;
+  ville: string;
+  statusKey: string;
+  statusLabel: string;
+};
+
+type BillingInvoice = {
+  id: string;
+  numero: string;
+  date: string;
+  dateLabel: string;
+  dueDate?: string;
+  montant: string;
+  statusKey: string;
+  statusLabel: string;
+  pdfUrl?: string;
+};
+
+function formatDateLabel(value?: string | null) {
+  if (!value) return 'Non disponible';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Non disponible';
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'UTC',
+  }).format(date);
+}
+
+function formatAmountLabel(value?: string | number | null, currency = 'EUR') {
+  if (value === null || value === undefined || value === '') return 'Non disponible';
+
+  const numericValue = typeof value === 'string' ? Number(value) : value;
+  if (Number.isNaN(numericValue)) return 'Non disponible';
+
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: numericValue % 1 === 0 ? 0 : 2,
+  }).format(numericValue);
+}
+
+function getVenueStatusLabel(status?: string) {
+  switch (status) {
+    case 'active':
+      return 'Actif';
+    case 'trialing':
+      return 'Essai';
+    case 'past_due':
+      return 'Paiement en retard';
+    case 'canceled':
+      return 'Résilié';
+    default:
+      return 'Inactif';
+  }
+}
+
+function getVenueStatusClasses(status?: string) {
+  switch (status) {
+    case 'active':
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-900/40';
+    case 'trialing':
+      return 'bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:ring-blue-900/40';
+    case 'past_due':
+      return 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:ring-amber-900/40';
+    case 'canceled':
+      return 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-900/20 dark:text-red-300 dark:ring-red-900/40';
+    default:
+      return 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700';
+  }
+}
+
+function getInvoiceStatusLabel(status: string) {
+  switch (status) {
+    case 'paid':
+      return 'Payée';
+    case 'open':
+      return 'Ouverte';
+    case 'pending':
+      return 'En attente';
+    case 'draft':
+      return 'Brouillon';
+    case 'overdue':
+      return 'En retard';
+    case 'void':
+    case 'canceled':
+      return 'Annulée';
+    default:
+      return status;
+  }
+}
+
+function getInvoiceStatusClasses(status: string) {
+  switch (status) {
+    case 'paid':
+      return 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-900/40';
+    case 'open':
+    case 'pending':
+      return 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:ring-amber-900/40';
+    case 'draft':
+      return 'bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:ring-blue-900/40';
+    case 'overdue':
+      return 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-900/20 dark:text-red-300 dark:ring-red-900/40';
+    case 'void':
+    case 'canceled':
+      return 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700';
+    default:
+      return 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700';
+  }
+}
+
+function getSubscriptionPriceLabel(subscription?: {
+  display_price?: string;
+  price?: string;
+  currency?: string;
+} | null) {
+  if (!subscription) return 'Non disponible';
+  if (subscription.display_price) return subscription.display_price;
+  return formatAmountLabel(subscription.price, subscription.currency || 'EUR');
+}
+
+function getCheckoutPlanId(subscription?: { plan?: string } | null): 'monthly' | 'annual' {
+  return subscription?.plan === 'pro' ? 'annual' : 'monthly';
+}
+
+function getResumePlanLabel(subscription?: { plan?: string; plan_name?: string; display_price?: string; price?: string; currency?: string } | null) {
+  if (!subscription) return 'Réactiver l’abonnement';
+
+  const planLabel = 'Réactiver l’abonnement';
+  const priceLabel = subscription.plan === 'pro'
+    ? '25€/mois, facturé annuellement'
+    : getSubscriptionPriceLabel(subscription);
+  return `${planLabel} • ${priceLabel}`;
+}
+
+function getRenewalLabel(subscription?: {
+  status?: string;
+  current_period_end?: string;
+  next_billing_at?: string;
+  cancel_at_period_end?: boolean;
+  will_renew?: boolean;
+  auto_renew?: boolean;
+  canceled_at?: string | null;
+} | null) {
+  if (!subscription) return 'Aucune donnée détaillée disponible';
+
+  if (subscription.status === 'past_due') {
+    return 'Paiement en attente de régularisation';
+  }
+
+  if (subscription.status === 'canceled' || subscription.will_renew === false || subscription.cancel_at_period_end || subscription.auto_renew === false || subscription.canceled_at) {
+    return `Abonnement actif jusqu’au ${formatDateLabel(subscription.current_period_end)}`;
+  }
+
+  return `Prochaine échéance le ${formatDateLabel(subscription.next_billing_at || subscription.current_period_end)}`;
+}
+
+function getRenewalDescription(subscription?: {
+  status?: string;
+  cancel_at_period_end?: boolean;
+  will_renew?: boolean;
+  auto_renew?: boolean;
+  canceled_at?: string | null;
+} | null) {
+  if (!subscription) {
+    return 'Le statut de renouvellement sera disponible après synchronisation.';
+  }
+
+  if (subscription.status === 'past_due') {
+    return 'Le renouvellement est suspendu tant que le paiement n’est pas régularisé.';
+  }
+
+  if (subscription.status === 'canceled' || subscription.will_renew === false || subscription.cancel_at_period_end || subscription.auto_renew === false || subscription.canceled_at) {
+    return 'L’abonnement ne sera pas renouvelé à la fin de cette période.';
+  }
+
+  return 'Le renouvellement automatique reste géré depuis Stripe.';
+}
+
+function getPaymentMethodDisplay(paymentMethod?: {
+  type: string;
+  brand: string | null;
+  last4: string | null;
+  exp_month: number | null;
+  exp_year: number | null;
+} | null) {
+  if (!paymentMethod) {
+    return {
+      label: 'Stripe',
+      title: 'Moyen de paiement synchronisé',
+      number: '•••• •••• •••• ••••',
+      subtitle: 'Les détails de paiement apparaîtront ici dès qu’un moyen est disponible.',
+    };
+  }
+
+  if (paymentMethod.type === 'card') {
+    const brand = paymentMethod.brand ? paymentMethod.brand.toUpperCase() : 'Carte';
+    const last4 = paymentMethod.last4 ? `•••• •••• •••• ${paymentMethod.last4}` : '•••• •••• •••• ••••';
+    const expiration =
+      paymentMethod.exp_month && paymentMethod.exp_year
+        ? `${String(paymentMethod.exp_month).padStart(2, '0')}/${String(paymentMethod.exp_year).slice(-2)}`
+        : 'Expiration non disponible';
+
+    return {
+      label: brand,
+      title: 'Carte bancaire utilisée',
+      number: last4,
+      subtitle: `Expiration ${expiration}`,
+    };
+  }
+
+  if (paymentMethod.type === 'sepa_debit') {
+    return {
+      label: 'SEPA',
+      title: 'Prélèvement SEPA utilisé',
+      number: `•••• ${paymentMethod.last4 || '----'}`,
+      subtitle: 'IBAN utilisé pour le prélèvement automatique',
+    };
+  }
+
+  return {
+    label: 'Stripe',
+    title: 'Moyen de paiement Stripe',
+    number: 'Détails disponibles dans Stripe',
+    subtitle: 'Les détails complets sont accessibles dans le portail de paiement.',
+  };
+}
+
 export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps) {
-  const { currentUser } = useAuth();
-  const [showAddVenueModal, setShowAddVenueModal] = useState(false);
+  const initialVenueIdFromUrl = useMemo(() => new URLSearchParams(window.location.search).get('venue') || '', []);
+  const [selectedEtablissement, setSelectedEtablissement] = useState<string>('');
+  const [pendingCheckoutAction, setPendingCheckoutAction] = useState<'resume' | 'annual' | null>(null);
 
-  // Fetch real data from API
   const { data: venues, isLoading: isLoadingVenues } = usePartnerVenues();
-  const { data: invoices, isLoading: isLoadingInvoices } = useInvoices();
-  const paymentPortalMutation = usePaymentPortal();
+  const {
+    data: currentSubscription,
+    isLoading: isLoadingSubscription,
+    isFetching: isFetchingSubscription,
+  } = useVenueSubscription(selectedEtablissement || undefined);
+  const {
+    data: invoices,
+    isLoading: isLoadingInvoices,
+    isFetching: isFetchingInvoices,
+  } = useVenueInvoices(selectedEtablissement || undefined);
+  const paymentPortalMutation = useVenuePaymentPortal();
+  const checkoutMutation = useCreateSubscriptionCheckout();
 
-  // Transform venues to etablissements format
-  const etablissements = useMemo(() => {
+  const etablissements = useMemo<BillingVenue[]>(() => {
     if (!venues) return [];
-    return venues.map(venue => ({
+
+    return venues.map((venue) => ({
       id: venue.id,
       nom: venue.name,
-      ville: venue.city || '',
-      formule: venue.subscription_status === 'active' ? 'Actif' : 'Inactif',
-      prix: '30€/mois',
-      prixMensuel: '30€/mois',
-      statut: venue.subscription_status || 'actif',
-      prochainRenouvellement: '-',
-      moyenPaiement: {
-        type: 'CARD',
-        numero: '•••• ****',
-        expiration: '-',
-      },
+      ville: venue.city?.trim() || 'Ville non renseignée',
+      statusKey: venue.subscription_status || 'inactive',
+      statusLabel: getVenueStatusLabel(venue.subscription_status),
     }));
   }, [venues]);
 
-  // Transform invoices
-  const formattedInvoices = useMemo(() => {
+  const formattedInvoices = useMemo<BillingInvoice[]>(() => {
     if (!invoices) return [];
-    return invoices.map(inv => ({
-      id: inv.id,
-      date: new Date(inv.created_at).toLocaleDateString('fr-FR'),
-      montant: `${(inv.amount / 100).toFixed(0)}€`,
-      statut: inv.status === 'paid' ? 'Payée' : inv.status,
-      numero: inv.number || inv.id,
-      pdf_url: inv.pdf_url,
-    }));
+
+    return [...invoices]
+      .sort((a, b) => new Date(b.issue_date || b.created_at).getTime() - new Date(a.issue_date || a.created_at).getTime())
+      .map((invoice) => ({
+        id: invoice.id,
+        numero: invoice.invoice_number || invoice.number || invoice.id,
+        date: invoice.status === 'paid'
+          ? formatDateLabel(invoice.paid_date || invoice.issue_date || invoice.created_at)
+          : formatDateLabel(invoice.issue_date || invoice.created_at),
+        dateLabel: invoice.status === 'paid' ? 'Réglée le' : 'Émise le',
+        dueDate: invoice.status === 'paid' ? undefined : invoice.due_date ? formatDateLabel(invoice.due_date) : undefined,
+        montant: formatAmountLabel(invoice.total ?? invoice.amount, invoice.currency || 'EUR'),
+        statusKey: invoice.status,
+        statusLabel: getInvoiceStatusLabel(invoice.status),
+        pdfUrl: invoice.pdf_url,
+      }));
   }, [invoices]);
 
-  const [selectedEtablissement, setSelectedEtablissement] = useState<string>('');
+  useEffect(() => {
+    if (etablissements.length === 0) {
+      setSelectedEtablissement('');
+      return;
+    }
 
-  // Set default selected when venues load
-  const currentEtablissement = etablissements.find(e => e.id === selectedEtablissement) || etablissements[0];
+    setSelectedEtablissement((previous) => {
+      if (previous && etablissements.some((item) => item.id === previous)) {
+        return previous;
+      }
+      if (initialVenueIdFromUrl && etablissements.some((item) => item.id === initialVenueIdFromUrl)) {
+        return initialVenueIdFromUrl;
+      }
+      return etablissements[0]?.id || '';
+    });
+  }, [etablissements, initialVenueIdFromUrl]);
+
+  const currentEtablissement = etablissements.find((item) => item.id === selectedEtablissement) || null;
+  const activeSubscriptionsCount = etablissements.filter((item) => item.statusKey === 'active').length;
+  const visibleInvoices = formattedInvoices;
+  const latestInvoice = visibleInvoices[0] || null;
+  const nextBillingDate = currentSubscription ? formatDateLabel(currentSubscription.next_billing_at || currentSubscription.current_period_end) : 'Non disponible';
+  const isCanceledSubscription = currentSubscription?.status === 'canceled';
+  const billingSummaryTitle = isCanceledSubscription ? 'Résiliation' : 'Échéance';
+  const billingSummaryValue = isCanceledSubscription
+    ? formatDateLabel(currentSubscription?.canceled_at || currentSubscription?.current_period_end || currentSubscription?.next_billing_at)
+    : nextBillingDate;
+  const billingSummaryDescription = isCanceledSubscription
+    ? 'Aucun renouvellement n’est prévu pour cet abonnement'
+    : latestInvoice
+      ? `Dernière facture enregistrée le ${latestInvoice.date}`
+      : 'Aucune facture encore émise';
+  const paymentMethodDisplay = getPaymentMethodDisplay(currentSubscription?.payment_method);
+  const isLoading = isLoadingVenues;
+  const isRefreshingVenueData =
+    Boolean(selectedEtablissement) &&
+    (isLoadingSubscription || isLoadingInvoices || isFetchingSubscription || isFetchingInvoices);
+  const canResumeSubscription = currentSubscription?.status === 'canceled';
+  const canUpgradeToAnnual = Boolean(currentSubscription && currentSubscription.plan !== 'pro');
+  const annualPriceLabel = '25€/mois, facturé annuellement';
+  const resumePlanLabel = getResumePlanLabel(currentSubscription);
 
   const handleManagePayment = async () => {
+    if (!selectedEtablissement) {
+      toast.error('Sélectionnez un établissement avant d’ouvrir le portail de paiement');
+      return;
+    }
+
+    const portalWindow = window.open('about:blank', '_blank');
+
     try {
-      const result = await paymentPortalMutation.mutateAsync();
-      if (result.url) {
-        window.location.href = result.url;
+      const result = await paymentPortalMutation.mutateAsync(selectedEtablissement);
+      if (result.portal_url) {
+        if (portalWindow) {
+          portalWindow.opener = null;
+          portalWindow.location.href = result.portal_url;
+        } else {
+          window.location.href = result.portal_url;
+        }
+      } else if (portalWindow) {
+        portalWindow.close();
       }
-    } catch (error) {
-      toast.error('Erreur lors de l\'accès au portail de paiement');
+    } catch {
+      if (portalWindow) {
+        portalWindow.close();
+      }
+      toast.error('Erreur lors de l’accès au portail de paiement');
     }
   };
 
-  const isLoading = isLoadingVenues || isLoadingInvoices;
+  const handleAddVenueNavigation = () => {
+    if (typeof onNavigate === 'function') {
+      onNavigate('ajouter-restaurant' as PageType);
+      return;
+    }
 
-  const features = [
-    'Diffusion illimitée de matchs',
-    'Visibilité sur la plateforme Match',
-    'Gestion des réservations en temps réel',
-    'Statistiques détaillées',
-    'Support prioritaire',
-  ];
+    window.location.href = '/my-venues/add';
+  };
 
-  const handleAddVenue = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Logique d'ajout de lieu
-    alert('Nouvel établissement ajouté !');
-    setShowAddVenueModal(false);
+  const handleSubscriptionCheckout = async (planId: 'monthly' | 'annual') => {
+    if (!selectedEtablissement || !currentSubscription) {
+      toast.error('Impossible de relancer cet abonnement pour le moment');
+      return;
+    }
+
+    const successUrl = `${window.location.origin}/account/billing`;
+    const cancelUrl = `${window.location.origin}/account/billing`;
+
+    try {
+      const result = await checkoutMutation.mutateAsync({
+        planId,
+        venueId: selectedEtablissement,
+        successUrl,
+        cancelUrl,
+      });
+
+      if (result.checkout_url) {
+        saveCheckoutState({
+          type: 'billing-subscription',
+          venueId: selectedEtablissement,
+          venueName: currentEtablissement?.nom,
+          formule: planId === 'annual' ? 'annuel' : 'mensuel',
+          sessionId: result.session_id,
+          checkoutUrl: result.checkout_url,
+          returnPage: '/account/billing',
+        });
+        window.location.href = result.checkout_url;
+      }
+    } catch {
+      toast.error('Erreur lors de la reprise de l’abonnement');
+    } finally {
+      setPendingCheckoutAction(null);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    setPendingCheckoutAction('resume');
+    await handleSubscriptionCheckout(getCheckoutPlanId(currentSubscription));
+  };
+
+  const handleUpgradeToAnnual = async () => {
+    setPendingCheckoutAction('annual');
+    await handleSubscriptionCheckout('annual');
   };
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-[#5a03cf]" />
+      <div className="min-h-screen bg-[#fafafa] pb-24 dark:bg-gray-950 lg:pb-0">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-center p-8 pb-24 lg:pb-8">
+          <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <Loader2 className="h-5 w-5 animate-spin text-[#5a03cf]" />
+            Chargement de votre facturation...
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      {/* Bouton retour aux paramètres */}
-      {onBack && (
-        <button
-          onClick={onBack}
-          className="mb-6 flex items-center gap-2 px-4 py-2 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-white/90 dark:hover:bg-gray-800/90 transition-all"
-          style={{ fontWeight: '600' }}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retourner aux paramètres du compte
-        </button>
-      )}
+    <div className="min-h-screen bg-[#fafafa] pb-24 dark:bg-gray-950 lg:pb-0">
+      <div className="mx-auto max-w-[1600px] p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">
+          <div className="mb-6 flex flex-col gap-4 sm:mb-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <h1 className="mb-1 text-xl text-gray-900 dark:text-white sm:text-2xl lg:text-3xl">
+              Facturation & abonnement
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 sm:text-base">
+              Suivez vos abonnements, vos factures, vos échéances et votre moyen de paiement.
+            </p>
+          </div>
 
-      {/* Header de la page */}
-      <div className="mb-12">
-        <h1 className="text-5xl italic mb-2" style={{ fontWeight: '700', color: '#5a03cf' }}>
-          Facturation & abonnement
-        </h1>
-        <p className="text-lg text-gray-700 dark:text-gray-300">Gérez les abonnements de vos établissements</p>
-      </div>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3 lg:justify-end">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-gray-200 bg-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm leading-none text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Retour
+              </button>
+            )}
 
-      {/* Sélecteur d'établissement */}
-      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl" style={{ fontWeight: '600', color: '#5a03cf' }}>
-            Vos établissements
-          </h2>
-          <button
-            onClick={() => setShowAddVenueModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white rounded-xl hover:brightness-105 transition-all text-sm"
-            style={{ fontWeight: '600' }}
-          >
-            <Plus className="w-4 h-4" />
-            Ajouter un lieu
-          </button>
-        </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          {etablissements.map((etablissement) => (
             <button
-              key={etablissement.id}
-              onClick={() => setSelectedEtablissement(etablissement.id)}
-              className={`text-left bg-white/70 dark:bg-gray-800/50 backdrop-blur-xl rounded-xl p-5 transition-all ${
-                selectedEtablissement === etablissement.id
-                  ? 'border-2 border-[#5a03cf]/40 shadow-md'
-                  : 'border border-gray-200/50 dark:border-gray-700/50 hover:border-gray-300/60 dark:hover:border-gray-600/60'
-              }`}
+              onClick={handleAddVenueNavigation}
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-gray-200 bg-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm leading-none text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="text-lg mb-1" style={{ fontWeight: '700', color: '#5a03cf' }}>
-                    {etablissement.nom}
-                  </p>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">{etablissement.ville}</p>
-                </div>
-                <span
-                  className="inline-block px-3 py-1 bg-[#9cff02]/20 backdrop-blur-sm text-[#5a03cf] rounded-lg border border-[#9cff02]/30 text-sm"
-                  style={{ fontWeight: '600' }}
-                >
-                  {etablissement.statut === 'actif' ? 'Actif' : 'Inactif'}
-                </span>
-              </div>
-              <p className="text-gray-700 dark:text-gray-300" style={{ fontWeight: '600' }}>
-                {etablissement.formule} - {etablissement.prix}
-              </p>
+              <Plus className="h-4 w-4" />
+              Ajouter un lieu
             </button>
-          ))}
+
+            <button
+              onClick={handleManagePayment}
+              disabled={paymentPortalMutation.isPending || !selectedEtablissement}
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] px-3 sm:px-4 py-2.5 text-xs sm:text-sm leading-none text-white shadow-lg shadow-[#5a03cf]/20 transition-all hover:from-[#6a13df] hover:to-[#8a33ff] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {paymentPortalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
+              Portail de paiement
+            </button>
+          </div>
         </div>
-      </div>
 
-      {currentEtablissement && (
-        <>
-          {/* Abonnement actuel de l'établissement */}
-          <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-            <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-              Abonnement actif
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Formule pour {currentEtablissement.nom}
+        <div className="mb-6 grid grid-cols-2 gap-4 sm:mb-8 lg:grid-cols-4">
+          <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 p-4 dark:border-gray-700">
+            <div className="mb-2 flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-[#5a03cf]" />
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Établissements</span>
+            </div>
+            <div className="text-2xl text-gray-900 dark:text-white">{etablissements.length}</div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Lieux suivis dans votre compte</p>
+          </div>
+
+          <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100/50 p-4 dark:border-blue-800 dark:from-blue-900/20 dark:to-blue-800/10">
+            <div className="mb-2 flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Actifs</span>
+            </div>
+            <div className="text-2xl text-blue-700 dark:text-blue-300">{activeSubscriptionsCount}</div>
+            <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">Abonnements remontés comme actifs</p>
+          </div>
+
+          <div className="rounded-2xl border border-green-200 bg-gradient-to-br from-green-50 to-green-100/50 p-4 dark:border-green-800 dark:from-green-900/20 dark:to-green-800/10">
+            <div className="mb-2 flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <span className="text-xs font-medium text-green-600 dark:text-green-400">Factures</span>
+            </div>
+            <div className="text-2xl text-green-700 dark:text-green-300">{visibleInvoices.length}</div>
+            <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+              {currentEtablissement ? `Factures liées à ${currentEtablissement.nom}` : 'Historique de facturation disponible'}
             </p>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30">
-                <p className="text-gray-700 dark:text-gray-300 mb-1">Formule</p>
-                <p className="text-xl" style={{ fontWeight: '700', color: '#5a03cf' }}>
-                  {currentEtablissement.formule}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{currentEtablissement.prix}</p>
-              </div>
-              <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30">
-                <p className="text-gray-700 dark:text-gray-300 mb-1">Prochain renouvellement</p>
-                <p className="text-lg text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
-                  {currentEtablissement.prochainRenouvellement}
-                </p>
-              </div>
-              <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30">
-                <p className="text-gray-700 dark:text-gray-300 mb-1">Statut</p>
-                <span
-                  className="inline-block px-3 py-1 bg-[#9cff02]/20 backdrop-blur-sm text-[#5a03cf] rounded-lg border border-[#9cff02]/30"
-                  style={{ fontWeight: '600' }}
-                >
-                  Actif
-                </span>
-              </div>
-            </div>
           </div>
 
-          {/* Formules disponibles */}
-          <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-            <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-              Changer de formule
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">Modifiez l'abonnement de cet établissement</p>
-
-            <div className="grid md:grid-cols-2 gap-4 mb-6">
-              <div
-                className={`bg-white/70 dark:bg-gray-800/50 backdrop-blur-xl rounded-xl p-6 border ${
-                  currentEtablissement.formule === 'Mensuel'
-                    ? 'border-2 border-[#5a03cf]/40 shadow-md'
-                    : 'border-gray-200/50 dark:border-gray-700/50'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-                      Mensuel
-                    </p>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">360€/an</p>
-                  </div>
-                </div>
-                <div className="mb-4">
-                  <span
-                    className="text-4xl bg-gradient-to-r from-[#5a03cf] to-[#9cff02] bg-clip-text text-transparent"
-                    style={{ fontWeight: '700' }}
-                  >
-                    30€
-                  </span>
-                  <span className="text-gray-600 dark:text-gray-400 ml-1">/mois</span>
-                </div>
-              </div>
-
-              <div
-                className={`bg-white/70 dark:bg-gray-800/50 backdrop-blur-xl rounded-xl p-6 border ${
-                  currentEtablissement.formule === 'Annuel'
-                    ? 'border-2 border-[#5a03cf]/40 shadow-md'
-                    : 'border-gray-200/50 dark:border-gray-700/50'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-                      Annuel
-                    </p>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">300€/an</p>
-                  </div>
-                  <span
-                    className="inline-block px-3 py-1 bg-[#9cff02]/20 backdrop-blur-sm text-[#5a03cf] rounded-lg border border-[#9cff02]/30 text-sm"
-                    style={{ fontWeight: '600' }}
-                  >
-                    Économisez 60€
-                  </span>
-                </div>
-                <div className="mb-4">
-                  <span
-                    className="text-4xl bg-gradient-to-r from-[#5a03cf] to-[#9cff02] bg-clip-text text-transparent"
-                    style={{ fontWeight: '700' }}
-                  >
-                    25€
-                  </span>
-                  <span className="text-gray-600 dark:text-gray-400 ml-1">/mois</span>
-                </div>
-              </div>
+          <div className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100/50 p-4 dark:border-orange-800 dark:from-orange-900/20 dark:to-orange-800/10">
+            <div className="mb-2 flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              <span className="text-xs font-medium text-orange-600 dark:text-orange-400">{billingSummaryTitle}</span>
             </div>
-
-            {/* Avantages sans icônes */}
-            <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30">
-              <p className="text-gray-700 dark:text-gray-300 mb-3" style={{ fontWeight: '600' }}>
-                Inclus dans votre abonnement
-              </p>
-              <ul className="space-y-2">
-                {features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
-                    <span className="text-[#5a03cf] mt-1">•</span>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Moyen de paiement */}
-          <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-            <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-              Moyen de paiement
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">Carte bancaire pour {currentEtablissement.nom}</p>
-
-            <div className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-200/30 dark:border-gray-700/30">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-8 bg-gradient-to-br from-[#5a03cf] to-[#9cff02] rounded flex items-center justify-center">
-                    <span className="text-white text-xs" style={{ fontWeight: '700' }}>
-                      {currentEtablissement.moyenPaiement.type}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
-                      {currentEtablissement.moyenPaiement.numero}
-                    </p>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                      Expire le {currentEtablissement.moyenPaiement.expiration}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleManagePayment}
-                  disabled={paymentPortalMutation.isPending}
-                  className="px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 dark:hover:bg-[#5a03cf]/10 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-                  style={{ fontWeight: '600' }}
-                >
-                  {paymentPortalMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Modifier
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Historique des factures */}
-          <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-            <h2 className="text-2xl mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-              Historique des factures
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Factures pour {currentEtablissement.nom}
+            <div className="text-xl text-orange-700 dark:text-orange-300">{billingSummaryValue}</div>
+            <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">
+              {billingSummaryDescription}
             </p>
+          </div>
+        </div>
 
-            <div className="space-y-3">
-              {formattedInvoices.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-4">Aucune facture disponible</p>
-              ) : (
-                formattedInvoices.map((invoice) => (
-                  <div
-                    key={invoice.id}
-                    className="bg-gray-50/50 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 border border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-6">
-                      <div>
-                        <p className="text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
-                          {invoice.numero}
-                        </p>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm">{invoice.date}</p>
+        {etablissements.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#5a03cf]/10 text-[#5a03cf]">
+              <Building2 className="h-7 w-7" />
+            </div>
+            <h2 className="text-lg text-gray-900 dark:text-white">Aucun établissement rattaché</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-600 dark:text-gray-400">
+              Ajoutez un lieu pour commencer à gérer votre abonnement et centraliser votre facturation depuis cet espace.
+            </p>
+            <button
+              onClick={handleAddVenueNavigation}
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] px-4 py-2.5 text-sm text-white transition-all hover:from-[#6a13df] hover:to-[#8a33ff]"
+            >
+              <Plus className="h-4 w-4" />
+              Ajouter un lieu
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+              <section className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div className="border-b border-gray-100 p-6 dark:border-gray-800">
+                  <h2 className="text-lg text-gray-900 dark:text-white">Vos établissements</h2>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Sélectionnez un lieu pour consulter son abonnement et sa facturation.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
+                  {etablissements.map((etablissement) => (
+                    <button
+                      key={etablissement.id}
+                      type="button"
+                      onClick={() => setSelectedEtablissement(etablissement.id)}
+                      className={`rounded-2xl border p-5 text-left transition-all ${
+                        currentEtablissement?.id === etablissement.id
+                          ? 'border-[#5a03cf]/30 bg-[#5a03cf]/5 shadow-sm'
+                          : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-base text-gray-900 dark:text-white">{etablissement.nom}</p>
+                          <p className="mt-1 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                            <MapPin className="h-4 w-4" />
+                            <span className="truncate">{etablissement.ville}</span>
+                          </p>
+                        </div>
+                        <span className={`inline-flex shrink-0 rounded-full px-3 py-1 text-xs ring-1 ${getVenueStatusClasses(etablissement.statusKey)}`}>
+                          {etablissement.statusLabel}
+                        </span>
                       </div>
-                      <div>
-                        <p className="text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
-                          {invoice.montant}
-                        </p>
-                      </div>
-                      <span
-                        className="px-3 py-1 bg-[#9cff02]/20 backdrop-blur-sm text-[#5a03cf] rounded-lg text-sm border border-[#9cff02]/30"
-                        style={{ fontWeight: '600' }}
-                      >
-                        {invoice.statut}
-                      </span>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        {etablissement.statusKey === 'active' ? 'Abonnement actif' : 'Suivi de l’abonnement disponible'}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {currentEtablissement && isRefreshingVenueData && (
+                <div className="flex items-center gap-3 rounded-2xl border border-[#5a03cf]/15 bg-[#5a03cf]/5 px-4 py-3 text-sm text-[#5a03cf] dark:border-[#7a23ef]/20 dark:bg-[#5a03cf]/10 dark:text-[#c8a6ff]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Actualisation des informations de {currentEtablissement.nom}...
+                </div>
+              )}
+
+              {currentEtablissement && (
+                <section className={`rounded-2xl border border-gray-200 bg-white shadow-sm transition-opacity dark:border-gray-700 dark:bg-gray-900 ${isRefreshingVenueData ? 'opacity-70' : 'opacity-100'}`}>
+                  {!canResumeSubscription && (
+                    <div className="border-b border-gray-100 p-6 dark:border-gray-800">
+                      <h2 className="text-lg text-gray-900 dark:text-white">Votre formule</h2>
+                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        Synthèse de l’abonnement actuellement rattaché à {currentEtablissement.nom}.
+                      </p>
                     </div>
-                    {invoice.pdf_url && (
-                      <a
-                        href={invoice.pdf_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-2 text-[#5a03cf] hover:bg-[#5a03cf]/5 dark:hover:bg-[#5a03cf]/10 rounded-lg transition-colors"
-                        style={{ fontWeight: '600' }}
-                      >
-                        Télécharger
-                      </a>
+                  )}
+                  <div className="space-y-6 p-6">
+                    {canResumeSubscription && (
+                      <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900/40 dark:bg-emerald-900/10">
+                        <div>
+                          <p className="text-base text-emerald-900 dark:text-emerald-200">Abonnement résilié</p>
+                          <p className="mt-2 text-sm leading-6 text-emerald-700 dark:text-emerald-300">
+                            Cet établissement est actuellement inactif. Vous pouvez réactiver son abonnement en un clic.
+                          </p>
+                        </div>
+                        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <button
+                            onClick={handleResumeSubscription}
+                            disabled={checkoutMutation.isPending}
+                            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#5a03cf] px-5 text-sm text-white shadow-sm transition-colors hover:bg-[#6a13df] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {checkoutMutation.isPending && pendingCheckoutAction === 'resume' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
+                            {resumePlanLabel}
+                          </button>
+                          {canUpgradeToAnnual && (
+                            <button
+                              onClick={handleUpgradeToAnnual}
+                              disabled={checkoutMutation.isPending}
+                              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#5a03cf]/20 bg-white px-5 text-sm text-[#5a03cf] transition-colors hover:bg-[#f7f4ff] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#7a23ef]/30 dark:bg-gray-900 dark:text-[#c8a6ff] dark:hover:bg-gray-800"
+                            >
+                              {checkoutMutation.isPending && pendingCheckoutAction === 'annual' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                              {`Choisir l’offre annuelle • ${annualPriceLabel}`}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {!canResumeSubscription && (
+                      <>
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
+                          <div className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800/70">
+                            <div>
+                              <p className="text-base text-gray-900 dark:text-white">
+                                {isLoadingSubscription ? 'Chargement...' : currentSubscription?.plan_name || 'Formule non disponible'}
+                              </p>
+                              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                {currentSubscription ? 'Abonnement actuellement rattaché à ce lieu' : 'Le détail sera disponible après synchronisation'}
+                              </p>
+                            </div>
+                            <div className="mt-8">
+                              <span className="text-4xl text-gray-900 dark:text-white">{getSubscriptionPriceLabel(currentSubscription)}</span>
+                              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                {currentSubscription
+                                  ? `Période en cours du ${formatDateLabel(currentSubscription.current_period_start)} au ${formatDateLabel(currentSubscription.next_billing_at || currentSubscription.current_period_end)}`
+                                  : 'Aucune période disponible'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex h-full flex-col justify-between rounded-2xl border border-[#5a03cf]/20 bg-[#5a03cf]/5 p-6 dark:border-[#7a23ef]/30 dark:bg-[#5a03cf]/10">
+                            <div>
+                              <p className="text-base text-gray-900 dark:text-white">Échéance</p>
+                              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Renouvellement et état du cycle courant</p>
+                            </div>
+                            <div className="mt-8">
+                              <p className="text-base text-gray-900 dark:text-white">{getRenewalLabel(currentSubscription)}</p>
+                              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                {getRenewalDescription(currentSubscription)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                          <div className="mx-auto max-w-[460px] rounded-[32px] bg-gray-200 p-[1px] dark:bg-gray-700">
+                            <div className="overflow-hidden rounded-[32px] bg-white dark:bg-gray-900">
+                              <div className="bg-[#5a03cf] p-6 text-white">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                  <p className="inline-flex rounded-full bg-white/12 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-white/90 ring-1 ring-white/15">
+                                    {paymentMethodDisplay.label}
+                                  </p>
+                                  <p className="mt-8 text-sm text-white/80">{paymentMethodDisplay.title}</p>
+                                  <p className="mt-3 truncate text-[1.75rem] tracking-[0.16em] text-white">{paymentMethodDisplay.number}</p>
+                                  <p className="mt-3 text-sm text-white/80">{paymentMethodDisplay.subtitle}</p>
+                                </div>
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[20px] bg-white/12 text-white ring-1 ring-white/15">
+                                  <CreditCard className="h-5 w-5" />
+                                </div>
+                              </div>
+                              <div className="mt-10 flex items-center justify-between gap-4 text-xs text-white/80">
+                                <span>Match Billing</span>
+                                <span>{currentSubscription?.auto_renew === false ? 'Renouvellement désactivé' : 'Prélèvement automatique'}</span>
+                              </div>
+                            </div>
+
+                              <button
+                                onClick={handleManagePayment}
+                                disabled={paymentPortalMutation.isPending || !selectedEtablissement}
+                                className="flex w-full items-center justify-center gap-2 border-t border-gray-200 bg-[#f7f4ff] px-4 py-4 text-sm text-gray-900 transition-colors hover:bg-[#f1ebff] disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
+                              >
+                                {paymentPortalMutation.isPending ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Wallet className="h-4 w-4 shrink-0" />}
+                                <span className="text-center">Gérer les informations de paiement</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
-                ))
+                </section>
               )}
-            </div>
-          </div>
 
-          {/* Bloc rassurance */}
-          <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
-            <div className="grid md:grid-cols-3 gap-6 text-center">
-              <div>
-                <p className="text-lg mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-                  Paiement sécurisé
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Vos données sont cryptées et protégées
-                </p>
-              </div>
-              <div>
-                <p className="text-lg mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-                  Résiliation simple
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Annulez l'abonnement à tout moment
-                </p>
-              </div>
-              <div>
-                <p className="text-lg mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-                  Support disponible
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Notre équipe vous accompagne 7j/7
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Boutons CTA */}
-          <div className="flex gap-4">
-            <button
-              className="flex-1 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white py-4 rounded-xl hover:brightness-105 hover:scale-[1.01] transition-all shadow-sm"
-              style={{ fontWeight: '600' }}
-            >
-              Modifier l'abonnement
-            </button>
-            <button
-              className="px-8 py-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-red-200/50 dark:border-red-900/50 text-red-500 dark:text-red-400 rounded-xl hover:bg-red-50/70 dark:hover:bg-red-900/20 transition-all"
-              style={{ fontWeight: '600' }}
-            >
-              Résilier cet abonnement
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Modal d'ajout de nouveau lieu */}
-      {showAddVenueModal && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
-            {/* Header */}
-            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl mb-1" style={{ fontWeight: '700', color: '#5a03cf' }}>
-                  Ajouter un nouvel établissement
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Créez un nouvel abonnement pour votre lieu
-                </p>
-              </div>
-              <button
-                onClick={() => setShowAddVenueModal(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6 text-gray-500 dark:text-gray-400" />
-              </button>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleAddVenue} className="p-6 space-y-6">
-              {/* Informations de l'établissement */}
-              <div className="space-y-4">
-                <h3 className="text-lg text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
-                  Informations de l'établissement
-                </h3>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm" style={{ fontWeight: '600' }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Building className="w-4 h-4 text-[#5a03cf]" />
-                      Nom de l'établissement
-                    </div>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Le Sport Bar Paris"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-gray-900 dark:text-white transition-all"
-                  />
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm" style={{ fontWeight: '600' }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <MapPin className="w-4 h-4 text-[#5a03cf]" />
-                        Ville
-                      </div>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Paris 11ème"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-gray-900 dark:text-white transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm" style={{ fontWeight: '600' }}>
-                      Code postal
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="75011"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-gray-900 dark:text-white transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm" style={{ fontWeight: '600' }}>
-                    Adresse complète
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="123 Rue de la République"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-gray-900 dark:text-white transition-all"
-                  />
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm" style={{ fontWeight: '600' }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Mail className="w-4 h-4 text-[#5a03cf]" />
-                        Email de contact
-                      </div>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="contact@sportbar.fr"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-gray-900 dark:text-white transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm" style={{ fontWeight: '600' }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Phone className="w-4 h-4 text-[#5a03cf]" />
-                        Téléphone
-                      </div>
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="01 23 45 67 89"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-gray-900 dark:text-white transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Choix de la formule */}
-              <div className="space-y-4">
-                <h3 className="text-lg text-gray-900 dark:text-white" style={{ fontWeight: '600' }}>
-                  Choisissez votre formule
-                </h3>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <label className="cursor-pointer">
-                    <input type="radio" name="formule" value="mensuel" className="peer sr-only" />
-                    <div className="p-6 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl peer-checked:border-[#5a03cf] peer-checked:bg-[#5a03cf]/5 transition-all">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="text-lg mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-                            Mensuel
-                          </p>
-                          <p className="text-gray-600 dark:text-gray-400 text-sm">360€/an</p>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-3xl bg-gradient-to-r from-[#5a03cf] to-[#9cff02] bg-clip-text text-transparent" style={{ fontWeight: '700' }}>
-                          30€
-                        </span>
-                        <span className="text-gray-600 dark:text-gray-400">/mois</span>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className="cursor-pointer">
-                    <input type="radio" name="formule" value="annuel" defaultChecked className="peer sr-only" />
-                    <div className="p-6 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl peer-checked:border-[#5a03cf] peer-checked:bg-[#5a03cf]/5 transition-all relative overflow-hidden">
-                      <div className="absolute top-2 right-2">
-                        <span className="px-2 py-1 bg-[#9cff02]/20 text-[#5a03cf] rounded text-xs" style={{ fontWeight: '600' }}>
-                          Économisez 60€
-                        </span>
-                      </div>
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="text-lg mb-1" style={{ fontWeight: '600', color: '#5a03cf' }}>
-                            Annuel
-                          </p>
-                          <p className="text-gray-600 dark:text-gray-400 text-sm">300€/an</p>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-3xl bg-gradient-to-r from-[#5a03cf] to-[#9cff02] bg-clip-text text-transparent" style={{ fontWeight: '700' }}>
-                          25€
-                        </span>
-                        <span className="text-gray-600 dark:text-gray-400">/mois</span>
-                      </div>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Avantages */}
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
-                  <p className="text-gray-700 dark:text-gray-300 mb-3 text-sm" style={{ fontWeight: '600' }}>
-                    Inclus dans votre abonnement :
+              <section className={`rounded-2xl border border-gray-200 bg-white shadow-sm transition-opacity dark:border-gray-700 dark:bg-gray-900 ${isRefreshingVenueData ? 'opacity-70' : 'opacity-100'}`}>
+                <div className="border-b border-gray-100 p-6 dark:border-gray-800">
+                  <h2 className="text-lg text-gray-900 dark:text-white">Historique des factures</h2>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    {currentEtablissement
+                      ? `Factures Stripe rattachées au lieu ${currentEtablissement.nom}.`
+                      : 'Sélectionnez un lieu pour consulter ses factures.'}
                   </p>
-                  <ul className="space-y-2">
-                    {features.map((feature, index) => (
-                      <li key={index} className="flex items-start gap-3 text-gray-700 dark:text-gray-300 text-sm">
-                        <span className="text-[#5a03cf] mt-0.5">•</span>
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
-              </div>
+                <div className="space-y-3 p-6">
+                  {visibleInvoices.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-6 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400">
+                      Aucune facture disponible pour le moment.
+                    </div>
+                  ) : (
+                    visibleInvoices.map((invoice) => (
+                      <div
+                        key={invoice.id}
+                        className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70 md:flex-row md:items-center md:justify-between"
+                      >
+                        <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-center md:gap-8">
+                          <div>
+                            <p className="text-sm text-gray-900 dark:text-white">{invoice.numero}</p>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                              {invoice.dateLabel} {invoice.date}{invoice.dueDate ? ` • Échéance ${invoice.dueDate}` : ''}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Montant</p>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{invoice.montant}</p>
+                          </div>
+                          <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs ring-1 ${getInvoiceStatusClasses(invoice.statusKey)}`}>
+                            {invoice.statusLabel}
+                          </span>
+                        </div>
 
-              {/* Paiement */}
-              <div className="space-y-4">
-                <h3 className="text-lg text-gray-900 dark:text-white flex items-center gap-2" style={{ fontWeight: '600' }}>
-                  <CreditCard className="w-5 h-5 text-[#5a03cf]" />
-                  Informations de paiement
-                </h3>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm" style={{ fontWeight: '600' }}>
-                    Numéro de carte
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="1234 5678 9012 3456"
-                    maxLength={19}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-gray-900 dark:text-white transition-all"
-                  />
+                        {invoice.pdfUrl ? (
+                          <a
+                            href={invoice.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+                          >
+                            Télécharger le PDF
+                          </a>
+                        ) : (
+                          <span className="text-sm text-gray-400 dark:text-gray-500">PDF indisponible</span>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm" style={{ fontWeight: '600' }}>
-                      Date d'expiration
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="MM/AA"
-                      maxLength={5}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-gray-900 dark:text-white transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm" style={{ fontWeight: '600' }}>
-                      CVV
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="123"
-                      maxLength={3}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] text-gray-900 dark:text-white transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  type="button"
-                  onClick={() => setShowAddVenueModal(false)}
-                  className="flex-1 px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
-                  style={{ fontWeight: '600' }}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#5a03cf] to-[#9cff02] text-white rounded-xl hover:brightness-105 transition-all shadow-lg"
-                  style={{ fontWeight: '600' }}
-                >
-                  Créer l'abonnement
-                </button>
-              </div>
-            </form>
+              </section>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
