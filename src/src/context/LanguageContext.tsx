@@ -141,6 +141,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Footer
     'app.footer.rights': '© 2026 Match. Tous droits réservés.',
     'app.footer.terms': 'Conditions',
+    'app.footer.cgv': 'CGV',
     'app.footer.privacy': 'Confidentialité',
     
     // Landing Page
@@ -319,6 +320,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Footer
     'app.footer.rights': '© 2026 Match. All rights reserved.',
     'app.footer.terms': 'Terms',
+    'app.footer.cgv': 'Terms of sale',
     'app.footer.privacy': 'Privacy',
     
     // Landing Page

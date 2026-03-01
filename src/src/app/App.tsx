@@ -30,6 +30,7 @@ import {
   AppPresentation,
   Terms,
   Privacy,
+  Cgv,
   OnboardingWelcome,
   OnboardingAjouterRestaurant,
   OnboardingInfosEtablissement,
@@ -130,15 +131,16 @@ function StripeReturnHandler() {
 
       await apiClient.post('/partners/venues/verify-checkout', { session_id: stripeSessionId });
       await refreshUserData();
+      const venueName = checkoutState?.venueName;
       clearCheckoutState();
 
       if (checkoutState?.type === 'add-venue') {
         // Adding a venue from "My Venues" → show confirmation then redirect to /my-venues
-        navigate('/my-venues/add/confirmation', { replace: true });
+        navigate('/my-venues/add/confirmation', { replace: true, state: { venueName } });
       } else {
         // Onboarding flow → complete onboarding then show confirmation
         await completeOnboarding();
-        navigate('/onboarding/confirmation', { replace: true });
+        navigate('/onboarding/confirmation', { replace: true, state: { venueName } });
       }
     } catch (err) {
       console.error('Error verifying payment:', err);
@@ -196,6 +198,8 @@ function AppRoutes() {
       <Route path="/presentation" element={<AppPresentation />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms-of-sale" element={<Cgv />} />
+      <Route path="/cgv" element={<Navigate to="/terms-of-sale" replace />} />
 
       {/* ── Onboarding routes (auth required, onboarding NOT complete) ── */}
       <Route path="/onboarding" element={<RequireAuth><OnboardingWelcome /></RequireAuth>} />

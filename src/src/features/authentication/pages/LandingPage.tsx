@@ -370,6 +370,9 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: Lan
               <a href="https://matchapp.fr/terms" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
                 Conditions
               </a>
+              <a href="https://matchapp.fr/terms-of-sale" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
+                CGV
+              </a>
               <a href="https://matchapp.fr/privacy" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
                 Confidentialité
               </a>
