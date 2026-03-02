@@ -70,7 +70,14 @@ class ApiService {
     });
   }
 
-  async register(data: { email: string; password: string; firstName: string; lastName: string; phone?: string }) {
+  async register(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    role?: 'user' | 'venue_owner' | 'admin';
+  }) {
     return this.request<{ user: any; token?: string; refresh_token?: string }>('/auth/register', {
       method: 'POST',
       body: data,
@@ -334,8 +341,8 @@ class ApiService {
     });
   }
 
-  async updateNotificationPreferences(preferences: NotificationPreferences) {
-    return this.request<{ success: boolean }>('/users/me/notification-preferences', {
+  async updateNotificationPreferences(preferences: Partial<NotificationPreferences>) {
+    return this.request<NotificationPreferences>('/users/me/notification-preferences', {
       method: 'PUT',
       body: preferences,
     });
@@ -656,10 +663,14 @@ export interface Ambiance {
 }
 
 export interface NotificationPreferences {
-  email_notifications?: boolean;
-  push_notifications?: boolean;
-  reservation_reminders?: boolean;
-  match_alerts?: boolean;
+  email_reservations?: boolean;
+  email_modifications?: boolean;
+  email_cancellations?: boolean;
+  email_match_reminders?: boolean;
+  push_reservations?: boolean;
+  push_updates?: boolean;
+  sms_new_reservations?: boolean;
+  sms_cancellations?: boolean;
 }
 
 export interface SubscriptionPlan {

@@ -2,20 +2,12 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent 
 import { useAuth } from '../../features/authentication/context/AuthContext';
 import { ArrowLeft, Camera, CheckCircle2, ChevronDown, Loader2, Mail, UserRound } from 'lucide-react';
 import apiClient from '../../api/client';
+import { UnsavedChangesDialog } from '../common/UnsavedChangesDialog';
 import { useToast } from '../../context/ToastContext';
 import { useUpdateProfile, useUserProfile } from '../../hooks/api/useAccount';
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard';
 import { API_ENDPOINTS } from '../../utils/api-constants';
 import { resolveProfileAvatar } from '../../utils/profile-avatar';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../ui/alert-dialog';
 
 interface CompteInfosProps {
   onBack?: () => void;
@@ -169,7 +161,6 @@ export function CompteInfos({ onBack }: CompteInfosProps) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isPhoneCountryMenuOpen, setIsPhoneCountryMenuOpen] = useState(false);
-  const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false);
 
   useEffect(() => {
     setFirstName(currentUser?.prenom || '');
@@ -221,20 +212,7 @@ export function CompteInfos({ onBack }: CompteInfosProps) {
     normalizedLastName !== initialLastName ||
     phoneInput !== initialPhoneDisplay ||
     (phoneInput.trim().length > 0 && phoneCountry !== initialPhoneCountry);
-
-  useEffect(() => {
-    if (!hasChanges) return;
-
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [hasChanges]);
+  const unsavedChangesGuard = useUnsavedChangesGuard(hasChanges);
 
   const fullName = useMemo(() => {
     return [normalizedFirstName, normalizedLastName]
@@ -281,18 +259,7 @@ export function CompteInfos({ onBack }: CompteInfosProps) {
 
   const handleBackAttempt = () => {
     if (!onBack) return;
-
-    if (hasChanges) {
-      setIsUnsavedDialogOpen(true);
-      return;
-    }
-
-    onBack();
-  };
-
-  const handleConfirmLeave = () => {
-    setIsUnsavedDialogOpen(false);
-    onBack?.();
+    unsavedChangesGuard.handleNavigationAttempt(onBack);
   };
 
   const handlePhoneCountryChange = (nextCountry: PhoneCountry) => {
@@ -625,29 +592,12 @@ export function CompteInfos({ onBack }: CompteInfosProps) {
         </div>
       </div>
 
-      <AlertDialog open={isUnsavedDialogOpen} onOpenChange={setIsUnsavedDialogOpen}>
-        <AlertDialogContent className="max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
-          <AlertDialogHeader className="space-y-3 text-left">
-            <AlertDialogTitle className="text-lg text-gray-900 dark:text-white">
-              Modifications non enregistrées
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm leading-6 text-gray-600 dark:text-gray-400">
-              Vous avez des changements en cours sur cette page. Si vous quittez maintenant, ils seront perdus.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 flex-row justify-center gap-3 sm:justify-center">
-            <AlertDialogCancel className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800">
-              Rester sur la page
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmLeave}
-              className="flex-1 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
-            >
-              Quitter sans enregistrer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <UnsavedChangesDialog
+        open={unsavedChangesGuard.isDialogOpen}
+        onOpenChange={unsavedChangesGuard.handleDialogOpenChange}
+        onStay={unsavedChangesGuard.handleStay}
+        onConfirmLeave={unsavedChangesGuard.handleConfirmLeave}
+      />
     </div>
   );
 }

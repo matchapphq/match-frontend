@@ -4,3 +4,4 @@
  */
 
 export { StatCard } from './StatCard';
+export { UnsavedChangesDialog } from './UnsavedChangesDialog';
