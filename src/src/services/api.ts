@@ -334,8 +334,8 @@ class ApiService {
     });
   }
 
-  async updateNotificationPreferences(preferences: NotificationPreferences) {
-    return this.request<{ success: boolean }>('/users/me/notification-preferences', {
+  async updateNotificationPreferences(preferences: Partial<NotificationPreferences>) {
+    return this.request<NotificationPreferences>('/users/me/notification-preferences', {
       method: 'PUT',
       body: preferences,
     });
@@ -656,10 +656,14 @@ export interface Ambiance {
 }
 
 export interface NotificationPreferences {
-  email_notifications?: boolean;
-  push_notifications?: boolean;
-  reservation_reminders?: boolean;
-  match_alerts?: boolean;
+  email_reservations?: boolean;
+  email_modifications?: boolean;
+  email_cancellations?: boolean;
+  email_match_reminders?: boolean;
+  push_reservations?: boolean;
+  push_updates?: boolean;
+  sms_new_reservations?: boolean;
+  sms_cancellations?: boolean;
 }
 
 export interface SubscriptionPlan {
