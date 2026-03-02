@@ -70,7 +70,14 @@ class ApiService {
     });
   }
 
-  async register(data: { email: string; password: string; firstName: string; lastName: string; phone?: string }) {
+  async register(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    role?: 'user' | 'venue_owner' | 'admin';
+  }) {
     return this.request<{ user: any; token?: string; refresh_token?: string }>('/auth/register', {
       method: 'POST',
       body: data,

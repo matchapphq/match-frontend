@@ -516,6 +516,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firstName: data.prenom,
         lastName: data.nom,
         phone: data.telephone,
+        role: 'venue_owner',
       });
       persistAuthTokens(response.token, response.refresh_token);
 
