@@ -17,6 +17,7 @@ import type { PageType } from '../../types';
 import { LandingPage as RawLandingPage } from '../../features/authentication/pages/LandingPage';
 import { Login as RawLogin } from '../../features/authentication/pages/Login';
 import { Register as RawRegister } from '../../features/authentication/pages/Register';
+import { ForgotPassword as RawForgotPassword } from '../../features/authentication/pages/ForgotPassword';
 import { ReferralPage as RawReferralPage } from '../../features/parrainage/pages/ReferralPage';
 import { AppPresentation as RawAppPresentation } from '../../pages/app-presentation/AppPresentation';
 import { Terms as RawTerms } from '../../pages/terms/Terms';
@@ -99,20 +100,19 @@ export function Login() {
     return result.success;
   };
 
-  // OAuth Google temporairement désactivé côté front.
-  // const handleGoogleLogin = async (idToken: string): Promise<boolean> => {
-  //   const result = await loginWithGoogle(idToken);
-  //   return result.success;
-  // };
-
   return (
     <RawLogin
       onLogin={handleLogin}
-      // onGoogleLogin={handleGoogleLogin}
       onSwitchToRegister={() => navigate('/register')}
+      onForgotPassword={() => navigate('/forgot-password')}
       onBackToLanding={() => navigate('/')}
     />
   );
+}
+
+export function ForgotPassword() {
+  const navigate = useNavigate();
+  return <RawForgotPassword onBackToLogin={() => navigate('/login')} />;
 }
 
 export function Register() {
