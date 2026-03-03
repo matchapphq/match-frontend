@@ -76,6 +76,7 @@ class ApiService {
     firstName: string;
     lastName: string;
     phone?: string;
+    referralCode?: string;
     role?: 'user' | 'venue_owner' | 'admin';
   }) {
     return this.request<{ user: any; token?: string; refresh_token?: string }>('/auth/register', {

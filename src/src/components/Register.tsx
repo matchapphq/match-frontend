@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 // import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import logo from '../../assets/logo.png';
+import { PhoneInputField } from './common/PhoneInputField';
 import { ReferralCodeInput } from './ReferralCodeInput';
+import { getPhoneErrorMessage, normalizePhone, type PhoneCountry } from '../utils/phone';
 
 interface RegisterProps {
   onRegister: (data: any) => Promise<boolean>;
@@ -12,8 +14,8 @@ interface RegisterProps {
 
 export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: RegisterProps) {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    prenom: '',
+    nom: '',
     email: '',
     telephone: '',
     password: '',
@@ -25,6 +27,28 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [referralCodeFromUrl, setReferralCodeFromUrl] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>('FR');
+  const hasPasswordMismatch =
+    formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword;
+  const hasPasswordTooShort =
+    formData.password.length > 0 && formData.password.length < 6;
+  const hasPasswordError = hasPasswordTooShort || hasPasswordMismatch;
+  const normalizedPhone = formData.telephone.trim().length > 0
+    ? normalizePhone(formData.telephone, phoneCountry)
+    : null;
+  const hasPhoneError = formData.telephone.trim().length > 0 && !normalizedPhone;
+  const hasReferralCodeError =
+    formData.referralCode.trim().length > 0 && !/^MATCH-RESTO-[A-Z0-9]{6}$/.test(formData.referralCode.trim());
+  const isFormIncomplete =
+    !formData.prenom.trim() ||
+    !formData.nom.trim() ||
+    !formData.email.trim() ||
+    !formData.telephone.trim() ||
+    !formData.password ||
+    !formData.confirmPassword ||
+    !termsAccepted;
+  const isSubmitDisabled = isLoading || isFormIncomplete || hasPasswordError || hasPhoneError || hasReferralCodeError;
 
   // Get referral code from URL on mount
   useEffect(() => {
@@ -46,6 +70,12 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const normalizedReferralCode = formData.referralCode.trim();
+
+    if (normalizedReferralCode && !/^MATCH-RESTO-[A-Z0-9]{6}$/.test(normalizedReferralCode)) {
+      setError('Le code de parrainage est invalide');
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Les mots de passe ne correspondent pas');
@@ -57,10 +87,18 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
       return;
     }
 
+    if (!normalizedPhone) {
+      setError(getPhoneErrorMessage(phoneCountry));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const success = await onRegister(formData);
+      const success = await onRegister({
+        ...formData,
+        telephone: normalizedPhone,
+      });
       if (!success) {
         setError('Une erreur est survenue lors de l\'inscription');
       }
@@ -121,6 +159,7 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
                   type="text"
                   value={formData.prenom}
                   onChange={handleChange}
+                  autoComplete="given-name"
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all"
                   placeholder="Jean"
                   required
@@ -137,6 +176,7 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
                   type="text"
                   value={formData.nom}
                   onChange={handleChange}
+                  autoComplete="family-name"
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all"
                   placeholder="Dupont"
                   required
@@ -154,6 +194,7 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
+                autoComplete="email"
                 className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all"
                 placeholder="votre@email.com"
                 required
@@ -164,16 +205,23 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
               <label htmlFor="telephone" className="block text-sm mb-2 text-gray-700 dark:text-gray-300">
                 Téléphone
               </label>
-              <input
+              <PhoneInputField
                 id="telephone"
                 name="telephone"
-                type="tel"
                 value={formData.telephone}
-                onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all"
-                placeholder="06 12 34 56 78"
+                country={phoneCountry}
+                onChange={(value) => setFormData((prev) => ({ ...prev, telephone: value }))}
+                onCountryChange={setPhoneCountry}
+                sizeClassName="py-3"
+                autoComplete="tel-national"
                 required
+                ariaInvalid={hasPhoneError}
               />
+              {hasPhoneError && (
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                  {getPhoneErrorMessage(phoneCountry)}
+                </p>
+              )}
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
@@ -188,8 +236,14 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all pr-12"
-                    placeholder="••••��•••"
+                    autoComplete="new-password"
+                    aria-invalid={hasPasswordError}
+                    className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 transition-all pr-12 ${
+                      hasPasswordError
+                        ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                        : 'border-gray-200 dark:border-gray-700 focus:ring-[#5a03cf]'
+                    }`}
+                    placeholder="••••••••"
                     required
                   />
                   <button
@@ -213,7 +267,13 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all pr-12"
+                    autoComplete="new-password"
+                    aria-invalid={hasPasswordMismatch}
+                    className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 transition-all pr-12 ${
+                      hasPasswordMismatch
+                        ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                        : 'border-gray-200 dark:border-gray-700 focus:ring-[#5a03cf]'
+                    }`}
                     placeholder="••••••••"
                     required
                   />
@@ -243,6 +303,8 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
               <input 
                 type="checkbox" 
                 id="terms"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
                 className="w-4 h-4 mt-1 rounded border-gray-300 dark:border-gray-600 text-[#5a03cf] focus:ring-[#5a03cf] bg-gray-50 dark:bg-gray-900"
                 required
               />
@@ -260,8 +322,12 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#5a03cf]/20"
+              disabled={isSubmitDisabled}
+              className={`w-full py-3 rounded-xl transition-all duration-200 shadow-lg ${
+                isSubmitDisabled
+                  ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
+                  : 'bg-[#5a03cf] text-white hover:bg-[#4a02af] shadow-[#5a03cf]/20'
+              }`}
             >
               {isLoading ? 'Création...' : 'Créer mon compte'}
             </button>

@@ -42,6 +42,7 @@ export interface RegisterData {
   nom: string;
   prenom: string;
   telephone: string;
+  referralCode?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -516,6 +517,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firstName: data.prenom,
         lastName: data.nom,
         phone: data.telephone,
+        referralCode: data.referralCode?.trim() || undefined,
         role: 'venue_owner',
       });
       persistAuthTokens(response.token, response.refresh_token);
