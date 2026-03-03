@@ -4,4 +4,5 @@
  */
 
 export { StatCard } from './StatCard';
+export { PhoneInputField } from './PhoneInputField';
 export { UnsavedChangesDialog } from './UnsavedChangesDialog';

@@ -63,19 +63,13 @@ class ApiService {
     });
   }
 
-  async googleLogin(idToken: string) {
-    return this.request<{ user: any; token?: string; refresh_token?: string; is_new_user?: boolean }>('/auth/google', {
-      method: 'POST',
-      body: { id_token: idToken },
-    });
-  }
-
   async register(data: {
     email: string;
     password: string;
     firstName: string;
     lastName: string;
     phone?: string;
+    referralCode?: string;
     role?: 'user' | 'venue_owner' | 'admin';
   }) {
     return this.request<{ user: any; token?: string; refresh_token?: string }>('/auth/register', {

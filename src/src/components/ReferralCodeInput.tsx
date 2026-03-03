@@ -1,11 +1,12 @@
 /**
  * Referral Code Input
- * 
+ *
  * Composant pour saisir un code de parrainage lors de l'inscription
- * Validation mock (en attendant le backend)
+ * Validation via l'API de parrainage
  */
 
 import { useState, useEffect } from 'react';
+import { useValidateReferralCode } from '../hooks/api/useReferral';
 
 interface ReferralCodeInputProps {
   defaultCode?: string; // Pre-filled from URL query param
@@ -21,32 +22,42 @@ export function ReferralCodeInput({
   const [code, setCode] = useState(defaultCode);
   const [isValidated, setIsValidated] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [helperMessage, setHelperMessage] = useState('Vous recevrez 1 boost de bienvenue !');
+  const validateReferralCode = useValidateReferralCode();
 
   // Auto-validate if code is pre-filled from URL
   useEffect(() => {
     if (defaultCode) {
-      setCode(defaultCode);
-      validateCode(defaultCode);
+      const normalizedCode = defaultCode.trim().toUpperCase();
+      setCode(normalizedCode);
+      void validateCode(normalizedCode);
     }
   }, [defaultCode]);
 
-  // Mock validation (until backend is ready)
-  const validateCode = (codeToValidate: string) => {
+  const validateCode = async (codeToValidate: string) => {
     const trimmedCode = codeToValidate.trim();
     if (!trimmedCode) return;
 
-    const isValid = trimmedCode.toUpperCase().startsWith('MATCH-');
-    
-    if (isValid) {
-      setIsValidated(true);
-      setIsError(false);
-      onCodeValidated?.(trimmedCode, {
-        reward_for_referee: 'Vous recevrez 1 boost de bienvenue !',
-      });
-    } else {
-      setIsValidated(false);
-      setIsError(true);
+    try {
+      const response = await validateReferralCode.mutateAsync(trimmedCode);
+      if (response.valid) {
+        const nextHelperMessage = response.referrer_name
+          ? `Code valide. Parrain: ${response.referrer_name}`
+          : 'Vous recevrez 1 boost de bienvenue !';
+
+        setHelperMessage(nextHelperMessage);
+        setIsValidated(true);
+        setIsError(false);
+        onCodeValidated?.(trimmedCode, response);
+        return;
+      }
+    } catch {
+      // Surface the same UI state as an invalid code to keep the form flow simple.
     }
+
+    setIsValidated(false);
+    setIsError(true);
+    setHelperMessage('Vous recevrez 1 boost de bienvenue !');
   };
 
   const handleCodeChange = (value: string) => {
@@ -54,19 +65,20 @@ export function ReferralCodeInput({
     setCode(upperCode);
     setIsValidated(false);
     setIsError(false);
+    setHelperMessage('Vous recevrez 1 boost de bienvenue !');
     onCodeChange?.(upperCode);
   };
 
-  const handleValidate = () => {
+  const handleValidate = async () => {
     if (code.trim()) {
-      validateCode(code);
+      await validateCode(code);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleValidate();
+      void handleValidate();
     }
   };
 
@@ -81,8 +93,12 @@ export function ReferralCodeInput({
           type="text"
           value={code}
           onChange={(e) => handleCodeChange(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="MATCH-USER-XYZ789"
+          onBlur={() => void handleValidate()}
+          onKeyDown={handleKeyDown}
+          placeholder="MATCH-RESTO-ABC123"
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
           className={`flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-900 border rounded-xl outline-none transition-colors text-gray-900 dark:text-white ${
             isValidated
               ? 'border-[#9cff02] focus:border-[#9cff02]'
@@ -93,11 +109,11 @@ export function ReferralCodeInput({
         />
         <button
           type="button"
-          onClick={handleValidate}
-          disabled={!code.trim()}
+          onClick={() => void handleValidate()}
+          disabled={!code.trim() || validateReferralCode.isPending}
           className="px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 dark:text-white"
         >
-          Vérifier
+          {validateReferralCode.isPending ? 'Vérification...' : 'Vérifier'}
         </button>
       </div>
 
@@ -107,9 +123,9 @@ export function ReferralCodeInput({
           <div className="flex items-start gap-2">
             <span className="text-lg">✅</span>
             <div className="flex-1">
-              <div className="font-medium text-[#9cff02]">Code valide !</div>
+              <div className="font-medium text-[#365314] dark:text-[#d9ff9a]">Code valide !</div>
               <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
-                Vous recevrez 1 boost de bienvenue !
+                {helperMessage}
               </p>
             </div>
           </div>

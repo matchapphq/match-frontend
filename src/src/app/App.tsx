@@ -26,6 +26,7 @@ import {
   LandingPage,
   Login,
   Register,
+  ForgotPassword,
   ReferralPage,
   AppPresentation,
   Terms,
@@ -223,6 +224,7 @@ function AppRoutes() {
       <Route path="/" element={<PublicOnly><LandingPage /></PublicOnly>} />
       <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
       <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
+      <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
       <Route path="/public-referral" element={<PublicOnly><ReferralPage /></PublicOnly>} />
       <Route path="/presentation" element={<AppPresentation />} />
       <Route path="/terms" element={<Terms />} />
