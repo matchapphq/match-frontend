@@ -30,7 +30,7 @@ export function Parrainage({ onBack }: ParrainageProps) {
   const isVenueOwner = true;
   const referralCode = isVenueOwner ? mockVenueOwnerReferralCode.referral_code : mockUserReferralCode.referral_code;
   const stats = isVenueOwner ? mockVenueOwnerReferralStats : mockUserReferralStats;
-  const referralLink = `https://match.app/signup?ref=${referralCode}`;
+  const referralLink = `https://match.app/register?ref=${referralCode}`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -253,7 +253,7 @@ export function Parrainage({ onBack }: ParrainageProps) {
                         <div>
                           <div className="font-medium text-gray-900 dark:text-white">{referral.name}</div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Invité le {new Date(referral.created_at).toLocaleDateString('fr-FR')}
+                            Invité(e) le {new Date(referral.created_at).toLocaleDateString('fr-FR')}
                           </div>
                         </div>
                       </div>
@@ -288,7 +288,6 @@ export function Parrainage({ onBack }: ParrainageProps) {
         onClose={() => setIsShareModalOpen(false)}
         referralCode={referralCode}
         referralLink={referralLink}
-        isVenueOwner={isVenueOwner}
       />
     </div>
   );

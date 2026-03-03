@@ -2,7 +2,9 @@ import { ArrowLeft, Building2, ChevronDown, Coffee, Loader2, Receipt, ShieldChec
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageType } from '../../../types';
 import apiClient from '../../../api/client';
+import { PhoneInputField } from '../../../components/common/PhoneInputField';
 import { saveCheckoutState } from '../../../utils/checkout-state';
+import { getPhoneErrorMessage, normalizePhone, type PhoneCountry } from '../../../utils/phone';
 
 interface InfosEtablissementProps {
   onBack: () => void;
@@ -11,43 +13,6 @@ interface InfosEtablissementProps {
   onBarInfoSubmit?: (nomBar: string) => void;
   onCheckoutData?: (url: string, sessionId: string) => void;
   isAddingVenue?: boolean; // True when adding from "Mes lieux" (not onboarding)
-}
-
-function formatFrenchPhoneInput(value: string): string {
-  let digits = value.replace(/\D/g, '');
-
-  if (digits.startsWith('0033')) {
-    digits = `0${digits.slice(4)}`;
-  } else if (digits.startsWith('33')) {
-    digits = `0${digits.slice(2)}`;
-  }
-
-  if (digits.length > 0 && !digits.startsWith('0')) {
-    digits = `0${digits}`;
-  }
-
-  digits = digits.slice(0, 10);
-  return digits.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
-}
-
-function normalizeFrenchPhone(value: string): string | null {
-  let digits = value.replace(/\D/g, '');
-
-  if (digits.startsWith('0033')) {
-    digits = `0${digits.slice(4)}`;
-  } else if (digits.startsWith('33')) {
-    digits = `0${digits.slice(2)}`;
-  }
-
-  if (digits.length === 9 && /^[1-9]\d{8}$/.test(digits)) {
-    digits = `0${digits}`;
-  }
-
-  if (!/^0[1-9]\d{8}$/.test(digits)) {
-    return null;
-  }
-
-  return `+33${digits.slice(1)}`;
 }
 
 function sanitizeCapacityInput(value: string): string {
@@ -69,6 +34,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>('FR');
 
   const etablissementTypes = useMemo(() => ([
     {
@@ -127,7 +93,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
   const updateField = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
-  const normalizedPhone = formData.telephone.trim() ? normalizeFrenchPhone(formData.telephone) : undefined;
+  const normalizedPhone = formData.telephone.trim() ? normalizePhone(formData.telephone, phoneCountry) : undefined;
 
   useEffect(() => {
     if (!isTypeMenuOpen) return;
@@ -150,7 +116,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
     setError('');
 
     if (formData.telephone.trim() && !normalizedPhone) {
-      setError('Le numéro de téléphone doit être au format 06 12 34 56 78.');
+      setError(getPhoneErrorMessage(phoneCountry));
       setIsLoading(false);
       return;
     }
@@ -429,16 +395,16 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
                       <label htmlFor="telephone" className="block text-sm mb-2 text-gray-700 dark:text-gray-300">
                         Téléphone de l&apos;établissement
                       </label>
-                      <input
+                      <PhoneInputField
                         id="telephone"
-                        name="tel"
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
+                        name="telephone"
                         value={formData.telephone}
-                        onChange={(e) => updateField('telephone', formatFrenchPhoneInput(e.target.value))}
-                        placeholder="01 23 45 67 89"
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all placeholder-gray-400 dark:placeholder-gray-600"
+                        country={phoneCountry}
+                        onChange={(value) => updateField('telephone', value)}
+                        onCountryChange={setPhoneCountry}
+                        sizeClassName="py-3"
+                        autoComplete="tel-national"
+                        ariaInvalid={formData.telephone.trim().length > 0 && !normalizedPhone}
                       />
                     </div>
 

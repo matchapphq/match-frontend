@@ -62,7 +62,9 @@ export function Booster({ onBack, onNavigate, purchaseSuccess, purchasedCount }:
   // Transform history data
   const matchsBoostes = useMemo(() => {
     if (!historyData || !Array.isArray(historyData)) return [];
-    return historyData.map((boost: any) => {
+    return historyData
+      .filter((boost: any) => boost?.status === 'used' || boost?.status === 'expired' || !!boost?.venue_match_id)
+      .map((boost: any) => {
       let dateStr = '';
       let heureStr = '';
       try {
@@ -75,8 +77,8 @@ export function Booster({ onBack, onNavigate, purchaseSuccess, purchasedCount }:
       
       return {
         id: boost.id,
-        equipe1: boost.match?.home_team || boost.match?.homeTeam || 'Équipe A',
-        equipe2: boost.match?.away_team || boost.match?.awayTeam || 'Équipe B',
+        equipe1: boost.match?.home_team || boost.match?.homeTeam || boost.home_team || 'Équipe A',
+        equipe2: boost.match?.away_team || boost.match?.awayTeam || boost.away_team || 'Équipe B',
         date: dateStr,
         heure: heureStr,
         vuesGagnees: boost.views_generated || 0,
@@ -200,7 +202,7 @@ export function Booster({ onBack, onNavigate, purchaseSuccess, purchasedCount }:
               <div className="bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white/20 col-span-2">
                 <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-white mb-2 sm:mb-3" />
                 <div className="text-2xl sm:text-3xl text-white mb-1">{matchsBoostes.length}</div>
-                <div className="text-white/80 text-xs sm:text-sm">Matchs boostés ce mois</div>
+                <div className="text-white/80 text-xs sm:text-sm">Matchs boostés</div>
               </div>
             </div>
           </div>
@@ -266,19 +268,19 @@ export function Booster({ onBack, onNavigate, purchaseSuccess, purchasedCount }:
                     <h3 className="text-base sm:text-lg text-gray-900 dark:text-white">Parrainage</h3>
                   </div>
                   <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Parrainez un restaurant et gagnez des boosts
+                    Invitez un autre restaurateur. 1 ami converti = 1 boost.
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl sm:text-3xl text-[#5a03cf] mb-1">+5</div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">boosts</div>
+                  <div className="text-2xl sm:text-3xl text-[#5a03cf] mb-1">+1</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">par ami</div>
                 </div>
               </div>
               <button
                 onClick={handleParrainer}
                 className="w-full px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white rounded-xl hover:shadow-xl hover:shadow-[#5a03cf]/30 transition-all flex items-center justify-center gap-2 group text-sm sm:text-base"
               >
-                Parrainer maintenant
+                Voir le parrainage
                 <ArrowUpRight className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
               </button>
             </div>
