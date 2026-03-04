@@ -1,9 +1,9 @@
-import { ArrowRight, Moon, Sun } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 // import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import logo from '../../../../assets/logo.png';
-import { useTheme } from '../../theme/context/ThemeContext';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../api/client';
+import { PublicNavbar } from '../../../components/PublicNavbar';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -12,8 +12,6 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: LandingPageProps) {
-  const { theme, toggleTheme } = useTheme();
-
   // Health check API call
   useQuery({
     queryKey: ['health'],
@@ -81,54 +79,14 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: Lan
   ];
 
   return (
-    <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] relative overflow-hidden">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] relative">
       {/* Ambient background effects */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#5a03cf]/5 dark:bg-[#5a03cf]/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#9cff02]/5 dark:bg-[#9cff02]/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-2xl bg-white/40 dark:bg-black/40 border-b border-white/20 dark:border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <img 
-                src={logo} 
-                alt="Match" 
-                className="h-8 dark:brightness-150" 
-                style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-              />
-            </div>
-            
-            <div className="flex items-center gap-4">
-              {onReferral && (
-                <button
-                  onClick={onReferral}
-                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors hidden sm:block"
-                >
-                  Parrainer un lieu
-                </button>
-              )}
-              <button
-                onClick={onGetStarted}
-                className="relative px-6 py-2.5 bg-white/70 dark:bg-white/10 backdrop-blur-xl rounded-full transition-all duration-300 hover:bg-white/80 dark:hover:bg-white/20 group gradient-border"
-              >
-                <span className="relative z-10 text-gray-900 dark:text-white">Connexion</span>
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="relative p-2.5 bg-white/70 dark:bg-white/10 backdrop-blur-xl rounded-full transition-all duration-300 hover:bg-white/80 dark:hover:bg-white/20 group gradient-border"
-                aria-label="Toggle theme"
-              >
-                <span className="relative z-10 text-gray-900 dark:text-white">
-                  {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       {/* Hero Section */}
       <section className="relative pt-24 pb-32 sm:pt-32 sm:pb-40">

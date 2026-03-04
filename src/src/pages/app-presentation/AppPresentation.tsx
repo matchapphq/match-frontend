@@ -1,19 +1,13 @@
-import { Check, MapPin, Search, Sparkles, Star, Smartphone, Navigation, Users, ArrowRight, Trophy, Zap, Target, Moon, Sun } from 'lucide-react';
-import { PageType } from '../../types';
+import { Check, MapPin, Search, Sparkles, Star, Smartphone, Navigation, Users, ArrowRight, Trophy, Zap, Target } from 'lucide-react';
 // import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import logoMatch from '../../../assets/logo.png';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { useTheme } from '../../features/theme/context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { LanguageToggle } from '../../components/LanguageToggle';
+import { PublicNavbar } from '../../components/PublicNavbar';
 
-interface AppPresentationProps {
-  onNavigate: (page: PageType) => void;
-  onBack?: () => void;
-}
-
-export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
-  const { theme, toggleTheme } = useTheme();
+export function AppPresentation() {
+  const { theme } = useTheme();
   const { t } = useLanguage();
   
   const handleInstallApp = () => {
@@ -29,46 +23,7 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] transition-colors duration-300">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <img 
-                src={logoMatch} 
-                alt="Match" 
-                className="h-8" 
-                style={{ filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-              />
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <button
-                onClick={toggleTheme}
-                className="p-2 glass-card rounded-full hover:scale-110 transition-all duration-300"
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? (
-                  <Sun className="w-5 h-5 text-[#9cff02]" />
-                ) : (
-                  <Moon className="w-5 h-5 text-[#5a03cf]" />
-                )}
-              </button>
-              
-              {onBack && (
-                <button
-                  onClick={onBack}
-                  className="px-6 py-2 bg-[#5a03cf] text-white rounded-full hover:bg-[#4a02af] transition-all duration-200 shadow-lg shadow-[#5a03cf]/20"
-                >
-                  {t('common.back')}
-                </button>
-              )}
-              
-              <LanguageToggle />
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-32">
