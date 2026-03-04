@@ -1,17 +1,15 @@
 import { ArrowRight } from 'lucide-react';
-// import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logo from '../../../../assets/logo.png';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../api/client';
+import { PublicFooter } from '../../../components/PublicFooter';
 import { PublicNavbar } from '../../../components/PublicNavbar';
 
 interface LandingPageProps {
   onGetStarted: () => void;
-  onReferral?: () => void;
   onAppPresentation?: () => void;
 }
 
-export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: LandingPageProps) {
+export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProps) {
   // Health check API call
   useQuery({
     queryKey: ['health'],
@@ -309,35 +307,7 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: Lan
         </div>
       </section>
 
-      {/* Footer - Minimal and clean */}
-      <footer className="relative backdrop-blur-2xl bg-white/40 dark:bg-black/40 border-t border-white/20 dark:border-white/10 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <img 
-                src={logo} 
-                alt="Match" 
-                className="h-6 dark:brightness-150" 
-                style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-              />
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              © 2026 Match. Tous droits réservés.
-            </div>
-            <div className="flex items-center gap-8">
-              <a href="https://matchapp.fr/terms" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
-                Conditions
-              </a>
-              <a href="https://matchapp.fr/terms-of-sale" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
-                CGV
-              </a>
-              <a href="https://matchapp.fr/privacy" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
-                Confidentialité
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

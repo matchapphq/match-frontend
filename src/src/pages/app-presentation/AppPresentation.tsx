@@ -1,13 +1,10 @@
 import { Check, MapPin, Search, Sparkles, Star, Smartphone, Navigation, Users, ArrowRight, Trophy, Zap, Target } from 'lucide-react';
-// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logoMatch from '../../../assets/logo.png';
+import { PublicFooter } from '../../components/PublicFooter';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
-import { useTheme } from '../../features/theme/context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { PublicNavbar } from '../../components/PublicNavbar';
 
 export function AppPresentation() {
-  const { theme } = useTheme();
   const { t } = useLanguage();
   
   const handleInstallApp = () => {
@@ -344,35 +341,7 @@ export function AppPresentation() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-white dark:bg-[#1a1a1a] border-t border-gray-200/50 dark:border-white/10 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <img 
-                src={logoMatch} 
-                alt="Match" 
-                className="h-6" 
-                style={{ filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-              />
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              {t('app.footer.rights')}
-            </div>
-            <div className="flex items-center gap-6">
-              <a href="/terms" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
-                {t('app.footer.terms')}
-              </a>
-              <a href="/terms-of-sale" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
-                {t('app.footer.cgv')}
-              </a>
-              <a href="/privacy" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors">
-                {t('app.footer.privacy')}
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
       {/* Mobile Sticky CTA */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-[#1a1a1a]/90 backdrop-blur-xl border-t border-gray-200/50 dark:border-white/10 z-50">

@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import { PublicFooter } from '../../../components/PublicFooter';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { useState } from 'react';
@@ -186,12 +187,7 @@ export function ReferralPage({ onBackToLanding, onGoToLogin }: ReferralPageProps
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-200/50 dark:border-gray-800/50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>© 2024 Match - Tous droits réservés</p>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

@@ -85,7 +85,6 @@ export function LandingPage() {
   return (
     <RawLandingPage
       onGetStarted={() => navigate('/login')}
-      onReferral={() => navigate('/public-referral')}
       onAppPresentation={() => navigate('/presentation')}
     />
   );
