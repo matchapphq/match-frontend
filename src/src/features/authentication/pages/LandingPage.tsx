@@ -241,16 +241,20 @@ export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProp
             {pricing.map((plan, index) => (
               <div 
                 key={index}
-                className={`relative group ${plan.popular ? 'md:-translate-y-4' : ''}`}
+                className="relative group"
               >
                 <div className={`glass-card rounded-3xl p-10 backdrop-blur-2xl transition-all duration-500 group-hover:scale-[1.02] h-full flex flex-col ${
                   plan.popular ? 'gradient-border bg-white/80 dark:bg-white/5' : ''
                 }`}>
-                  {plan.popular && (
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white text-sm rounded-full mb-6 self-start">
-                      <span>Le plus populaire</span>
-                    </div>
-                  )}
+                  <div className="mb-6 min-h-9 flex items-start">
+                    {plan.popular ? (
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white text-sm rounded-full self-start">
+                        <span>Le plus populaire</span>
+                      </div>
+                    ) : (
+                      <div aria-hidden="true" className="h-9" />
+                    )}
+                  </div>
                   <h3 className="text-3xl mb-3 text-gray-900 dark:text-white">{plan.name}</h3>
                   <div className="mb-8">
                     <span className="text-5xl text-gray-900 dark:text-white">{plan.price}</span>
