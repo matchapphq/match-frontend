@@ -3,7 +3,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageType } from '../../../types';
 import apiClient from '../../../api/client';
 import { PhoneInputField } from '../../../components/common/PhoneInputField';
+import { useAuth } from '../../authentication/context/AuthContext';
 import { saveCheckoutState } from '../../../utils/checkout-state';
+import { API_ENDPOINTS } from '../../../utils/api-constants';
 import { getPhoneErrorMessage, normalizePhone, type PhoneCountry } from '../../../utils/phone';
 
 interface InfosEtablissementProps {
@@ -15,11 +17,24 @@ interface InfosEtablissementProps {
   isAddingVenue?: boolean; // True when adding from "Mes lieux" (not onboarding)
 }
 
+interface CreateVenueResponse {
+  venue_id?: string;
+  checkout_url?: string;
+  session_id?: string;
+  requires_payment_setup?: boolean;
+}
+
+interface SetupCheckoutResponse {
+  checkout_url?: string;
+  session_id?: string;
+}
+
 function sanitizeCapacityInput(value: string): string {
   return value.replace(/[^\d]/g, '');
 }
 
 export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mensuel', onBarInfoSubmit, onCheckoutData, isAddingVenue = false }: InfosEtablissementProps) {
+  const { completeOnboarding } = useAuth();
   const typePickerRef = useRef<HTMLDivElement | null>(null);
   const [formData, setFormData] = useState({
     nomBar: '',
@@ -112,14 +127,15 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     if (formData.telephone.trim() && !normalizedPhone) {
       setError(getPhoneErrorMessage(phoneCountry));
-      setIsLoading(false);
       return;
     }
+
+    const setupPopup = window.open('about:blank', '_blank');
+    setIsLoading(true);
 
     try {
       const payload = {
@@ -140,8 +156,40 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
         cancel_url: cancelRedirectUrl,
       };
 
-      const response = await apiClient.post('/partners/venues', payload);
+      const response = await apiClient.post<CreateVenueResponse>(API_ENDPOINTS.PARTNERS_VENUES, payload);
       const data = response.data;
+      const venueId = data.venue_id ? String(data.venue_id) : '';
+      const requiresPaymentSetup = data.requires_payment_setup === true;
+
+      if (requiresPaymentSetup) {
+        if (!venueId) {
+          throw new Error('Identifiant du lieu manquant pour initialiser le paiement.');
+        }
+
+        const setupResponse = await apiClient.post<SetupCheckoutResponse>(API_ENDPOINTS.BILLING_SETUP_CHECKOUT, {
+          flow: 'post_first_venue',
+          venue_id: venueId,
+        });
+        const setupCheckoutUrl = setupResponse.data?.checkout_url;
+
+        if (!setupCheckoutUrl) {
+          throw new Error('URL de configuration de paiement indisponible.');
+        }
+
+        if (setupPopup && !setupPopup.closed) {
+          setupPopup.location.href = setupCheckoutUrl;
+          window.location.href = `/onboarding/payment-required?venue=${encodeURIComponent(venueId)}`;
+          return;
+        }
+
+        // Popup blocked/closed fallback: continue in main tab
+        window.location.href = setupCheckoutUrl;
+        return;
+      }
+
+      if (setupPopup && !setupPopup.closed) {
+        setupPopup.close();
+      }
 
       if (onBarInfoSubmit) {
         onBarInfoSubmit(formData.nomBar);
@@ -151,22 +199,42 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
         onCheckoutData(data.checkout_url, data.session_id);
       }
 
-      // Save checkout state before redirecting to Stripe
-      // This helps restore context after Stripe redirect
+      if (data.checkout_url && data.session_id) {
+        // Legacy checkout path (kept for backward compatibility)
+        saveCheckoutState({
+          type: isAddingVenue ? 'add-venue' : 'onboarding',
+          venueId,
+          venueName: formData.nomBar,
+          formule: selectedFormule,
+          sessionId: data.session_id,
+          checkoutUrl: data.checkout_url,
+          returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding'
+        });
+        onNavigate('paiement-validation' as PageType);
+        return;
+      }
+
+      // No checkout required: continue success flow directly
       saveCheckoutState({
         type: isAddingVenue ? 'add-venue' : 'onboarding',
-        venueId: data.venue_id,
+        venueId,
         venueName: formData.nomBar,
         formule: selectedFormule,
-        sessionId: data.session_id,
-        checkoutUrl: data.checkout_url,
-        returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding'
+        returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding',
       });
-      
-      onNavigate('paiement-validation' as PageType);
+
+      if (isAddingVenue) {
+        window.location.href = '/my-venues/add/confirmation';
+      } else {
+        await completeOnboarding();
+        window.location.href = '/onboarding/confirmation';
+      }
     } catch (err) {
+      if (setupPopup && !setupPopup.closed) {
+        setupPopup.close();
+      }
       console.error('Failed to create venue:', err);
-      setError('Une erreur est survenue lors de la création de l\'établissement.');
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de la création de l\'établissement.');
     } finally {
       setIsLoading(false);
     }
