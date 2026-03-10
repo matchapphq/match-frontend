@@ -32,6 +32,11 @@ export interface BillingPaymentMethod {
   } | null;
 }
 
+interface BillingPaymentMethodOptions {
+  enabled?: boolean;
+  refetchInterval?: number | false;
+}
+
 export interface AccruedCommission {
   amount: string | number;
   currency: string;
@@ -65,9 +70,13 @@ export function useBillingSetupCheckout() {
 /**
  * Fetch payment method status for the authenticated user.
  */
-export function useBillingPaymentMethod() {
+export function useBillingPaymentMethod(options?: BillingPaymentMethodOptions) {
+  const { enabled = true, refetchInterval = false } = options || {};
+
   return useQuery<BillingPaymentMethod>({
     queryKey: ['billing-payment-method'],
+    enabled,
+    refetchInterval,
     queryFn: async () => {
       const response = await apiClient.get(API_ENDPOINTS.BILLING_PAYMENT_METHOD);
       return response.data?.payment_method_status ?? response.data;
