@@ -85,7 +85,6 @@ export function LandingPage() {
   return (
     <RawLandingPage
       onGetStarted={() => navigate('/login')}
-      onReferral={() => navigate('/public-referral')}
       onAppPresentation={() => navigate('/presentation')}
     />
   );
@@ -144,9 +143,7 @@ export function ReferralPage() {
 }
 
 export function AppPresentation() {
-  const onNavigate = useOnNavigate();
-  const goBack = useGoBack('/');
-  return <RawAppPresentation onNavigate={onNavigate} onBack={goBack} />;
+  return <RawAppPresentation />;
 }
 
 export function Terms() {
