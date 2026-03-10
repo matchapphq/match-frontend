@@ -49,7 +49,18 @@ export interface CustomerStats {
   customerCount: number;
   totalGuests: number;
   totalReservations: number;
-  period: number;
+  period: number | string;
+  average_age?: number;
+  favorite_sport?: string;
+  total_customers?: number;
+  average_per_match?: number;
+  recent_customers?: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    total_reservations: number;
+    last_visit?: string;
+  }>;
 }
 
 // Hook to fetch reservations for a venue
