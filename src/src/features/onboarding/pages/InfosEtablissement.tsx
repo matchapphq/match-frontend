@@ -576,7 +576,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
                         3
                       </span>
                       <p className="text-sm text-gray-700 dark:text-gray-300">
-                        L’activation du lieu se poursuit une fois la souscription finalisée.
+                        L’activation du lieu se poursuit une fois la configuration du moyen de paiement finalisée.
                       </p>
                     </div>
                   </div>

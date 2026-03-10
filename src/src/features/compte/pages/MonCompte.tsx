@@ -42,8 +42,8 @@ export function Compte({ onNavigate }: CompteProps) {
       color: 'blue' as const
     },
     { 
-      label: 'Facturation & abonnement', 
-      description: 'Abonnement actif, moyen de paiement, factures', 
+      label: 'Facturation & commissions', 
+      description: 'Commissions en cours, moyen de paiement, factures', 
       page: 'compte-facturation' as PageType,
       icon: CreditCard,
       color: 'green' as const

@@ -43,9 +43,9 @@ export function CompteAide({ onBack }: CompteAideProps) {
         'Allez dans "Mes lieux", cliquez sur l’établissement concerné et modifiez les informations.',
     },
     {
-      question: 'Comment gérer mon abonnement ?',
+      question: 'Comment fonctionne la facturation à la commission ?',
       reponse:
-        'Rendez-vous dans "Facturation & abonnement" pour modifier votre formule ou gérer vos paiements.',
+        'Rendez-vous dans "Facturation & commissions" pour suivre le tarif appliqué, vos commissions en cours et votre moyen de paiement.',
     },
     {
       question: 'Comment ajouter un nouvel établissement ?',
@@ -90,17 +90,17 @@ export function CompteAide({ onBack }: CompteAideProps) {
     {
       question: 'Comment consulter mes factures ?',
       reponse:
-        'La section "Facturation & abonnement" centralise les informations liées à votre formule, vos paiements et les documents de facturation disponibles.',
+        'La section "Facturation & commissions" centralise vos commissions en cours, vos paiements et les documents de facturation disponibles.',
     },
     {
       question: 'Comment mettre à jour mes informations de facturation ?',
       reponse:
-        'Rendez-vous dans les paramètres de facturation pour modifier les informations liées à votre abonnement ou à votre profil de paiement.',
+        'Rendez-vous dans les paramètres de facturation pour modifier les informations liées à votre profil de paiement.',
     },
     {
-      question: 'Comment suspendre ou modifier mon abonnement ?',
+      question: 'Comment activer mon établissement si le paiement est manquant ?',
       reponse:
-        'Depuis "Facturation & abonnement", vous pouvez consulter votre formule actuelle et effectuer les changements disponibles selon votre type de compte.',
+        'Depuis "Facturation & commissions", configurez votre moyen de paiement Stripe. L’établissement devient actif une fois cette étape terminée.',
     },
     {
       question: 'Comment gérer mes préférences de notifications ?',
@@ -256,7 +256,7 @@ export function CompteAide({ onBack }: CompteAideProps) {
               <span className="text-xs font-medium text-orange-600 dark:text-orange-400">Aide</span>
             </div>
             <div className="text-2xl text-orange-700 dark:text-orange-300">Pro</div>
-            <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Compte, lieux et abonnements</p>
+            <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Compte, lieux et commissions</p>
           </div>
         </div>
 

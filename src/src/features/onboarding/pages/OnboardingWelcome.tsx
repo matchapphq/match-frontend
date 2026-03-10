@@ -2,6 +2,8 @@ import { ArrowRight, Sparkles, Building2, CreditCard, Rocket } from 'lucide-reac
 import { PageType } from '../../../types';
 // import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import logoMatch from '../../../../assets/logo.png';
+import { useBillingPricing } from '../../../hooks/api/useBilling';
+import { formatPricingLabel } from '../../../utils/pricing';
 
 interface OnboardingWelcomeProps {
   onContinue: (page: PageType) => void;
@@ -10,6 +12,15 @@ interface OnboardingWelcomeProps {
 }
 
 export function OnboardingWelcome({ onContinue, currentStep, userName }: OnboardingWelcomeProps) {
+  const { data: billingPricing } = useBillingPricing();
+  const commissionPricingLabel = billingPricing
+    ? formatPricingLabel({
+        default_rate: billingPricing.default_rate,
+        currency: billingPricing.currency,
+        unit: billingPricing.unit,
+      })
+    : null;
+
   const getStepInfo = () => {
     switch (currentStep) {
       case 'restaurant':
@@ -23,8 +34,10 @@ export function OnboardingWelcome({ onContinue, currentStep, userName }: Onboard
       case 'facturation':
         return {
           title: 'Finalisez votre inscription',
-          description: "Choisissez votre formule d'abonnement pour activer votre compte",
-          buttonText: 'Choisir ma formule',
+          description: commissionPricingLabel
+            ? `Configurez votre facturation à la commission (${commissionPricingLabel}) pour activer votre compte`
+            : 'Configurez votre facturation à la commission pour activer votre compte',
+          buttonText: 'Configurer ma facturation',
           page: 'facturation' as PageType,
           progress: 66
         };
@@ -167,7 +180,7 @@ export function OnboardingWelcome({ onContinue, currentStep, userName }: Onboard
                           ? 'text-gray-400 dark:text-gray-500 line-through' 
                           : 'text-gray-500 dark:text-gray-400'
                     }`}>
-                      Choisir votre formule d'abonnement
+                      Configurer votre facturation à la commission
                     </span>
                   </div>
                   
