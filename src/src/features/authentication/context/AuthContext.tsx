@@ -12,6 +12,7 @@ export interface User {
   avatar?: string;
   role?: 'user' | 'venue_owner' | 'admin';
   hasCompletedOnboarding: boolean;
+  hasPaymentMethod: boolean;
   onboardingStep: 'restaurant' | 'facturation' | 'complete';
 }
 
@@ -57,6 +58,7 @@ function apiUserToUser(apiUser: ApiUser): User {
     avatar: apiUser.avatar,
     role: apiUser.role,
     hasCompletedOnboarding: apiUser.has_completed_onboarding ?? false,
+    hasPaymentMethod: apiUser.has_payment_method ?? false,
     onboardingStep: apiUser.has_completed_onboarding ? 'complete' : 'restaurant',
   };
 }
@@ -231,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar: response.user.avatar,
           role: response.user.role,
           hasCompletedOnboarding: false,
+          hasPaymentMethod: false,
           onboardingStep: 'restaurant',
         };
 

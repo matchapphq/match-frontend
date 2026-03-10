@@ -6,6 +6,7 @@
 export * from './useAuth';
 export * from './useApi';
 export * from './useAccount';
+export * from './useBilling';
 export * from './useBoosts';
 export * from './useMatches';
 export * from './useReferral';

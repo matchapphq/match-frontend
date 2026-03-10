@@ -12,6 +12,7 @@ export interface UserProfile {
   avatar?: string;
   avatar_url?: string;
   role: string;
+  has_payment_method?: boolean;
   created_at: string;
   updated_at: string;
 }

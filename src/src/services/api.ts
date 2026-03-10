@@ -637,6 +637,7 @@ export interface ApiUser {
   avatar?: string;
   role: 'user' | 'venue_owner' | 'admin';
   has_completed_onboarding?: boolean;
+  has_payment_method?: boolean;
   created_at?: string;
 }
 

@@ -142,6 +142,12 @@ export const API_ENDPOINTS = {
   SUBSCRIPTIONS_UPGRADE: '/subscriptions/me/upgrade',
   SUBSCRIPTIONS_INVOICES: '/subscriptions/invoices',
   SUBSCRIPTIONS_MOCK: '/subscriptions/mock',
+
+  // ==================== Billing (Commission) ====================
+  BILLING_PRICING: '/billing/pricing',
+  BILLING_SETUP_CHECKOUT: '/billing/setup-checkout',
+  BILLING_PAYMENT_METHOD: '/billing/payment-method',
+  ACCRUED_COMMISSION: '/accrued-commission',
   
   // ==================== Invoices ====================
   INVOICES: '/invoices',
