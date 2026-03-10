@@ -18,6 +18,7 @@ import {
 // Route guards & layout
 import { RequireAuth } from '../components/routing/RequireAuth';
 import { RequireOnboarding } from '../components/routing/RequireOnboarding';
+import { RequirePaymentMethod } from '../components/routing/RequirePaymentMethod';
 import { PublicOnly } from '../components/routing/PublicOnly';
 import { AuthenticatedLayout } from '../components/routing/AuthenticatedLayout';
 
@@ -38,6 +39,7 @@ import {
   OnboardingFacturation,
   OnboardingPaiementValidation,
   OnboardingConfirmationOnboarding,
+  OnboardingPaymentRequired,
   Dashboard,
   ListeMatchs,
   MesMatchs,
@@ -239,9 +241,10 @@ function AppRoutes() {
       <Route path="/onboarding/billing" element={<RequireAuth><OnboardingFacturation /></RequireAuth>} />
       <Route path="/onboarding/payment" element={<RequireAuth><OnboardingPaiementValidation /></RequireAuth>} />
       <Route path="/onboarding/confirmation" element={<RequireAuth><OnboardingConfirmationOnboarding /></RequireAuth>} />
+      <Route path="/onboarding/payment-required" element={<RequireAuth><OnboardingPaymentRequired /></RequireAuth>} />
 
       {/* ── Authenticated routes (with sidebar layout) ── */}
-      <Route element={<RequireAuth><RequireOnboarding><AuthenticatedLayout /></RequireOnboarding></RequireAuth>}>
+      <Route element={<RequireAuth><RequireOnboarding><RequirePaymentMethod><AuthenticatedLayout /></RequirePaymentMethod></RequireOnboarding></RequireAuth>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/matches" element={<ListeMatchs />} />
         <Route path="/matches/schedule" element={<ProgrammerMatch />} />

@@ -31,6 +31,7 @@ import { InfosEtablissement as RawInfosEtablissement } from '../../features/onbo
 import { Facturation as RawFacturation } from '../../features/onboarding/pages/Facturation';
 import { PaiementValidation as RawPaiementValidation } from '../../features/onboarding/pages/PaiementValidation';
 import { ConfirmationOnboarding as RawConfirmationOnboarding } from '../../features/onboarding/pages/ConfirmationOnboarding';
+import { PaymentRequired as RawPaymentRequired } from '../../features/onboarding/pages/PaymentRequired';
 
 // ─── Dashboard & Matches ──────────────────────────────────────
 import { Dashboard as RawDashboard } from '../../features/dashboard/pages/Dashboard';
@@ -242,6 +243,10 @@ export function OnboardingConfirmationOnboarding() {
       }}
     />
   );
+}
+
+export function OnboardingPaymentRequired() {
+  return <RawPaymentRequired />;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
