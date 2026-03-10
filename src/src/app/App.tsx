@@ -37,7 +37,6 @@ import {
   OnboardingAjouterRestaurant,
   OnboardingInfosEtablissement,
   OnboardingFacturation,
-  OnboardingPaiementValidation,
   OnboardingConfirmationOnboarding,
   OnboardingPaymentRequired,
   Dashboard,
@@ -50,7 +49,6 @@ import {
   AjouterRestaurant,
   InfosEtablissement,
   Facturation,
-  PaiementValidation,
   ConfirmationOnboarding,
   RestaurantDetail,
   ModifierRestaurant,
@@ -108,11 +106,10 @@ function ScrollToTop() {
  * and verifying the payment before redirecting.
  */
 function StripeReturnHandler() {
-  const { isAuthenticated, completeOnboarding, refreshUserData } = useAuth();
+  const { isAuthenticated, refreshUserData } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
-  const attemptedRecoverySessionId = useRef<string | null>(null);
   const handledReturnSessionIds = useRef<Set<string>>(new Set());
 
   const handlePaymentSetupReturn = useCallback(async (
@@ -134,7 +131,6 @@ function StripeReturnHandler() {
     stripeSessionId: string,
     checkoutState: CheckoutState | null,
     checkoutType: 'venue' | 'boost' | null,
-    mode: 'return' | 'recovery' = 'return',
   ) => {
     if (processing) return;
     setProcessing(true);
@@ -155,40 +151,18 @@ function StripeReturnHandler() {
         return;
       }
 
-      if (checkoutState?.type === 'billing-subscription') {
-        cleanCheckoutUrl();
-        clearCheckoutState();
-        await refreshUserData();
-        await queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
-        await queryClient.invalidateQueries({ queryKey: ['venue-subscription', checkoutState.venueId] });
-        await queryClient.invalidateQueries({ queryKey: ['venue-invoices', checkoutState.venueId] });
-        navigate(checkoutState.venueId ? `/account/billing?venue=${checkoutState.venueId}` : '/account/billing', { replace: true });
-        return;
-      }
-
-      await apiClient.post('/partners/venues/verify-checkout', { session_id: stripeSessionId });
-      await refreshUserData();
-      const venueName = checkoutState?.venueName;
+      console.warn('Ignoring legacy checkout return session', stripeSessionId, checkoutState);
+      cleanCheckoutUrl();
       clearCheckoutState();
-
-      if (checkoutState?.type === 'add-venue') {
-        // Adding a venue from "My Venues" → show confirmation then redirect to /my-venues
-        navigate('/my-venues/add/confirmation', { replace: true, state: { venueName } });
-      } else {
-        // Onboarding flow → complete onboarding then show confirmation
-        await completeOnboarding();
-        navigate('/onboarding/confirmation', { replace: true, state: { venueName } });
-      }
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       console.error('Error verifying payment:', err);
-      if (mode === 'return') {
-        clearCheckoutState();
-        navigate('/', { replace: true });
-      }
+      clearCheckoutState();
+      navigate('/', { replace: true });
     } finally {
       setProcessing(false);
     }
-  }, [processing, refreshUserData, completeOnboarding, queryClient, navigate, handlePaymentSetupReturn]);
+  }, [processing, refreshUserData, queryClient, navigate, handlePaymentSetupReturn]);
 
   useEffect(() => {
     const stripeReturn = isReturningFromStripe();
@@ -204,8 +178,6 @@ function StripeReturnHandler() {
       clearCheckoutState();
       if (checkoutState?.type === 'add-venue') {
         navigate('/my-venues', { replace: true });
-      } else if (checkoutState?.type === 'billing-subscription') {
-        navigate(checkoutState.venueId ? `/account/billing?venue=${checkoutState.venueId}` : '/account/billing', { replace: true });
       }
       return;
     }
@@ -215,19 +187,8 @@ function StripeReturnHandler() {
         return;
       }
       handledReturnSessionIds.current.add(stripeReturn.sessionId);
-      verifyCheckout(stripeReturn.sessionId, checkoutState, stripeReturn.type, 'return');
+      verifyCheckout(stripeReturn.sessionId, checkoutState, stripeReturn.type);
       return;
-    }
-
-    if (
-      isAuthenticated &&
-      !processing &&
-      checkoutState?.sessionId &&
-      (checkoutState.type === 'add-venue' || checkoutState.type === 'onboarding') &&
-      attemptedRecoverySessionId.current !== checkoutState.sessionId
-    ) {
-      attemptedRecoverySessionId.current = checkoutState.sessionId;
-      verifyCheckout(checkoutState.sessionId, checkoutState, 'venue', 'recovery');
     }
   }, [isAuthenticated, processing, verifyCheckout, navigate, handlePaymentSetupReturn]);
 
@@ -269,7 +230,6 @@ function AppRoutes() {
       <Route path="/onboarding/add-venue" element={<RequireAuth><OnboardingAjouterRestaurant /></RequireAuth>} />
       <Route path="/onboarding/info" element={<RequireAuth><OnboardingInfosEtablissement /></RequireAuth>} />
       <Route path="/onboarding/billing" element={<RequireAuth><OnboardingFacturation /></RequireAuth>} />
-      <Route path="/onboarding/payment" element={<RequireAuth><OnboardingPaiementValidation /></RequireAuth>} />
       <Route path="/onboarding/confirmation" element={<RequireAuth><OnboardingConfirmationOnboarding /></RequireAuth>} />
       <Route path="/onboarding/payment-required" element={<RequireAuth><OnboardingPaymentRequired /></RequireAuth>} />
 
@@ -285,7 +245,6 @@ function AppRoutes() {
         <Route path="/my-venues/add" element={<AjouterRestaurant />} />
         <Route path="/my-venues/add/info" element={<InfosEtablissement />} />
         <Route path="/my-venues/add/billing" element={<Facturation />} />
-        <Route path="/my-venues/add/payment" element={<PaiementValidation />} />
         <Route path="/my-venues/add/confirmation" element={<ConfirmationOnboarding />} />
         <Route path="/my-venues/:id" element={<RestaurantDetail />} />
         <Route path="/my-venues/:id/edit" element={<ModifierRestaurant />} />

@@ -6,10 +6,9 @@
  */
 
 export interface CheckoutState {
-  type: 'onboarding' | 'add-venue' | 'boost-purchase' | 'billing-subscription' | 'payment-setup';
+  type: 'onboarding' | 'add-venue' | 'boost-purchase' | 'payment-setup';
   venueId?: string;
   venueName?: string;
-  formule?: 'mensuel' | 'annuel';
   sessionId?: string;
   checkoutUrl?: string;
   returnPage?: string;
@@ -114,7 +113,6 @@ export interface AppState {
   currentPage: string;
   selectedRestaurantId?: number;
   selectedMatchId?: number;
-  selectedFormule?: 'mensuel' | 'annuel';
   nomBarOnboarding?: string;
 }
 

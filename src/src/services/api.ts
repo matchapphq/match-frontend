@@ -343,58 +343,6 @@ class ApiService {
   }
 
   // ============================================
-  // SUBSCRIPTIONS
-  // ============================================
-
-  async getSubscriptionPlans() {
-    return this.request<{ plans: SubscriptionPlan[] }>('/subscriptions/plans');
-  }
-
-  async createCheckout(planId: string, venueId?: string) {
-    return this.request<{ checkout_url: string; session_id: string }>('/subscriptions/create-checkout', {
-      method: 'POST',
-      body: { plan_id: planId, venue_id: venueId },
-    });
-  }
-
-  async getPaymentPortal() {
-    return this.request<{ portal_url: string }>('/subscriptions/me/update-payment-method', {
-      method: 'POST',
-    });
-  }
-
-  async getMySubscription() {
-    return this.request<{ subscription: Subscription | null }>('/subscriptions/me');
-  }
-
-  async cancelSubscription() {
-    return this.request<{ success: boolean }>('/subscriptions/me/cancel', {
-      method: 'POST',
-    });
-  }
-
-  async upgradeSubscription(planId: string) {
-    return this.request<{ success: boolean }>('/subscriptions/me/upgrade', {
-      method: 'POST',
-      body: { plan_id: planId },
-    });
-  }
-
-  async getMyInvoices() {
-    return this.request<{ invoices: Invoice[] }>('/subscriptions/invoices');
-  }
-
-  async getVenuePaymentPortal(venueId: string) {
-    return this.request<{ portal_url: string }>(`/partners/venues/${venueId}/payment-portal`, {
-      method: 'POST',
-    });
-  }
-
-  async getVenueSubscription(venueId: string) {
-    return this.request<{ subscription: Subscription | null }>(`/partners/venues/${venueId}/subscription`);
-  }
-
-  // ============================================
   // RESERVATIONS
   // ============================================
 
@@ -520,7 +468,6 @@ export interface CreateVenueData {
   phone?: string;
   email?: string;
   capacity?: number;
-  plan_id?: 'monthly' | 'annual';
 }
 
 export interface VenueMatch {
@@ -666,32 +613,6 @@ export interface NotificationPreferences {
   push_updates?: boolean;
   sms_new_reservations?: boolean;
   sms_cancellations?: boolean;
-}
-
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  price: number;
-  interval: 'month' | 'year';
-  features: string[];
-}
-
-export interface Subscription {
-  id: string;
-  plan: string;
-  plan_name?: string; // User-friendly name: "Mensuel" or "Annuel"
-  display_price?: string; // Formatted price: "30€/mois" or "300€/an"
-  status: 'active' | 'canceled' | 'past_due' | 'trialing';
-  current_period_start: string;
-  current_period_end: string;
-  auto_renew: boolean;
-  price: string;
-  currency: string;
-  canceled_at: string | null;
-  plan_details: {
-    name: string;
-    features: string[];
-  } | null;
 }
 
 export interface Reservation {

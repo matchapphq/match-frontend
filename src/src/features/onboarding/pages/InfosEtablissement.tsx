@@ -1,6 +1,5 @@
 import { ArrowLeft, Building2, ChevronDown, Coffee, Loader2, Receipt, ShieldCheck, Sparkles, Store, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageType } from '../../../types';
 import apiClient from '../../../api/client';
 import { PhoneInputField } from '../../../components/common/PhoneInputField';
 import { useAuth } from '../../authentication/context/AuthContext';
@@ -10,17 +9,12 @@ import { getPhoneErrorMessage, normalizePhone, type PhoneCountry } from '../../.
 
 interface InfosEtablissementProps {
   onBack: () => void;
-  onNavigate: (page: PageType) => void;
-  selectedFormule?: 'mensuel' | 'annuel';
   onBarInfoSubmit?: (nomBar: string) => void;
-  onCheckoutData?: (url: string, sessionId: string) => void;
   isAddingVenue?: boolean; // True when adding from "Mes lieux" (not onboarding)
 }
 
 interface CreateVenueResponse {
   venue_id?: string;
-  checkout_url?: string;
-  session_id?: string;
   requires_payment_setup?: boolean;
 }
 
@@ -33,7 +27,7 @@ function sanitizeCapacityInput(value: string): string {
   return value.replace(/[^\d]/g, '');
 }
 
-export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mensuel', onBarInfoSubmit, onCheckoutData, isAddingVenue = false }: InfosEtablissementProps) {
+export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = false }: InfosEtablissementProps) {
   const { completeOnboarding } = useAuth();
   const typePickerRef = useRef<HTMLDivElement | null>(null);
   const [formData, setFormData] = useState({
@@ -96,8 +90,6 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
 
   const selectedType = etablissementTypes.find((type) => type.value === formData.typeEtablissement) || etablissementTypes[0]!;
   const SelectedTypeIcon = selectedType.icon;
-  const successRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/confirmation' : '/onboarding/confirmation'}`;
-  const cancelRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/payment' : '/onboarding/payment'}`;
   const venueTypeMap: Record<string, 'sports_bar' | 'pub' | 'restaurant' | 'cafe'> = {
     bar: 'sports_bar',
     pub: 'pub',
@@ -151,9 +143,6 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
         capacity: parseInt(formData.capacite) || 0,
         type: venueTypeMap[formData.typeEtablissement] || 'sports_bar',
         description: `Etablissement de type ${selectedType.label.toLowerCase()}`,
-        plan_id: selectedFormule === 'annuel' ? 'annual' : 'monthly',
-        success_url: successRedirectUrl,
-        cancel_url: cancelRedirectUrl,
       };
 
       const response = await apiClient.post<CreateVenueResponse>(API_ENDPOINTS.PARTNERS_VENUES, payload);
@@ -204,31 +193,11 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
         onBarInfoSubmit(formData.nomBar);
       }
       
-      if (onCheckoutData && data.checkout_url && data.session_id) {
-        onCheckoutData(data.checkout_url, data.session_id);
-      }
-
-      if (data.checkout_url && data.session_id) {
-        // Legacy checkout path (kept for backward compatibility)
-        saveCheckoutState({
-          type: isAddingVenue ? 'add-venue' : 'onboarding',
-          venueId,
-          venueName: formData.nomBar,
-          formule: selectedFormule,
-          sessionId: data.session_id,
-          checkoutUrl: data.checkout_url,
-          returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding'
-        });
-        onNavigate('paiement-validation' as PageType);
-        return;
-      }
-
       // No checkout required: continue success flow directly
       saveCheckoutState({
         type: isAddingVenue ? 'add-venue' : 'onboarding',
         venueId,
         venueName: formData.nomBar,
-        formule: selectedFormule,
         returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding',
       });
 

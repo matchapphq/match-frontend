@@ -42,30 +42,6 @@ export interface PrivacyPreferences {
   account_deletion_grace_days: number;
 }
 
-export interface SubscriptionInfo {
-  id: string;
-  status: 'active' | 'canceled' | 'past_due' | 'trialing';
-  plan_name?: string;
-  display_price?: string;
-  plan_type?: 'mensuel' | 'annuel';
-  current_period_start: string;
-  current_period_end: string;
-  cancel_at_period_end?: boolean;
-  will_renew?: boolean;
-  auto_renew?: boolean;
-  amount?: number;
-  price?: string;
-  currency: string;
-  payment_method?: {
-    type: string;
-    brand: string | null;
-    last4: string | null;
-    exp_month: number | null;
-    exp_year: number | null;
-  } | null;
-  next_billing_at?: string;
-}
-
 export interface Invoice {
   id: string;
   invoice_number?: string;
@@ -86,16 +62,6 @@ export interface Invoice {
   paid_date?: string;
   pdf_url?: string;
   description?: string;
-}
-
-export interface VenueSubscription extends SubscriptionInfo {
-  plan: string;
-  stripe_subscription_id?: string;
-  canceled_at: string | null;
-  plan_details?: {
-    name: string;
-    features: string[];
-  } | null;
 }
 
 export interface UpdatePasswordData {
@@ -212,32 +178,6 @@ export function useUpdatePrivacyPreferences() {
   });
 }
 
-/**
- * Get current subscription info
- */
-export function useSubscription() {
-  return useQuery<SubscriptionInfo | null>({
-    queryKey: ['subscription'],
-    queryFn: async () => {
-      const response = await apiClient.get(API_ENDPOINTS.SUBSCRIPTIONS_ME);
-      return response.data?.subscription ?? response.data ?? null;
-    },
-  });
-}
-
-/**
- * Get invoices/billing history
- */
-export function useInvoices() {
-  return useQuery<Invoice[]>({
-    queryKey: ['invoices'],
-    queryFn: async () => {
-      const response = await apiClient.get(API_ENDPOINTS.SUBSCRIPTIONS_INVOICES);
-      return response.data.invoices || response.data;
-    },
-  });
-}
-
 export function useVenueInvoices(venueId?: string) {
   return useQuery<Invoice[]>({
     queryKey: ['venue-invoices', venueId],
@@ -246,44 +186,6 @@ export function useVenueInvoices(venueId?: string) {
       if (!venueId) return [];
       const response = await apiClient.get(API_ENDPOINTS.PARTNERS_VENUE_INVOICES(venueId));
       return response.data?.invoices || response.data || [];
-    },
-  });
-}
-
-/**
- * Get Stripe payment portal URL
- */
-export function usePaymentPortal() {
-  return useMutation<{ portal_url: string }, Error, void>({
-    mutationFn: async () => {
-      const response = await apiClient.post(API_ENDPOINTS.SUBSCRIPTIONS_UPDATE_PAYMENT);
-      return response.data;
-    },
-  });
-}
-
-export function useCreateSubscriptionCheckout() {
-  return useMutation<{ checkout_url: string; session_id: string }, Error, { planId: 'monthly' | 'annual'; venueId?: string; successUrl?: string; cancelUrl?: string }>({
-    mutationFn: async ({ planId, venueId, successUrl, cancelUrl }) => {
-      const response = await apiClient.post(API_ENDPOINTS.SUBSCRIPTIONS_CREATE_CHECKOUT, {
-        plan_id: planId,
-        venue_id: venueId,
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-      });
-      return response.data;
-    },
-  });
-}
-
-export function useVenueSubscription(venueId?: string) {
-  return useQuery<VenueSubscription | null>({
-    queryKey: ['venue-subscription', venueId],
-    enabled: Boolean(venueId),
-    queryFn: async () => {
-      if (!venueId) return null;
-      const response = await apiClient.get(API_ENDPOINTS.PARTNERS_VENUE_SUBSCRIPTION(venueId));
-      return response.data?.subscription ?? response.data ?? null;
     },
   });
 }
@@ -352,23 +254,6 @@ export function useRevokeOtherSessions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-sessions'] });
-    },
-  });
-}
-
-/**
- * Cancel subscription
- */
-export function useCancelSubscription() {
-  const queryClient = useQueryClient();
-  
-  return useMutation<{ success: boolean }, Error, void>({
-    mutationFn: async () => {
-      const response = await apiClient.post(API_ENDPOINTS.SUBSCRIPTIONS_CANCEL);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscription'] });
     },
   });
 }

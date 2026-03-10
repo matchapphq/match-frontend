@@ -2,15 +2,12 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, CreditCard, Lock, Receipt, ShieldCheck } from 'lucide-react';
 import { PageType } from '../../../types';
 import { saveCheckoutState, getCheckoutState } from '../../../utils/checkout-state';
-import { API_ENDPOINTS } from '../../../utils/api-constants';
-import { apiPost } from '../../../utils/api-helpers';
 import { useBillingPricing } from '../../../hooks/api/useBilling';
 import { formatPricingLabel } from '../../../utils/pricing';
 
 interface PaiementValidationProps {
   onBack: () => void;
   onNavigate: (page: PageType) => void;
-  selectedFormule?: 'mensuel' | 'annuel';
   nomBar?: string;
   checkoutUrl?: string | null;
   isAddingVenue?: boolean;
@@ -18,15 +15,11 @@ interface PaiementValidationProps {
 
 export function PaiementValidation({
   onBack,
-  selectedFormule = 'mensuel',
   nomBar = '',
   checkoutUrl: checkoutUrlProp,
   isAddingVenue = false,
 }: PaiementValidationProps) {
-  const authToken = localStorage.getItem('authToken') || '';
   const { data: billingPricing } = useBillingPricing();
-  const successRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/confirmation' : '/onboarding/confirmation'}`;
-  const cancelRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/payment' : '/onboarding/payment'}`;
   const [isProcessing, setIsProcessing] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +64,6 @@ export function PaiementValidation({
           saveCheckoutState({
             type: isAddingVenue ? 'add-venue' : 'onboarding',
             venueName: nomBar,
-            formule: selectedFormule,
             returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding',
           });
         }
@@ -79,25 +71,7 @@ export function PaiementValidation({
         return;
       }
 
-      if (nomBar) {
-        throw new Error('La session de création a expiré. Veuillez retourner à l\'étape précédente.');
-      }
-
-      const data = await apiPost(
-        API_ENDPOINTS.SUBSCRIPTIONS_CREATE_CHECKOUT,
-        {
-          plan_id: selectedFormule === 'annuel' ? 'annual' : 'monthly',
-          success_url: successRedirectUrl,
-          cancel_url: cancelRedirectUrl,
-        },
-        authToken || '',
-      );
-
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url;
-      } else {
-        throw new Error('Impossible de créer la session de paiement');
-      }
+      throw new Error('La session de paiement n’est plus disponible. Veuillez reprendre depuis les informations du lieu.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
       setIsProcessing(false);

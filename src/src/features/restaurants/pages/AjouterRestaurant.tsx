@@ -9,10 +9,9 @@ interface AjouterRestaurantProps {
   onBack: () => void;
   onNavigate: (page: PageType) => void;
   isOnboarding?: boolean;
-  onFormuleSelected?: (formule: 'mensuel' | 'annuel') => void;
 }
 
-export function AjouterRestaurant({ onBack, onNavigate, isOnboarding = false, onFormuleSelected }: AjouterRestaurantProps) {
+export function AjouterRestaurant({ onBack, onNavigate, isOnboarding = false }: AjouterRestaurantProps) {
   const { updateOnboardingStep } = useAuth();
   const { data: billingPricing } = useBillingPricing();
   const [isSubmittingChoice, setIsSubmittingChoice] = useState(false);
@@ -20,12 +19,6 @@ export function AjouterRestaurant({ onBack, onNavigate, isOnboarding = false, on
   const handleChoisirOffre = () => {
     if (isSubmittingChoice) return;
     setIsSubmittingChoice(true);
-
-    const fallbackFormule: 'mensuel' = 'mensuel';
-
-    if (onFormuleSelected) {
-      onFormuleSelected(fallbackFormule);
-    }
 
     setTimeout(() => {
       if (isOnboarding) {

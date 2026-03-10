@@ -12,5 +12,4 @@ export * from './useMatches';
 export * from './useReferral';
 export * from './useReservations';
 export * from './useReviews';
-export * from './useSubscriptions';
 export * from './useVenues';

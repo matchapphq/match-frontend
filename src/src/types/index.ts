@@ -9,9 +9,7 @@ export type { PageType, ApiResponse, AppError } from './common.types';
 // Restaurant types
 export type { 
   Restaurant, 
-  RestaurantFormData, 
-  FormuleType, 
-  Formule 
+  RestaurantFormData
 } from './restaurant.types';
 
 // Match types

@@ -21,8 +21,6 @@ export type {
   Match,
   VenueMatch,
   Reservation,
-  SubscriptionPlan,
-  Subscription,
   Invoice,
   NotificationPreferences,
   Notification,
