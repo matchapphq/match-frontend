@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, CreditCard, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../authentication/context/AuthContext';
 import { useBillingPaymentMethod, useBillingSetupCheckout } from '../../../hooks/api/useBilling';
+import { saveCheckoutState } from '../../../utils/checkout-state';
 
 export function PaymentRequired() {
   const navigate = useNavigate();
@@ -68,6 +69,14 @@ export function PaymentRequired() {
       if (!result.checkout_url) {
         throw new Error('URL de configuration Stripe indisponible.');
       }
+
+      saveCheckoutState({
+        type: 'payment-setup',
+        venueId,
+        sessionId: result.session_id,
+        checkoutUrl: result.checkout_url,
+        returnPage: `/onboarding/payment-required?venue=${encodeURIComponent(venueId)}`,
+      });
 
       if (setupPopup && !setupPopup.closed) {
         setupPopup.location.href = result.checkout_url;

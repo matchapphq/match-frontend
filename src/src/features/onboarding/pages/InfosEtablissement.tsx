@@ -176,6 +176,15 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
           throw new Error('URL de configuration de paiement indisponible.');
         }
 
+        saveCheckoutState({
+          type: 'payment-setup',
+          venueId,
+          venueName: formData.nomBar,
+          sessionId: setupResponse.data?.session_id,
+          checkoutUrl: setupCheckoutUrl,
+          returnPage: `/onboarding/payment-required?venue=${encodeURIComponent(venueId)}`,
+        });
+
         if (setupPopup && !setupPopup.closed) {
           setupPopup.location.href = setupCheckoutUrl;
           window.location.href = `/onboarding/payment-required?venue=${encodeURIComponent(venueId)}`;

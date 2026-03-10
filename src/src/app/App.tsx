@@ -113,6 +113,22 @@ function StripeReturnHandler() {
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const attemptedRecoverySessionId = useRef<string | null>(null);
+  const handledReturnSessionIds = useRef<Set<string>>(new Set());
+
+  const handlePaymentSetupReturn = useCallback(async (
+    checkoutState: CheckoutState | null,
+  ) => {
+    cleanCheckoutUrl();
+    clearCheckoutState();
+    await refreshUserData();
+    await queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
+    await queryClient.invalidateQueries({ queryKey: ['billing-payment-method'] });
+
+    const venueQuery = checkoutState?.venueId
+      ? `?venue=${encodeURIComponent(checkoutState.venueId)}`
+      : '';
+    navigate(`/onboarding/payment-required${venueQuery}`, { replace: true });
+  }, [navigate, queryClient, refreshUserData]);
 
   const verifyCheckout = useCallback(async (
     stripeSessionId: string,
@@ -131,6 +147,11 @@ function StripeReturnHandler() {
         await queryClient.invalidateQueries({ queryKey: ['available-boosts'] });
         await queryClient.invalidateQueries({ queryKey: ['boost-history'] });
         navigate('/boost?success=true', { replace: true });
+        return;
+      }
+
+      if (checkoutState?.type === 'payment-setup') {
+        await handlePaymentSetupReturn(checkoutState);
         return;
       }
 
@@ -167,13 +188,18 @@ function StripeReturnHandler() {
     } finally {
       setProcessing(false);
     }
-  }, [processing, refreshUserData, completeOnboarding, queryClient, navigate]);
+  }, [processing, refreshUserData, completeOnboarding, queryClient, navigate, handlePaymentSetupReturn]);
 
   useEffect(() => {
     const stripeReturn = isReturningFromStripe();
     const checkoutState = getCheckoutState();
 
     if (stripeReturn.canceled) {
+      if (checkoutState?.type === 'payment-setup') {
+        void handlePaymentSetupReturn(checkoutState);
+        return;
+      }
+
       cleanCheckoutUrl();
       clearCheckoutState();
       if (checkoutState?.type === 'add-venue') {
@@ -185,6 +211,10 @@ function StripeReturnHandler() {
     }
 
     if (stripeReturn.success && stripeReturn.sessionId && isAuthenticated && !processing) {
+      if (handledReturnSessionIds.current.has(stripeReturn.sessionId)) {
+        return;
+      }
+      handledReturnSessionIds.current.add(stripeReturn.sessionId);
       verifyCheckout(stripeReturn.sessionId, checkoutState, stripeReturn.type, 'return');
       return;
     }
@@ -199,7 +229,7 @@ function StripeReturnHandler() {
       attemptedRecoverySessionId.current = checkoutState.sessionId;
       verifyCheckout(checkoutState.sessionId, checkoutState, 'venue', 'recovery');
     }
-  }, [isAuthenticated, processing, verifyCheckout, navigate]);
+  }, [isAuthenticated, processing, verifyCheckout, navigate, handlePaymentSetupReturn]);
 
   return null;
 }
