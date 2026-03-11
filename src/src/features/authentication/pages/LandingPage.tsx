@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../api/client';
 import { PublicFooter } from '../../../components/PublicFooter';
 import { PublicNavbar } from '../../../components/PublicNavbar';
+import { useBillingPricing } from '../../../hooks/api/useBilling';
+import { formatPricingLabel } from '../../../utils/pricing';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -10,6 +12,8 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProps) {
+  const { data: billingPricing } = useBillingPricing();
+
   // Health check API call
   useQuery({
     queryKey: ['health'],
@@ -49,31 +53,19 @@ export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProp
     'Mises à jour régulières',
   ];
 
-  const pricing = [
-    {
-      name: 'Mensuel',
-      price: '30€',
-      period: 'par mois',
-      features: [
-        'Gestion illimitée de matchs',
-        'Statistiques en temps réel',
-        'Support client prioritaire',
-        'Boosts mensuels inclus',
-      ],
-    },
-    {
-      name: 'Annuel',
-      price: '300€',
-      period: 'par an',
-      features: [
-        'Gestion illimitée de matchs',
-        'Statistiques en temps réel',
-        'Support client prioritaire',
-        'Boosts illimités',
-        '2 mois offerts',
-      ],
-      popular: true,
-    },
+  const commissionPricingLabel = billingPricing
+    ? formatPricingLabel({
+        default_rate: billingPricing.default_rate,
+        currency: billingPricing.currency,
+        unit: billingPricing.unit,
+      })
+    : 'Tarification à la commission';
+
+  const pricingFeatures = [
+    'Gestion illimitée de matchs',
+    'Statistiques en temps réel',
+    'Support client prioritaire',
+    'Facturation selon l’activité réelle de vos lieux',
   ];
 
   return (
@@ -233,54 +225,38 @@ export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProp
               <span className="text-gradient">simple et transparente</span>
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-400">
-              1 établissement = 1 abonnement. Sans engagement.
+              Un modèle à la commission, aligné sur l&apos;activité de vos établissements.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {pricing.map((plan, index) => (
-              <div 
-                key={index}
-                className="relative group"
-              >
-                <div className={`glass-card rounded-3xl p-10 backdrop-blur-2xl transition-all duration-500 group-hover:scale-[1.02] h-full flex flex-col ${
-                  plan.popular ? 'gradient-border bg-white/80 dark:bg-white/5' : ''
-                }`}>
-                  <div className="mb-6 min-h-9 flex items-start">
-                    {plan.popular ? (
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white text-sm rounded-full self-start">
-                        <span>Le plus populaire</span>
-                      </div>
-                    ) : (
-                      <div aria-hidden="true" className="h-9" />
-                    )}
+          <div className="max-w-3xl mx-auto">
+            <div className="relative group">
+              <div className="glass-card rounded-3xl p-10 backdrop-blur-2xl transition-all duration-500 group-hover:scale-[1.02] h-full flex flex-col gradient-border bg-white/80 dark:bg-white/5">
+                <div className="mb-6 min-h-9 flex items-start">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white text-sm rounded-full self-start">
+                    <span>Modèle commission</span>
                   </div>
-                  <h3 className="text-3xl mb-3 text-gray-900 dark:text-white">{plan.name}</h3>
-                  <div className="mb-8">
-                    <span className="text-5xl text-gray-900 dark:text-white">{plan.price}</span>
-                    <span className="text-gray-600 dark:text-gray-400 ml-2">{plan.period}</span>
-                  </div>
-                  <ul className="space-y-4 mb-10 flex-grow">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center gap-3">
-                        <div className="w-1.5 h-1.5 bg-[#9cff02] rounded-full flex-shrink-0 shadow-lg shadow-[#9cff02]/50" />
-                        <span className="text-gray-700 dark:text-gray-300">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={onGetStarted}
-                    className={`w-full py-4 rounded-full transition-all duration-300 hover:scale-[1.02] ${
-                      plan.popular
-                        ? 'bg-[#5a03cf] text-white hover:bg-[#4a02af] shadow-xl shadow-[#5a03cf]/30'
-                        : 'glass-card text-gray-900 dark:text-white gradient-border backdrop-blur-xl'
-                    }`}
-                  >
-                    Commencer
-                  </button>
                 </div>
+                <h3 className="text-3xl mb-3 text-gray-900 dark:text-white">Tarif par client présent</h3>
+                <div className="mb-8">
+                  <span className="text-5xl text-gray-900 dark:text-white">{commissionPricingLabel}</span>
+                </div>
+                <ul className="space-y-4 mb-10 flex-grow">
+                  {pricingFeatures.map((feature) => (
+                    <li key={feature} className="flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 bg-[#9cff02] rounded-full flex-shrink-0 shadow-lg shadow-[#9cff02]/50" />
+                      <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={onGetStarted}
+                  className="w-full py-4 rounded-full transition-all duration-300 hover:scale-[1.02] bg-[#5a03cf] text-white hover:bg-[#4a02af] shadow-xl shadow-[#5a03cf]/30"
+                >
+                  Commencer
+                </button>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>

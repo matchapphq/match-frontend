@@ -15,7 +15,8 @@ export interface Venue {
   email?: string;
   website?: string;
   photos?: string[];
-  subscription_status?: string;
+  status?: 'pending' | 'approved' | 'rejected' | 'suspended' | string;
+  is_active?: boolean;
 }
 
 /**

@@ -29,8 +29,8 @@ import { OnboardingWelcome as RawOnboardingWelcome } from '../../features/onboar
 import { AjouterRestaurant as RawAjouterRestaurant } from '../../features/restaurants/pages/AjouterRestaurant';
 import { InfosEtablissement as RawInfosEtablissement } from '../../features/onboarding/pages/InfosEtablissement';
 import { Facturation as RawFacturation } from '../../features/onboarding/pages/Facturation';
-import { PaiementValidation as RawPaiementValidation } from '../../features/onboarding/pages/PaiementValidation';
 import { ConfirmationOnboarding as RawConfirmationOnboarding } from '../../features/onboarding/pages/ConfirmationOnboarding';
+import { PaymentRequired as RawPaymentRequired } from '../../features/onboarding/pages/PaymentRequired';
 
 // ─── Dashboard & Matches ──────────────────────────────────────
 import { Dashboard as RawDashboard } from '../../features/dashboard/pages/Dashboard';
@@ -166,8 +166,10 @@ export function OnboardingWelcome() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const onContinue = (page: PageType) => {
-    if (page === 'ajouter-restaurant') navigate('/onboarding/add-venue');
-    else if (page === 'facturation') navigate('/onboarding/billing');
+    if (page === 'ajouter-restaurant') navigate('/onboarding/info');
+    else if (page === 'facturation') {
+      navigate(currentUser?.hasPaymentMethod ? '/onboarding/billing' : '/onboarding/payment-required');
+    }
     else navigate('/dashboard');
   };
   return (
@@ -196,14 +198,9 @@ export function OnboardingAjouterRestaurant() {
 
 export function OnboardingInfosEtablissement() {
   const navigate = useNavigate();
-  const onNavigate = (page: PageType) => {
-    if (page === 'paiement-validation') navigate('/onboarding/payment');
-    else navigate(resolvePagePath(page));
-  };
   return (
     <RawInfosEtablissement
-      onBack={() => navigate('/onboarding/add-venue')}
-      onNavigate={onNavigate}
+      onBack={() => navigate('/onboarding')}
     />
   );
 }
@@ -219,19 +216,6 @@ export function OnboardingFacturation() {
   );
 }
 
-export function OnboardingPaiementValidation() {
-  const navigate = useNavigate();
-  return (
-    <RawPaiementValidation
-      onBack={() => navigate('/onboarding/info')}
-      onNavigate={(page) => {
-        if (page === 'confirmation-onboarding') navigate('/onboarding/confirmation');
-        else navigate(resolvePagePath(page));
-      }}
-    />
-  );
-}
-
 export function OnboardingConfirmationOnboarding() {
   const navigate = useNavigate();
   return (
@@ -242,6 +226,10 @@ export function OnboardingConfirmationOnboarding() {
       }}
     />
   );
+}
+
+export function OnboardingPaymentRequired() {
+  return <RawPaymentRequired />;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -325,10 +313,6 @@ export function InfosEtablissement() {
   return (
     <RawInfosEtablissement
       onBack={() => navigate('/my-venues/add')}
-      onNavigate={(page) => {
-        if (page === 'paiement-validation') navigate('/my-venues/add/payment');
-        else navigate(resolvePagePath(page));
-      }}
       isAddingVenue={true}
     />
   );
@@ -340,20 +324,6 @@ export function Facturation() {
     <RawFacturation
       onBack={() => navigate('/my-venues/add')}
       onNavigate={(page: PageType) => navigate(resolvePagePath(page))}
-    />
-  );
-}
-
-export function PaiementValidation() {
-  const navigate = useNavigate();
-  return (
-    <RawPaiementValidation
-      onBack={() => navigate('/my-venues/add/info')}
-      onNavigate={(page) => {
-        if (page === 'confirmation-onboarding') navigate('/my-venues/add/confirmation');
-        else navigate(resolvePagePath(page));
-      }}
-      isAddingVenue={true}
     />
   );
 }

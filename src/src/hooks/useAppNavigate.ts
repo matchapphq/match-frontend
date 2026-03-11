@@ -32,7 +32,7 @@ export const PAGE_TO_PATH: Record<PageType, string> = {
   'facturation': '/my-venues/add/billing',
   'onboarding-welcome': '/onboarding',
   'confirmation-onboarding': '/onboarding/confirmation',
-  'paiement-validation': '/onboarding/payment',
+  'paiement-validation': '/onboarding/payment-required',
   'app-presentation': '/presentation',
   'referral': '/public-referral',
   'qr-scanner': '/qr-scanner',

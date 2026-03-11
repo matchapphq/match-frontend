@@ -22,7 +22,6 @@ export function NotificationToast({ onNavigate }: NotificationToastProps) {
       case 'review_response':
         return <Star className="w-5 h-5 text-yellow-500" />;
       case 'payment_failed':
-      case 'subscription_expiring':
         return <AlertCircle className="w-5 h-5 text-red-500" />;
       default:
         return <Bell className="w-5 h-5 text-[#5a03cf]" />;

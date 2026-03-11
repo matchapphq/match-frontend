@@ -38,7 +38,6 @@ export const API_ENDPOINTS = {
   
   // ==================== Partners ====================
   PARTNERS_VENUES: '/partners/venues',
-  PARTNERS_VENUES_VERIFY_CHECKOUT: '/partners/venues/verify-checkout',
   PARTNERS_VENUES_MATCHES: '/partners/venues/matches',
   PARTNERS_ANALYTICS_DASHBOARD: '/partners/analytics/dashboard',
   PARTNERS_ANALYTICS_SUMMARY: '/partners/analytics/summary',
@@ -50,7 +49,6 @@ export const API_ENDPOINTS = {
   PARTNERS_VENUE_MATCHES_CALENDAR: (venueId: string) => `/partners/venues/${venueId}/matches/calendar`,
   PARTNERS_VENUE_MATCH: (venueId: string, matchId: string) => `/partners/venues/${venueId}/matches/${matchId}`,
   PARTNERS_VENUE_CLIENTS: (venueId: string) => `/partners/venues/${venueId}/clients`,
-  PARTNERS_VENUE_SUBSCRIPTION: (venueId: string) => `/partners/venues/${venueId}/subscription`,
   PARTNERS_VENUE_INVOICES: (venueId: string) => `/partners/venues/${venueId}/invoices`,
   PARTNERS_VENUE_PAYMENT_PORTAL: (venueId: string) => `/partners/venues/${venueId}/payment-portal`,
   
@@ -133,15 +131,11 @@ export const API_ENDPOINTS = {
   SUPPORT_DATA_EXPORT_REQUEST: '/support/data-export-request',
   MEDIA_AVATAR: '/media/avatar',
   
-  // ==================== Subscriptions ====================
-  SUBSCRIPTIONS_PLANS: '/subscriptions/plans',
-  SUBSCRIPTIONS_CREATE_CHECKOUT: '/subscriptions/create-checkout',
-  SUBSCRIPTIONS_ME: '/subscriptions/me',
-  SUBSCRIPTIONS_UPDATE_PAYMENT: '/subscriptions/me/update-payment-method',
-  SUBSCRIPTIONS_CANCEL: '/subscriptions/me/cancel',
-  SUBSCRIPTIONS_UPGRADE: '/subscriptions/me/upgrade',
-  SUBSCRIPTIONS_INVOICES: '/subscriptions/invoices',
-  SUBSCRIPTIONS_MOCK: '/subscriptions/mock',
+  // ==================== Billing (Commission) ====================
+  BILLING_PRICING: '/billing/pricing',
+  BILLING_SETUP_CHECKOUT: '/billing/setup-checkout',
+  BILLING_PAYMENT_METHOD: '/billing/payment-method',
+  ACCRUED_COMMISSION: '/accrued-commission',
   
   // ==================== Invoices ====================
   INVOICES: '/invoices',
