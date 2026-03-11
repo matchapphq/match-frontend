@@ -12,7 +12,8 @@ import {
   clearCheckoutState,
   isReturningFromStripe,
   cleanCheckoutUrl,
-  CheckoutState
+  CheckoutState,
+  savePendingPaymentVenueId,
 } from '../utils/checkout-state';
 
 // Route guards & layout
@@ -34,7 +35,6 @@ import {
   Privacy,
   Cgv,
   OnboardingWelcome,
-  OnboardingAjouterRestaurant,
   OnboardingInfosEtablissement,
   OnboardingFacturation,
   OnboardingConfirmationOnboarding,
@@ -114,17 +114,26 @@ function StripeReturnHandler() {
 
   const handlePaymentSetupReturn = useCallback(async (
     checkoutState: CheckoutState | null,
+    options?: { autoContinue?: boolean },
   ) => {
+    if (checkoutState?.venueId) {
+      savePendingPaymentVenueId(checkoutState.venueId);
+    }
     cleanCheckoutUrl();
     clearCheckoutState();
     await refreshUserData();
     await queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
     await queryClient.invalidateQueries({ queryKey: ['billing-payment-method'] });
 
-    const venueQuery = checkoutState?.venueId
-      ? `?venue=${encodeURIComponent(checkoutState.venueId)}`
-      : '';
-    navigate(`/onboarding/payment-required${venueQuery}`, { replace: true });
+    const params = new URLSearchParams();
+    if (checkoutState?.venueId) {
+      params.set('venue', checkoutState.venueId);
+    }
+    if (options?.autoContinue) {
+      params.set('autocontinue', '1');
+    }
+    const query = params.toString();
+    navigate(`/onboarding/payment-required${query ? `?${query}` : ''}`, { replace: true });
   }, [navigate, queryClient, refreshUserData]);
 
   const verifyCheckout = useCallback(async (
@@ -147,7 +156,7 @@ function StripeReturnHandler() {
       }
 
       if (checkoutState?.type === 'payment-setup') {
-        await handlePaymentSetupReturn(checkoutState);
+        await handlePaymentSetupReturn(checkoutState, { autoContinue: true });
         return;
       }
 
@@ -227,14 +236,14 @@ function AppRoutes() {
 
       {/* ── Onboarding routes (auth required, onboarding NOT complete) ── */}
       <Route path="/onboarding" element={<RequireAuth><OnboardingWelcome /></RequireAuth>} />
-      <Route path="/onboarding/add-venue" element={<RequireAuth><OnboardingAjouterRestaurant /></RequireAuth>} />
+      <Route path="/onboarding/add-venue" element={<RequireAuth><Navigate to="/onboarding/info" replace /></RequireAuth>} />
       <Route path="/onboarding/info" element={<RequireAuth><OnboardingInfosEtablissement /></RequireAuth>} />
       <Route path="/onboarding/billing" element={<RequireAuth><OnboardingFacturation /></RequireAuth>} />
       <Route path="/onboarding/confirmation" element={<RequireAuth><OnboardingConfirmationOnboarding /></RequireAuth>} />
       <Route path="/onboarding/payment-required" element={<RequireAuth><OnboardingPaymentRequired /></RequireAuth>} />
 
       {/* ── Authenticated routes (with sidebar layout) ── */}
-      <Route element={<RequireAuth><RequireOnboarding><RequirePaymentMethod><AuthenticatedLayout /></RequirePaymentMethod></RequireOnboarding></RequireAuth>}>
+      <Route element={<RequireAuth><RequirePaymentMethod><RequireOnboarding><AuthenticatedLayout /></RequireOnboarding></RequirePaymentMethod></RequireAuth>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/matches" element={<ListeMatchs />} />
         <Route path="/matches/schedule" element={<ProgrammerMatch />} />

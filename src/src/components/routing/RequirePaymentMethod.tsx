@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../features/authentication/context/AuthContext';
+import { getPendingPaymentVenueId } from '../../utils/checkout-state';
 
 /**
  * Route guard that redirects venue owners without a payment method
@@ -7,13 +8,15 @@ import { useAuth } from '../../features/authentication/context/AuthContext';
  */
 export function RequirePaymentMethod({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
+  const pendingVenueId = getPendingPaymentVenueId();
 
   if (
     currentUser &&
     currentUser.role === 'venue_owner' &&
     !currentUser.hasPaymentMethod
   ) {
-    return <Navigate to="/onboarding/payment-required" replace />;
+    const venueQuery = pendingVenueId ? `?venue=${encodeURIComponent(pendingVenueId)}` : '';
+    return <Navigate to={`/onboarding/payment-required${venueQuery}`} replace />;
   }
 
   return <>{children}</>;

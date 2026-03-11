@@ -24,13 +24,13 @@ export function Facturation({ onBack, onNavigate, isOnboarding = false }: Factur
       })
     : 'Tarification à la commission';
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       if (isOnboarding) {
-        completeOnboarding();
+        await completeOnboarding();
         onNavigate('dashboard');
       } else {
         onNavigate('mes-restaurants');

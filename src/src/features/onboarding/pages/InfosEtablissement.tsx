@@ -1,9 +1,10 @@
 import { ArrowLeft, Building2, ChevronDown, Coffee, Loader2, Receipt, ShieldCheck, Sparkles, Store, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
 import { PhoneInputField } from '../../../components/common/PhoneInputField';
 import { useAuth } from '../../authentication/context/AuthContext';
-import { saveCheckoutState } from '../../../utils/checkout-state';
+import { clearPendingPaymentVenueId, saveCheckoutState, savePendingPaymentVenueId } from '../../../utils/checkout-state';
 import { API_ENDPOINTS } from '../../../utils/api-constants';
 import { getPhoneErrorMessage, normalizePhone, type PhoneCountry } from '../../../utils/phone';
 
@@ -18,17 +19,13 @@ interface CreateVenueResponse {
   requires_payment_setup?: boolean;
 }
 
-interface SetupCheckoutResponse {
-  checkout_url?: string;
-  session_id?: string;
-}
-
 function sanitizeCapacityInput(value: string): string {
   return value.replace(/[^\d]/g, '');
 }
 
 export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = false }: InfosEtablissementProps) {
-  const { completeOnboarding } = useAuth();
+  const { updateOnboardingStep } = useAuth();
+  const navigate = useNavigate();
   const typePickerRef = useRef<HTMLDivElement | null>(null);
   const [formData, setFormData] = useState({
     nomBar: '',
@@ -126,7 +123,6 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
       return;
     }
 
-    const setupPopup = window.open('about:blank', '_blank');
     setIsLoading(true);
 
     try {
@@ -150,67 +146,38 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
       const venueId = data.venue_id ? String(data.venue_id) : '';
       const requiresPaymentSetup = data.requires_payment_setup === true;
 
+      if (!isAddingVenue) {
+        updateOnboardingStep('facturation');
+      }
+
       if (requiresPaymentSetup) {
         if (!venueId) {
           throw new Error('Identifiant du lieu manquant pour initialiser le paiement.');
         }
 
-        const setupResponse = await apiClient.post<SetupCheckoutResponse>(API_ENDPOINTS.BILLING_SETUP_CHECKOUT, {
-          flow: 'post_first_venue',
-          venue_id: venueId,
-        });
-        const setupCheckoutUrl = setupResponse.data?.checkout_url;
-
-        if (!setupCheckoutUrl) {
-          throw new Error('URL de configuration de paiement indisponible.');
-        }
-
-        saveCheckoutState({
-          type: 'payment-setup',
-          venueId,
-          venueName: formData.nomBar,
-          sessionId: setupResponse.data?.session_id,
-          checkoutUrl: setupCheckoutUrl,
-          returnPage: `/onboarding/payment-required?venue=${encodeURIComponent(venueId)}`,
-        });
-
-        if (setupPopup && !setupPopup.closed) {
-          setupPopup.location.href = setupCheckoutUrl;
-          window.location.href = `/onboarding/payment-required?venue=${encodeURIComponent(venueId)}`;
-          return;
-        }
-
-        // Popup blocked/closed fallback: continue in main tab
-        window.location.href = setupCheckoutUrl;
+        savePendingPaymentVenueId(venueId);
+        navigate('/onboarding', { replace: true });
         return;
       }
 
-      if (setupPopup && !setupPopup.closed) {
-        setupPopup.close();
-      }
+      clearPendingPaymentVenueId();
 
       if (onBarInfoSubmit) {
         onBarInfoSubmit(formData.nomBar);
       }
       
-      // No checkout required: continue success flow directly
-      saveCheckoutState({
-        type: isAddingVenue ? 'add-venue' : 'onboarding',
-        venueId,
-        venueName: formData.nomBar,
-        returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding',
-      });
-
       if (isAddingVenue) {
-        window.location.href = '/my-venues/add/confirmation';
+        saveCheckoutState({
+          type: 'add-venue',
+          venueId,
+          venueName: formData.nomBar,
+          returnPage: 'mes-restaurants',
+        });
+        navigate('/my-venues/add/confirmation', { replace: true });
       } else {
-        await completeOnboarding();
-        window.location.href = '/onboarding/confirmation';
+        navigate('/onboarding', { replace: true });
       }
     } catch (err) {
-      if (setupPopup && !setupPopup.closed) {
-        setupPopup.close();
-      }
       console.error('Failed to create venue:', err);
       setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de la création de l\'établissement.');
     } finally {
@@ -479,7 +446,7 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
                   className="w-full py-4 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-all duration-200 shadow-lg shadow-[#5a03cf]/20 hover:scale-[1.01] mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {isLoading ? 'Création en cours...' : 'Aller vers la confirmation'}
+                  {isLoading ? 'Création en cours...' : 'Valider les informations'}
                 </button>
               </form>
             </div>
@@ -534,7 +501,7 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
                         2
                       </span>
                       <p className="text-sm text-gray-700 dark:text-gray-300">
-                        Vous passez ensuite à la confirmation et au paiement.
+                        Vous revenez ensuite sur l’onboarding pour finaliser la facturation.
                       </p>
                     </div>
                   </div>

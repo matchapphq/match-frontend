@@ -166,8 +166,10 @@ export function OnboardingWelcome() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const onContinue = (page: PageType) => {
-    if (page === 'ajouter-restaurant') navigate('/onboarding/add-venue');
-    else if (page === 'facturation') navigate('/onboarding/billing');
+    if (page === 'ajouter-restaurant') navigate('/onboarding/info');
+    else if (page === 'facturation') {
+      navigate(currentUser?.hasPaymentMethod ? '/onboarding/billing' : '/onboarding/payment-required');
+    }
     else navigate('/dashboard');
   };
   return (
@@ -198,7 +200,7 @@ export function OnboardingInfosEtablissement() {
   const navigate = useNavigate();
   return (
     <RawInfosEtablissement
-      onBack={() => navigate('/onboarding/add-venue')}
+      onBack={() => navigate('/onboarding')}
     />
   );
 }
