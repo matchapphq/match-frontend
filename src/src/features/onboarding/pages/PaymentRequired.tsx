@@ -33,7 +33,7 @@ export function PaymentRequired() {
   const fallbackVenueIdFromList = useMemo(() => {
     if (!venues || venues.length === 0) return '';
 
-    const inactiveVenue = venues.find((venue) => (venue.subscription_status || '').toLowerCase() !== 'active');
+    const inactiveVenue = venues.find((venue) => !(venue.is_active === true && venue.status === 'approved'));
     return inactiveVenue?.id || venues[0]?.id || '';
   }, [venues]);
 

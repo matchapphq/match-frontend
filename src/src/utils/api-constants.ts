@@ -38,7 +38,6 @@ export const API_ENDPOINTS = {
   
   // ==================== Partners ====================
   PARTNERS_VENUES: '/partners/venues',
-  PARTNERS_VENUES_VERIFY_CHECKOUT: '/partners/venues/verify-checkout',
   PARTNERS_VENUES_MATCHES: '/partners/venues/matches',
   PARTNERS_ANALYTICS_DASHBOARD: '/partners/analytics/dashboard',
   PARTNERS_ANALYTICS_SUMMARY: '/partners/analytics/summary',

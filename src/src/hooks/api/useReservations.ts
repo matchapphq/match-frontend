@@ -142,7 +142,7 @@ export function useVerifyQR() {
   return useMutation({
     mutationFn: async (qrCode: string) => {
       const response = await apiClient.post(API_ENDPOINTS.RESERVATIONS_VERIFY_QR, {
-        qr_code: qrCode,
+        qrContent: qrCode,
       });
       return response.data;
     },

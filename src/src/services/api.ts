@@ -164,16 +164,15 @@ class ApiService {
   }
 
   async createVenue(data: CreateVenueData) {
-    return this.request<{ checkout_url: string; session_id: string; message: string }>('/partners/venues', {
+    return this.request<{
+      venue: Venue;
+      venue_id: string;
+      is_first_venue: boolean;
+      requires_payment_setup: boolean;
+      payment_setup_flow: 'post_first_venue' | null;
+    }>('/partners/venues', {
       method: 'POST',
       body: data,
-    });
-  }
-
-  async verifyCheckoutAndCreateVenue(sessionId: string) {
-    return this.request<{ venue: Venue; subscription: any; message: string; already_exists?: boolean }>('/partners/venues/verify-checkout', {
-      method: 'POST',
-      body: { session_id: sessionId },
     });
   }
 
@@ -363,7 +362,7 @@ class ApiService {
   async verifyQRCode(qrCode: string) {
     return this.request<{ valid: boolean; reservation?: Reservation }>('/reservations/verify-qr', {
       method: 'POST',
-      body: { qr_code: qrCode },
+      body: { qrContent: qrCode },
     });
   }
 

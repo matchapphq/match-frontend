@@ -15,8 +15,11 @@ interface InfosEtablissementProps {
 }
 
 interface CreateVenueResponse {
+  venue?: { id?: string };
   venue_id?: string;
   requires_payment_setup?: boolean;
+  is_first_venue?: boolean;
+  payment_setup_flow?: 'post_first_venue' | null;
 }
 
 function sanitizeCapacityInput(value: string): string {
@@ -143,7 +146,11 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
 
       const response = await apiClient.post<CreateVenueResponse>(API_ENDPOINTS.PARTNERS_VENUES, payload);
       const data = response.data;
-      const venueId = data.venue_id ? String(data.venue_id) : '';
+      const venueId = data.venue_id
+        ? String(data.venue_id)
+        : data.venue?.id
+        ? String(data.venue.id)
+        : '';
       const requiresPaymentSetup = data.requires_payment_setup === true;
 
       if (!isAddingVenue) {
@@ -179,7 +186,16 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
       }
     } catch (err) {
       console.error('Failed to create venue:', err);
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de la création de l\'établissement.');
+      const message = err instanceof Error ? err.message : '';
+      const normalized = message.trim().toUpperCase();
+      if (
+        normalized === 'PAYMENT_METHOD_REQUIRED' ||
+        normalized.includes('PAYMENT METHOD IS REQUIRED')
+      ) {
+        setError('Ajout impossible sans moyen de paiement. Configurez Stripe depuis votre espace facturation.');
+      } else {
+        setError(message || 'Une erreur est survenue lors de la création de l\'établissement.');
+      }
     } finally {
       setIsLoading(false);
     }

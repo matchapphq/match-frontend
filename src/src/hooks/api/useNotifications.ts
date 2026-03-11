@@ -8,7 +8,7 @@ export interface Notification {
   id: string;
   user_id: string;
   type: 'reservation_confirmed' | 'reservation_canceled' | 'reservation_reminder' | 
-        'match_starting' | 'review_response' | 'subscription_expiring' | 
+        'match_starting' | 'review_response' |
         'payment_failed' | 'promotional' | 'system' | 'match_nearby' | 'venue_nearby';
   title: string;
   message: string;

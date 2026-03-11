@@ -46,8 +46,6 @@ export interface Invoice {
   id: string;
   invoice_number?: string;
   number?: string;
-  subscription_id?: string;
-  stripe_subscription_id?: string | null;
   amount?: number | string;
   subtotal?: number | string;
   tax?: number | string;

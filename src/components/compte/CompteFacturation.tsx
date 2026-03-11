@@ -67,30 +67,50 @@ function formatAmountLabel(value?: string | number | null, currency = 'EUR') {
   }).format(numericValue);
 }
 
-function getVenueStatusLabel(status?: string) {
+function resolveVenueStatus(venue: { status?: string; is_active?: boolean }) {
+  if (venue.is_active === true) {
+    return 'active';
+  }
+
+  if (venue.status === 'pending') {
+    return 'pending';
+  }
+
+  if (venue.status === 'rejected') {
+    return 'rejected';
+  }
+
+  if (venue.status === 'suspended') {
+    return 'suspended';
+  }
+
+  return 'inactive';
+}
+
+function getVenueStatusLabel(status: string) {
   switch (status) {
     case 'active':
       return 'Actif';
-    case 'trialing':
-      return 'En attente';
-    case 'past_due':
-      return 'Inactif (paiement)';
-    case 'canceled':
-      return 'Inactif';
+    case 'pending':
+      return 'En attente de paiement';
+    case 'rejected':
+      return 'Refusé';
+    case 'suspended':
+      return 'Suspendu';
     default:
       return 'Inactif';
   }
 }
 
-function getVenueStatusClasses(status?: string) {
+function getVenueStatusClasses(status: string) {
   switch (status) {
     case 'active':
       return 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-900/40';
-    case 'trialing':
+    case 'pending':
       return 'bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:ring-blue-900/40';
-    case 'past_due':
+    case 'suspended':
       return 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:ring-amber-900/40';
-    case 'canceled':
+    case 'rejected':
       return 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-900/20 dark:text-red-300 dark:ring-red-900/40';
     default:
       return 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700';
@@ -207,13 +227,17 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
   const etablissements = useMemo<BillingVenue[]>(() => {
     if (!venues) return [];
 
-    return venues.map((venue) => ({
-      id: venue.id,
-      nom: venue.name,
-      ville: venue.city?.trim() || 'Ville non renseignée',
-      statusKey: venue.subscription_status || 'inactive',
-      statusLabel: getVenueStatusLabel(venue.subscription_status),
-    }));
+    return venues.map((venue) => {
+      const statusKey = resolveVenueStatus(venue);
+
+      return {
+        id: venue.id,
+        nom: venue.name,
+        ville: venue.city?.trim() || 'Ville non renseignée',
+        statusKey,
+        statusLabel: getVenueStatusLabel(statusKey),
+      };
+    });
   }, [venues]);
 
   const formattedInvoices = useMemo<BillingInvoice[]>(() => {
@@ -467,7 +491,11 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
                       </span>
                     </div>
                     <p className="text-sm text-gray-700 dark:text-gray-300">
-                      {etablissement.statusKey === 'active' ? 'Lieu actif' : 'Lieu inactif'}
+                      {etablissement.statusKey === 'active'
+                        ? 'Lieu actif'
+                        : etablissement.statusKey === 'pending'
+                        ? 'Activation en attente du setup Stripe'
+                        : 'Lieu inactif'}
                     </p>
                   </button>
                 ))}

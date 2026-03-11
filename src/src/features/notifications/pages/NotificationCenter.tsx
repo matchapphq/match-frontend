@@ -42,7 +42,6 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
         return '⚽';
       case 'review_response':
         return '⭐';
-      case 'subscription_expiring':
       case 'payment_failed':
         return '⚠️';
       case 'promotional':
