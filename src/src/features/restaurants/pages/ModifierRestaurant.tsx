@@ -225,9 +225,10 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       const venueSchedule = mapOpeningHoursToWeeklySchedule(restaurant.opening_hours);
       const nextPhoneCountry = inferPhoneCountry(restaurant.phone);
       const formattedPhone = formatPhoneInput(restaurant.phone || '', nextPhoneCountry);
+      const address = [restaurant.street_address, restaurant.city].filter(Boolean).join(', ');
       setFormData({
         nom: restaurant.name || '',
-        adresse: `${restaurant.street_address}, ${restaurant.city}` || '',
+        adresse: address || 'Adresse non renseignée',
         telephone: formattedPhone,
         email: restaurant.email || '',
         horaires: formatWeeklySchedule(venueSchedule),
@@ -258,7 +259,9 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
   const selectedDayLabel = WEEK_DAYS.find((day) => day.key === selectedWeekDay)?.name || 'Jour';
   const savedCapacity = sanitizeCapacity(restaurant?.capacity);
   const normalizedNom = formData.nom.trim();
-  const normalizedTelephone = formData.telephone.trim();
+  const normalizedTelephone = formData.telephone.trim()
+    ? normalizePhone(formData.telephone, phoneCountry) || formData.telephone.trim()
+    : '';
 
   const hasChanges = useMemo(() => {
     if (!initialEditState) return false;
