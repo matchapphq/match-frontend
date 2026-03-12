@@ -24,7 +24,7 @@ interface DaySchedule {
 
 interface InitialEditState {
   nom: string;
-  telephone: string;
+  telephoneNormalized: string;
   capaciteMax: number;
   bookingMode: 'INSTANT' | 'REQUEST';
   weeklySchedule: Record<WeekDayKey, DaySchedule>;
@@ -173,6 +173,12 @@ function sanitizeEditableCapacity(value: unknown) {
   return Math.max(1, sanitizeCapacity(value));
 }
 
+function normalizePhoneForComparison(value: string, country: PhoneCountry) {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  return normalizePhone(trimmed, country) || trimmed;
+}
+
 function areSchedulesEqual(
   left: Record<WeekDayKey, DaySchedule>,
   right: Record<WeekDayKey, DaySchedule>,
@@ -225,6 +231,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       const venueSchedule = mapOpeningHoursToWeeklySchedule(restaurant.opening_hours);
       const nextPhoneCountry = inferPhoneCountry(restaurant.phone);
       const formattedPhone = formatPhoneInput(restaurant.phone || '', nextPhoneCountry);
+      const normalizedPhoneBaseline = normalizePhoneForComparison(formattedPhone, nextPhoneCountry);
       const address = [restaurant.street_address, restaurant.city].filter(Boolean).join(', ');
       setFormData({
         nom: restaurant.name || '',
@@ -240,7 +247,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       setWeeklySchedule(venueSchedule);
       setInitialEditState({
         nom: (restaurant.name || '').trim(),
-        telephone: formattedPhone.trim(),
+        telephoneNormalized: normalizedPhoneBaseline,
         capaciteMax: venueCapacity,
         bookingMode: (restaurant.booking_mode || 'INSTANT') as 'INSTANT' | 'REQUEST',
         weeklySchedule: cloneWeeklySchedule(venueSchedule),
@@ -259,15 +266,13 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
   const selectedDayLabel = WEEK_DAYS.find((day) => day.key === selectedWeekDay)?.name || 'Jour';
   const savedCapacity = sanitizeCapacity(restaurant?.capacity);
   const normalizedNom = formData.nom.trim();
-  const normalizedTelephone = formData.telephone.trim()
-    ? normalizePhone(formData.telephone, phoneCountry) || formData.telephone.trim()
-    : '';
+  const normalizedTelephone = normalizePhoneForComparison(formData.telephone, phoneCountry);
 
   const hasChanges = useMemo(() => {
     if (!initialEditState) return false;
     return (
       normalizedNom !== initialEditState.nom ||
-      normalizedTelephone !== initialEditState.telephone ||
+      normalizedTelephone !== initialEditState.telephoneNormalized ||
       capaciteMax !== initialEditState.capaciteMax ||
       bookingMode !== initialEditState.bookingMode ||
       !areSchedulesEqual(weeklySchedule, initialEditState.weeklySchedule)
@@ -309,9 +314,10 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       queryClient.invalidateQueries({ queryKey: ['venue', restaurantId] });
       queryClient.invalidateQueries({ queryKey: ['venue-detail', restaurantId] });
       queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
+      const nextPhoneCountry = inferPhoneCountry(variables.telephone);
       setInitialEditState({
         nom: variables.nom.trim(),
-        telephone: variables.telephone.trim(),
+        telephoneNormalized: normalizePhoneForComparison(variables.telephone, nextPhoneCountry),
         capaciteMax: variables.capaciteMax,
         bookingMode: variables.bookingMode,
         weeklySchedule: cloneWeeklySchedule(variables.weeklyScheduleSnapshot),
@@ -353,16 +359,17 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
   const handleResetChanges = () => {
     if (!initialEditState) return;
+    const resetPhoneCountry = inferPhoneCountry(initialEditState.telephoneNormalized);
     setFormData((prev) => ({
       ...prev,
       nom: initialEditState.nom,
-      telephone: initialEditState.telephone,
+      telephone: formatPhoneInput(initialEditState.telephoneNormalized, resetPhoneCountry),
       horaires: formatWeeklySchedule(initialEditState.weeklySchedule),
     }));
     setCapaciteMax(initialEditState.capaciteMax);
     setBookingMode(initialEditState.bookingMode);
     setWeeklySchedule(cloneWeeklySchedule(initialEditState.weeklySchedule));
-    setPhoneCountry(inferPhoneCountry(initialEditState.telephone));
+    setPhoneCountry(resetPhoneCountry);
     setSelectedWeekDay('mon');
   };
 
