@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
 import { UnsavedChangesDialog } from '../../../components/common/UnsavedChangesDialog';
 import { PhoneInputField } from '../../../components/common/PhoneInputField';
+import { useToast } from '../../../context/ToastContext';
 import { useUnsavedChangesGuard } from '../../../hooks/useUnsavedChangesGuard';
-import { formatPhoneInput, inferPhoneCountry, normalizePhone, type PhoneCountry } from '../../../utils/phone';
+import { formatPhoneInput, getPhoneErrorMessage, inferPhoneCountry, normalizePhone, type PhoneCountry } from '../../../utils/phone';
 
 interface ModifierRestaurantProps {
   restaurantId: string | null;
@@ -27,6 +28,15 @@ interface InitialEditState {
   capaciteMax: number;
   bookingMode: 'INSTANT' | 'REQUEST';
   weeklySchedule: Record<WeekDayKey, DaySchedule>;
+}
+
+interface UpdateVenuePayload {
+  nom: string;
+  telephone: string;
+  capaciteMax: number;
+  bookingMode: 'INSTANT' | 'REQUEST';
+  openingHours: Record<string, { open: string; close: string; closed: boolean }>;
+  weeklyScheduleSnapshot: Record<WeekDayKey, DaySchedule>;
 }
 
 interface DayConfig {
@@ -181,6 +191,7 @@ function areSchedulesEqual(
 export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const { data: restaurant, isLoading: isLoadingVenue } = useQuery({
     queryKey: ['venue', restaurantId],
@@ -281,7 +292,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
   }, [hasChanges, navigate, unsavedChangesGuard]);
 
   const updateVenueMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: UpdateVenuePayload) => {
       const basicPayload = {
         name: data.nom,
         phone: data.telephone,
@@ -291,15 +302,22 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       };
       await apiClient.put(`/venues/${restaurantId}`, basicPayload);
     },
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['venue', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['venue-detail', restaurantId] });
       queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
-      alert('Restaurant modifié avec succès !');
-      onBack();
+      setInitialEditState({
+        nom: variables.nom.trim(),
+        telephone: variables.telephone.trim(),
+        capaciteMax: variables.capaciteMax,
+        bookingMode: variables.bookingMode,
+        weeklySchedule: cloneWeeklySchedule(variables.weeklyScheduleSnapshot),
+      });
+      toast.success('Modifications enregistrées');
     },
     onError: (err) => {
       console.error('Update failed:', err);
-      alert('Erreur lors de la modification du restaurant.');
+      toast.error('Erreur lors de la modification du restaurant.');
     },
   });
 
@@ -310,16 +328,18 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       ? normalizePhone(formData.telephone, phoneCountry)
       : '';
     if (formData.telephone.trim() && !normalizedPhone) {
-      alert('Numéro de téléphone invalide.');
+      toast.error(getPhoneErrorMessage(phoneCountry));
       return;
     }
     if (restaurantId) {
+      const weeklyScheduleSnapshot = cloneWeeklySchedule(weeklySchedule);
       updateVenueMutation.mutate({
         ...formData,
         telephone: normalizedPhone || formData.telephone.trim(),
         capaciteMax: sanitizeEditableCapacity(capaciteMax),
         bookingMode,
-        openingHours: mapWeeklyScheduleToOpeningHours(weeklySchedule),
+        openingHours: mapWeeklyScheduleToOpeningHours(weeklyScheduleSnapshot),
+        weeklyScheduleSnapshot,
       });
     }
   };
