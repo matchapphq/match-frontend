@@ -1,5 +1,5 @@
 import { ArrowLeft, Edit, MapPin, Phone, Mail, Users, Zap, Clock, Loader2, CalendarDays, CheckCircle2 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
@@ -199,6 +199,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
+  const suppressNextPopstateRef = useRef(false);
 
   const { data: restaurant, isLoading: isLoadingVenue } = useQuery({
     queryKey: ['venue', restaurantId],
@@ -299,6 +300,31 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       window.removeEventListener('match:sidebar-navigate', handleSidebarNavigate as EventListener);
     };
   }, [hasChanges, navigate, unsavedChangesGuard]);
+
+  useEffect(() => {
+    if (!hasChanges) return;
+
+    const handleBrowserPopstate = () => {
+      if (suppressNextPopstateRef.current) {
+        suppressNextPopstateRef.current = false;
+        return;
+      }
+
+      // Keep user on the edit page while showing the unsaved-changes dialog.
+      suppressNextPopstateRef.current = true;
+      window.history.go(1);
+
+      unsavedChangesGuard.handleNavigationAttempt(() => {
+        suppressNextPopstateRef.current = true;
+        window.history.back();
+      });
+    };
+
+    window.addEventListener('popstate', handleBrowserPopstate);
+    return () => {
+      window.removeEventListener('popstate', handleBrowserPopstate);
+    };
+  }, [hasChanges, unsavedChangesGuard]);
 
   const updateVenueMutation = useMutation({
     mutationFn: async (data: UpdateVenuePayload) => {
