@@ -64,6 +64,12 @@ function cloneWeeklySchedule(schedule: Record<WeekDayKey, DaySchedule>) {
   }, {} as Record<WeekDayKey, DaySchedule>);
 }
 
+function sanitizeCapacity(value: unknown) {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return parsed;
+}
+
 function areSchedulesEqual(
   left: Record<WeekDayKey, DaySchedule>,
   right: Record<WeekDayKey, DaySchedule>,
@@ -81,7 +87,6 @@ function areSchedulesEqual(
 
 export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantProps) {
   const queryClient = useQueryClient();
-  const maxCapacite = 100;
   const navigate = useNavigate();
 
   const { data: restaurant, isLoading: isLoadingVenue } = useQuery({
@@ -94,7 +99,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
     enabled: !!restaurantId,
   });
 
-  const [capaciteMax, setCapaciteMax] = useState(50);
+  const [capaciteMax, setCapaciteMax] = useState(0);
   const [bookingMode, setBookingMode] = useState<'INSTANT' | 'REQUEST'>('INSTANT');
   const [formData, setFormData] = useState({
     nom: '',
@@ -112,6 +117,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
   useEffect(() => {
     if (restaurant) {
+      const venueCapacity = sanitizeCapacity(restaurant.capacity);
       const nextPhoneCountry = inferPhoneCountry(restaurant.phone);
       const formattedPhone = formatPhoneInput(restaurant.phone || '', nextPhoneCountry);
       setFormData({
@@ -121,7 +127,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
         email: restaurant.email || '',
         horaires: formatWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE),
       });
-      setCapaciteMax(restaurant.capacity || 50);
+      setCapaciteMax(venueCapacity);
       setBookingMode(restaurant.booking_mode || 'INSTANT');
       setPhoneCountry(nextPhoneCountry);
       setSelectedWeekDay('mon');
@@ -130,7 +136,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       setInitialEditState({
         nom: (restaurant.name || '').trim(),
         telephone: formattedPhone.trim(),
-        capaciteMax: restaurant.capacity || 50,
+        capaciteMax: venueCapacity,
         bookingMode: (restaurant.booking_mode || 'INSTANT') as 'INSTANT' | 'REQUEST',
         weeklySchedule: cloneWeeklySchedule(baseWeeklySchedule),
       });
@@ -146,6 +152,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
   const selectedDaySchedule = weeklySchedule[selectedWeekDay];
   const selectedDayLabel = WEEK_DAYS.find((day) => day.key === selectedWeekDay)?.name || 'Jour';
+  const savedCapacity = initialEditState?.capaciteMax ?? sanitizeCapacity(restaurant?.capacity);
   const normalizedNom = formData.nom.trim();
   const normalizedTelephone = formData.telephone.trim();
 
@@ -512,31 +519,28 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
                 <h2 className="text-lg text-gray-900 dark:text-white mb-4">Capacité</h2>
 
                 <div className="rounded-xl bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 dark:from-[#5a03cf]/20 dark:to-[#9cff02]/20 border border-[#5a03cf]/20 px-4 py-3 mb-4">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Capacité actuelle</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Capacité actuelle (sauvegardée)</p>
                   <p className="text-3xl text-[#5a03cf]" style={{ fontWeight: 700 }}>
-                    {capaciteMax}
+                    {savedCapacity}
                   </p>
                 </div>
 
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-3">
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-2">
                   <Users className="w-4 h-4 text-[#5a03cf]" />
-                  Places disponibles
+                  Nouvelle capacité
                 </label>
                 <input
-                  type="range"
-                  min="10"
-                  max={maxCapacite}
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
                   value={capaciteMax}
-                  onChange={(e) => setCapaciteMax(Number(e.target.value))}
-                  className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                  style={{
-                    background: `linear-gradient(to right, #5a03cf 0%, #5a03cf ${(capaciteMax / maxCapacite) * 100}%, #e5e7eb ${(capaciteMax / maxCapacite) * 100}%, #e5e7eb 100%)`,
+                  onChange={(e) => {
+                    const nextValue = Number(e.target.value);
+                    setCapaciteMax(Number.isFinite(nextValue) ? Math.max(0, nextValue) : 0);
                   }}
+                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
                 />
-                <div className="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span>10</span>
-                  <span>{maxCapacite}</span>
-                </div>
               </section>
 
               <section className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/85 dark:bg-gray-900/75 backdrop-blur-xl p-6 shadow-sm">
@@ -592,11 +596,12 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
               </button>
 
               <button
+                key={hasChanges ? 'submit-dirty' : 'submit-clean'}
                 type="submit"
                 disabled={updateVenueMutation.isPending || !hasChanges}
-                className={`sm:order-2 px-6 py-3 rounded-xl inline-flex items-center justify-center gap-2 transition-all ${
+                className={`sm:order-2 px-6 py-3 rounded-xl inline-flex items-center justify-center gap-2 transition-colors ${
                   updateVenueMutation.isPending || !hasChanges
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500'
+                    ? 'bg-none bg-gray-200 text-gray-500 cursor-not-allowed shadow-none dark:bg-gray-800 dark:text-gray-500'
                     : 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white hover:brightness-110 hover:shadow-lg hover:shadow-[#5a03cf]/25'
                 }`}
               >
