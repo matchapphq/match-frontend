@@ -4,7 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
 import { UnsavedChangesDialog } from '../../../components/common/UnsavedChangesDialog';
+import { PhoneInputField } from '../../../components/common/PhoneInputField';
 import { useUnsavedChangesGuard } from '../../../hooks/useUnsavedChangesGuard';
+import { formatPhoneInput, inferPhoneCountry, normalizePhone, type PhoneCountry } from '../../../utils/phone';
 
 interface ModifierRestaurantProps {
   restaurantId: string | null;
@@ -106,24 +108,28 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
     cloneWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE),
   );
   const [initialEditState, setInitialEditState] = useState<InitialEditState | null>(null);
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>('FR');
 
   useEffect(() => {
     if (restaurant) {
+      const nextPhoneCountry = inferPhoneCountry(restaurant.phone);
+      const formattedPhone = formatPhoneInput(restaurant.phone || '', nextPhoneCountry);
       setFormData({
         nom: restaurant.name || '',
         adresse: `${restaurant.street_address}, ${restaurant.city}` || '',
-        telephone: restaurant.phone || '',
+        telephone: formattedPhone,
         email: restaurant.email || '',
         horaires: formatWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE),
       });
       setCapaciteMax(restaurant.capacity || 50);
       setBookingMode(restaurant.booking_mode || 'INSTANT');
+      setPhoneCountry(nextPhoneCountry);
       setSelectedWeekDay('mon');
       const baseWeeklySchedule = cloneWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE);
       setWeeklySchedule(baseWeeklySchedule);
       setInitialEditState({
         nom: (restaurant.name || '').trim(),
-        telephone: (restaurant.phone || '').trim(),
+        telephone: formattedPhone.trim(),
         capaciteMax: restaurant.capacity || 50,
         bookingMode: (restaurant.booking_mode || 'INSTANT') as 'INSTANT' | 'REQUEST',
         weeklySchedule: cloneWeeklySchedule(baseWeeklySchedule),
@@ -202,9 +208,17 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasChanges) return;
+    const normalizedPhone = formData.telephone.trim()
+      ? normalizePhone(formData.telephone, phoneCountry)
+      : '';
+    if (formData.telephone.trim() && !normalizedPhone) {
+      alert('Numéro de téléphone invalide.');
+      return;
+    }
     if (restaurantId) {
       updateVenueMutation.mutate({
         ...formData,
+        telephone: normalizedPhone || formData.telephone.trim(),
         capaciteMax,
         bookingMode,
       });
@@ -328,12 +342,17 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
                         <Phone className="w-4 h-4 text-[#5a03cf]" />
                         Téléphone
                       </label>
-                      <input
-                        type="tel"
+                      <PhoneInputField
+                        id="telephone"
+                        name="telephone"
                         value={formData.telephone}
-                        onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
-                        className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
+                        country={phoneCountry}
+                        onChange={(value) => setFormData({ ...formData, telephone: value })}
+                        onCountryChange={setPhoneCountry}
                         required
+                        sizeClassName="py-3"
+                        textClassName="text-sm"
+                        ariaInvalid={formData.telephone.trim().length > 0 && !normalizePhone(formData.telephone, phoneCountry)}
                       />
                     </div>
 
