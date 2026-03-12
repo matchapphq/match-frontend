@@ -107,7 +107,8 @@ function mapOpeningHoursToWeeklySchedule(openingHours: unknown) {
       const entry = rawEntry as Record<string, unknown>;
       const dayOfWeek = typeof entry.day_of_week === 'number' ? entry.day_of_week : null;
       if (dayOfWeek === null) continue;
-      const dayConfig = DAY_CONFIG.find((day) => day.dayOfWeek === dayOfWeek);
+      const normalizedDayOfWeek = ((dayOfWeek % 7) + 7) % 7;
+      const dayConfig = DAY_CONFIG.find((day) => day.dayOfWeek === normalizedDayOfWeek);
       if (!dayConfig) continue;
 
       const periods = Array.isArray(entry.periods) ? entry.periods : [];
