@@ -14,11 +14,18 @@ interface ModifierRestaurantProps {
 }
 
 type WeekDayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+type BackendWeekDayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
 interface DaySchedule {
   isOpen: boolean;
   openTime: string;
   closeTime: string;
+}
+
+interface BackendOpeningDay {
+  open: string;
+  close: string;
+  closed: boolean;
 }
 
 interface InitialEditState {
@@ -49,6 +56,37 @@ const DEFAULT_WEEKLY_SCHEDULE: Record<WeekDayKey, DaySchedule> = {
   sun: { isOpen: true, openTime: '11:00', closeTime: '22:00' },
 };
 
+const BACKEND_DAY_BY_WEEK: Record<WeekDayKey, BackendWeekDayKey> = {
+  mon: 'monday',
+  tue: 'tuesday',
+  wed: 'wednesday',
+  thu: 'thursday',
+  fri: 'friday',
+  sat: 'saturday',
+  sun: 'sunday',
+};
+
+const WEEK_DAY_BY_BACKEND: Record<BackendWeekDayKey, WeekDayKey> = {
+  monday: 'mon',
+  tuesday: 'tue',
+  wednesday: 'wed',
+  thursday: 'thu',
+  friday: 'fri',
+  saturday: 'sat',
+  sunday: 'sun',
+};
+
+const WEEK_DAY_BY_NUM: Record<number, WeekDayKey> = {
+  0: 'sun',
+  1: 'mon',
+  2: 'tue',
+  3: 'wed',
+  4: 'thu',
+  5: 'fri',
+  6: 'sat',
+  7: 'sun',
+};
+
 function formatWeeklySchedule(schedule: Record<WeekDayKey, DaySchedule>) {
   return WEEK_DAYS.map((day) => {
     const config = schedule[day.key];
@@ -64,10 +102,87 @@ function cloneWeeklySchedule(schedule: Record<WeekDayKey, DaySchedule>) {
   }, {} as Record<WeekDayKey, DaySchedule>);
 }
 
+function normalizeHour(value: unknown, fallback: string) {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  if (/^\d{2}:\d{2}$/.test(trimmed)) return trimmed;
+  if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) return trimmed.slice(0, 5);
+  return fallback;
+}
+
+function mapOpeningHoursToWeeklySchedule(openingHours: unknown) {
+  const schedule = cloneWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE);
+  if (!openingHours) return schedule;
+
+  if (Array.isArray(openingHours)) {
+    for (const rawEntry of openingHours) {
+      if (!rawEntry || typeof rawEntry !== 'object') continue;
+      const entry = rawEntry as Record<string, unknown>;
+      const dayOfWeek = typeof entry.day_of_week === 'number' ? entry.day_of_week : null;
+      if (dayOfWeek === null) continue;
+      const dayKey = WEEK_DAY_BY_NUM[dayOfWeek];
+      if (!dayKey) continue;
+
+      const periods = Array.isArray(entry.periods) ? entry.periods : [];
+      const firstPeriod = periods[0] && typeof periods[0] === 'object'
+        ? (periods[0] as Record<string, unknown>)
+        : null;
+      const fallback = schedule[dayKey];
+
+      schedule[dayKey] = {
+        isOpen: entry.is_closed !== true,
+        openTime: normalizeHour(firstPeriod?.open, fallback.openTime),
+        closeTime: normalizeHour(firstPeriod?.close, fallback.closeTime),
+      };
+    }
+
+    return schedule;
+  }
+
+  if (typeof openingHours === 'object') {
+    const openingHoursObject = openingHours as Record<string, unknown>;
+    (Object.keys(WEEK_DAY_BY_BACKEND) as BackendWeekDayKey[]).forEach((backendDay) => {
+      const dayConfig = openingHoursObject[backendDay];
+      if (!dayConfig || typeof dayConfig !== 'object') return;
+
+      const parsedDay = dayConfig as Record<string, unknown>;
+      const dayKey = WEEK_DAY_BY_BACKEND[backendDay];
+      const fallback = schedule[dayKey];
+
+      schedule[dayKey] = {
+        isOpen: parsedDay.closed !== true,
+        openTime: normalizeHour(parsedDay.open, fallback.openTime),
+        closeTime: normalizeHour(parsedDay.close, fallback.closeTime),
+      };
+    });
+  }
+
+  return schedule;
+}
+
+function mapWeeklyScheduleToOpeningHours(
+  schedule: Record<WeekDayKey, DaySchedule>,
+): Record<BackendWeekDayKey, BackendOpeningDay> {
+  return WEEK_DAYS.reduce((acc, day) => {
+    const config = schedule[day.key];
+    const backendDay = BACKEND_DAY_BY_WEEK[day.key];
+    acc[backendDay] = {
+      open: config.openTime,
+      close: config.closeTime,
+      closed: !config.isOpen,
+    };
+    return acc;
+  }, {} as Record<BackendWeekDayKey, BackendOpeningDay>);
+}
+
 function sanitizeCapacity(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return parsed;
+  return Math.trunc(parsed);
+}
+
+function sanitizeEditableCapacity(value: unknown) {
+  return Math.max(1, sanitizeCapacity(value));
 }
 
 function areSchedulesEqual(
@@ -99,7 +214,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
     enabled: !!restaurantId,
   });
 
-  const [capaciteMax, setCapaciteMax] = useState(0);
+  const [capaciteMax, setCapaciteMax] = useState(1);
   const [bookingMode, setBookingMode] = useState<'INSTANT' | 'REQUEST'>('INSTANT');
   const [formData, setFormData] = useState({
     nom: '',
@@ -117,7 +232,8 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
   useEffect(() => {
     if (restaurant) {
-      const venueCapacity = sanitizeCapacity(restaurant.capacity);
+      const venueCapacity = sanitizeEditableCapacity(restaurant.capacity);
+      const venueSchedule = mapOpeningHoursToWeeklySchedule(restaurant.opening_hours);
       const nextPhoneCountry = inferPhoneCountry(restaurant.phone);
       const formattedPhone = formatPhoneInput(restaurant.phone || '', nextPhoneCountry);
       setFormData({
@@ -125,20 +241,19 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
         adresse: `${restaurant.street_address}, ${restaurant.city}` || '',
         telephone: formattedPhone,
         email: restaurant.email || '',
-        horaires: formatWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE),
+        horaires: formatWeeklySchedule(venueSchedule),
       });
       setCapaciteMax(venueCapacity);
       setBookingMode(restaurant.booking_mode || 'INSTANT');
       setPhoneCountry(nextPhoneCountry);
       setSelectedWeekDay('mon');
-      const baseWeeklySchedule = cloneWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE);
-      setWeeklySchedule(baseWeeklySchedule);
+      setWeeklySchedule(venueSchedule);
       setInitialEditState({
         nom: (restaurant.name || '').trim(),
         telephone: formattedPhone.trim(),
         capaciteMax: venueCapacity,
         bookingMode: (restaurant.booking_mode || 'INSTANT') as 'INSTANT' | 'REQUEST',
-        weeklySchedule: cloneWeeklySchedule(baseWeeklySchedule),
+        weeklySchedule: cloneWeeklySchedule(venueSchedule),
       });
     }
   }, [restaurant]);
@@ -152,7 +267,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
   const selectedDaySchedule = weeklySchedule[selectedWeekDay];
   const selectedDayLabel = WEEK_DAYS.find((day) => day.key === selectedWeekDay)?.name || 'Jour';
-  const savedCapacity = initialEditState?.capaciteMax ?? sanitizeCapacity(restaurant?.capacity);
+  const savedCapacity = sanitizeCapacity(restaurant?.capacity);
   const normalizedNom = formData.nom.trim();
   const normalizedTelephone = formData.telephone.trim();
 
@@ -193,12 +308,10 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
         name: data.nom,
         phone: data.telephone,
         capacity: data.capaciteMax,
+        booking_mode: data.bookingMode,
+        opening_hours: data.openingHours,
       };
       await apiClient.put(`/venues/${restaurantId}`, basicPayload);
-
-      await apiClient.put(`/venues/${restaurantId}/booking-mode`, {
-        booking_mode: data.bookingMode,
-      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venue', restaurantId] });
@@ -226,8 +339,9 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       updateVenueMutation.mutate({
         ...formData,
         telephone: normalizedPhone || formData.telephone.trim(),
-        capaciteMax,
+        capaciteMax: sanitizeEditableCapacity(capaciteMax),
         bookingMode,
+        openingHours: mapWeeklyScheduleToOpeningHours(weeklySchedule),
       });
     }
   };
@@ -531,13 +645,13 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
                 </label>
                 <input
                   type="number"
-                  min={0}
+                  min={1}
                   step={1}
                   inputMode="numeric"
                   value={capaciteMax}
                   onChange={(e) => {
                     const nextValue = Number(e.target.value);
-                    setCapaciteMax(Number.isFinite(nextValue) ? Math.max(0, nextValue) : 0);
+                    setCapaciteMax(Number.isFinite(nextValue) ? Math.max(1, Math.trunc(nextValue)) : 1);
                   }}
                   className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
                 />
