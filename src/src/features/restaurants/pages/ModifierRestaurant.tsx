@@ -14,18 +14,11 @@ interface ModifierRestaurantProps {
 }
 
 type WeekDayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
-type BackendWeekDayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
 interface DaySchedule {
   isOpen: boolean;
   openTime: string;
   closeTime: string;
-}
-
-interface BackendOpeningDay {
-  open: string;
-  close: string;
-  closed: boolean;
 }
 
 interface InitialEditState {
@@ -36,56 +29,40 @@ interface InitialEditState {
   weeklySchedule: Record<WeekDayKey, DaySchedule>;
 }
 
-const WEEK_DAYS: Array<{ key: WeekDayKey; label: string; name: string }> = [
-  { key: 'mon', label: 'L', name: 'Lundi' },
-  { key: 'tue', label: 'M', name: 'Mardi' },
-  { key: 'wed', label: 'M', name: 'Mercredi' },
-  { key: 'thu', label: 'J', name: 'Jeudi' },
-  { key: 'fri', label: 'V', name: 'Vendredi' },
-  { key: 'sat', label: 'S', name: 'Samedi' },
-  { key: 'sun', label: 'D', name: 'Dimanche' },
+interface DayConfig {
+  key: WeekDayKey;
+  backendKey: string;
+  dayOfWeek: number;
+  label: string;
+  name: string;
+  defaultOpenTime: string;
+  defaultCloseTime: string;
+}
+
+const DAY_CONFIG: DayConfig[] = [
+  { key: 'mon', backendKey: 'monday', dayOfWeek: 1, label: 'L', name: 'Lundi', defaultOpenTime: '11:00', defaultCloseTime: '23:00' },
+  { key: 'tue', backendKey: 'tuesday', dayOfWeek: 2, label: 'M', name: 'Mardi', defaultOpenTime: '11:00', defaultCloseTime: '23:00' },
+  { key: 'wed', backendKey: 'wednesday', dayOfWeek: 3, label: 'M', name: 'Mercredi', defaultOpenTime: '11:00', defaultCloseTime: '23:00' },
+  { key: 'thu', backendKey: 'thursday', dayOfWeek: 4, label: 'J', name: 'Jeudi', defaultOpenTime: '11:00', defaultCloseTime: '23:00' },
+  { key: 'fri', backendKey: 'friday', dayOfWeek: 5, label: 'V', name: 'Vendredi', defaultOpenTime: '11:00', defaultCloseTime: '01:00' },
+  { key: 'sat', backendKey: 'saturday', dayOfWeek: 6, label: 'S', name: 'Samedi', defaultOpenTime: '11:00', defaultCloseTime: '01:00' },
+  { key: 'sun', backendKey: 'sunday', dayOfWeek: 0, label: 'D', name: 'Dimanche', defaultOpenTime: '11:00', defaultCloseTime: '22:00' },
 ];
 
-const DEFAULT_WEEKLY_SCHEDULE: Record<WeekDayKey, DaySchedule> = {
-  mon: { isOpen: true, openTime: '11:00', closeTime: '23:00' },
-  tue: { isOpen: true, openTime: '11:00', closeTime: '23:00' },
-  wed: { isOpen: true, openTime: '11:00', closeTime: '23:00' },
-  thu: { isOpen: true, openTime: '11:00', closeTime: '23:00' },
-  fri: { isOpen: true, openTime: '11:00', closeTime: '01:00' },
-  sat: { isOpen: true, openTime: '11:00', closeTime: '01:00' },
-  sun: { isOpen: true, openTime: '11:00', closeTime: '22:00' },
-};
+const WEEK_DAYS: Array<{ key: WeekDayKey; label: string; name: string }> = DAY_CONFIG.map((day) => ({
+  key: day.key,
+  label: day.label,
+  name: day.name,
+}));
 
-const BACKEND_DAY_BY_WEEK: Record<WeekDayKey, BackendWeekDayKey> = {
-  mon: 'monday',
-  tue: 'tuesday',
-  wed: 'wednesday',
-  thu: 'thursday',
-  fri: 'friday',
-  sat: 'saturday',
-  sun: 'sunday',
-};
-
-const WEEK_DAY_BY_BACKEND: Record<BackendWeekDayKey, WeekDayKey> = {
-  monday: 'mon',
-  tuesday: 'tue',
-  wednesday: 'wed',
-  thursday: 'thu',
-  friday: 'fri',
-  saturday: 'sat',
-  sunday: 'sun',
-};
-
-const WEEK_DAY_BY_NUM: Record<number, WeekDayKey> = {
-  0: 'sun',
-  1: 'mon',
-  2: 'tue',
-  3: 'wed',
-  4: 'thu',
-  5: 'fri',
-  6: 'sat',
-  7: 'sun',
-};
+const DEFAULT_WEEKLY_SCHEDULE: Record<WeekDayKey, DaySchedule> = DAY_CONFIG.reduce((acc, day) => {
+  acc[day.key] = {
+    isOpen: true,
+    openTime: day.defaultOpenTime,
+    closeTime: day.defaultCloseTime,
+  };
+  return acc;
+}, {} as Record<WeekDayKey, DaySchedule>);
 
 function formatWeeklySchedule(schedule: Record<WeekDayKey, DaySchedule>) {
   return WEEK_DAYS.map((day) => {
@@ -120,13 +97,14 @@ function mapOpeningHoursToWeeklySchedule(openingHours: unknown) {
       const entry = rawEntry as Record<string, unknown>;
       const dayOfWeek = typeof entry.day_of_week === 'number' ? entry.day_of_week : null;
       if (dayOfWeek === null) continue;
-      const dayKey = WEEK_DAY_BY_NUM[dayOfWeek];
-      if (!dayKey) continue;
+      const dayConfig = DAY_CONFIG.find((day) => day.dayOfWeek === dayOfWeek);
+      if (!dayConfig) continue;
 
       const periods = Array.isArray(entry.periods) ? entry.periods : [];
       const firstPeriod = periods[0] && typeof periods[0] === 'object'
         ? (periods[0] as Record<string, unknown>)
         : null;
+      const dayKey = dayConfig.key;
       const fallback = schedule[dayKey];
 
       schedule[dayKey] = {
@@ -141,12 +119,13 @@ function mapOpeningHoursToWeeklySchedule(openingHours: unknown) {
 
   if (typeof openingHours === 'object') {
     const openingHoursObject = openingHours as Record<string, unknown>;
-    (Object.keys(WEEK_DAY_BY_BACKEND) as BackendWeekDayKey[]).forEach((backendDay) => {
-      const dayConfig = openingHoursObject[backendDay];
+    Object.entries(openingHoursObject).forEach(([backendKey, dayConfig]) => {
       if (!dayConfig || typeof dayConfig !== 'object') return;
+      const mappedDay = DAY_CONFIG.find((day) => day.backendKey === backendKey);
+      if (!mappedDay) return;
 
       const parsedDay = dayConfig as Record<string, unknown>;
-      const dayKey = WEEK_DAY_BY_BACKEND[backendDay];
+      const dayKey = mappedDay.key;
       const fallback = schedule[dayKey];
 
       schedule[dayKey] = {
@@ -162,17 +141,16 @@ function mapOpeningHoursToWeeklySchedule(openingHours: unknown) {
 
 function mapWeeklyScheduleToOpeningHours(
   schedule: Record<WeekDayKey, DaySchedule>,
-): Record<BackendWeekDayKey, BackendOpeningDay> {
-  return WEEK_DAYS.reduce((acc, day) => {
+): Record<string, { open: string; close: string; closed: boolean }> {
+  return DAY_CONFIG.reduce((acc, day) => {
     const config = schedule[day.key];
-    const backendDay = BACKEND_DAY_BY_WEEK[day.key];
-    acc[backendDay] = {
+    acc[day.backendKey] = {
       open: config.openTime,
       close: config.closeTime,
       closed: !config.isOpen,
     };
     return acc;
-  }, {} as Record<BackendWeekDayKey, BackendOpeningDay>);
+  }, {} as Record<string, { open: string; close: string; closed: boolean }>);
 }
 
 function sanitizeCapacity(value: unknown) {
