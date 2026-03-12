@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit, MapPin, Phone, Mail, Users, Save, Zap, Clock, Loader2, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Edit, MapPin, Phone, Mail, Users, Zap, Clock, Loader2, CalendarDays, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -346,6 +346,21 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
   const handleBackAttempt = () => {
     unsavedChangesGuard.handleNavigationAttempt(onBack);
+  };
+
+  const handleResetChanges = () => {
+    if (!initialEditState) return;
+    setFormData((prev) => ({
+      ...prev,
+      nom: initialEditState.nom,
+      telephone: initialEditState.telephone,
+      horaires: formatWeeklySchedule(initialEditState.weeklySchedule),
+    }));
+    setCapaciteMax(initialEditState.capaciteMax);
+    setBookingMode(initialEditState.bookingMode);
+    setWeeklySchedule(cloneWeeklySchedule(initialEditState.weeklySchedule));
+    setPhoneCountry(inferPhoneCountry(initialEditState.telephone));
+    setSelectedWeekDay('mon');
   };
 
   const handleDialogStay = () => {
@@ -697,33 +712,35 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
           </div>
 
           <div className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/85 dark:bg-gray-900/75 backdrop-blur-xl p-4 sm:p-5 shadow-sm">
-            <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-              <button
-                type="button"
-                onClick={handleBackAttempt}
-                disabled={updateVenueMutation.isPending}
-                className="sm:order-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
-              >
-                Retour
-              </button>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {hasChanges ? 'Des modifications sont prêtes à être enregistrées.' : 'Aucune modification en attente.'}
+              </p>
 
-              <button
-                key={hasChanges ? 'submit-dirty' : 'submit-clean'}
-                type="submit"
-                disabled={updateVenueMutation.isPending || !hasChanges}
-                className={`sm:order-2 px-6 py-3 rounded-xl inline-flex items-center justify-center gap-2 transition-colors ${
-                  updateVenueMutation.isPending || !hasChanges
-                    ? 'bg-none bg-gray-200 text-gray-500 cursor-not-allowed shadow-none dark:bg-gray-800 dark:text-gray-500'
-                    : 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white hover:brightness-110 hover:shadow-lg hover:shadow-[#5a03cf]/25'
-                }`}
-              >
-                {updateVenueMutation.isPending ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Save className="w-5 h-5" />
-                )}
-                {updateVenueMutation.isPending ? 'Modification...' : hasChanges ? 'Valider les modifications' : 'Modifier'}
-              </button>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleResetChanges}
+                  disabled={updateVenueMutation.isPending}
+                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  Annuler
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={updateVenueMutation.isPending || !hasChanges}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] px-5 py-3 text-sm text-white transition-all hover:from-[#6a13df] hover:to-[#8a33ff] disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ fontWeight: 600 }}
+                >
+                  {updateVenueMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  Enregistrer les modifications
+                </button>
+              </div>
             </div>
           </div>
         </form>
