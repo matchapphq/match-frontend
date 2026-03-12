@@ -1,7 +1,10 @@
 import { ArrowLeft, Edit, MapPin, Phone, Mail, Users, Save, Zap, Clock, Loader2, CalendarDays } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
+import { UnsavedChangesDialog } from '../../../components/common/UnsavedChangesDialog';
+import { useUnsavedChangesGuard } from '../../../hooks/useUnsavedChangesGuard';
 
 interface ModifierRestaurantProps {
   restaurantId: string | null;
@@ -14,6 +17,14 @@ interface DaySchedule {
   isOpen: boolean;
   openTime: string;
   closeTime: string;
+}
+
+interface InitialEditState {
+  nom: string;
+  telephone: string;
+  capaciteMax: number;
+  bookingMode: 'INSTANT' | 'REQUEST';
+  weeklySchedule: Record<WeekDayKey, DaySchedule>;
 }
 
 const WEEK_DAYS: Array<{ key: WeekDayKey; label: string; name: string }> = [
@@ -44,9 +55,32 @@ function formatWeeklySchedule(schedule: Record<WeekDayKey, DaySchedule>) {
   }).join(' | ');
 }
 
+function cloneWeeklySchedule(schedule: Record<WeekDayKey, DaySchedule>) {
+  return WEEK_DAYS.reduce((acc, day) => {
+    acc[day.key] = { ...schedule[day.key] };
+    return acc;
+  }, {} as Record<WeekDayKey, DaySchedule>);
+}
+
+function areSchedulesEqual(
+  left: Record<WeekDayKey, DaySchedule>,
+  right: Record<WeekDayKey, DaySchedule>,
+) {
+  return WEEK_DAYS.every((day) => {
+    const leftDay = left[day.key];
+    const rightDay = right[day.key];
+    return (
+      leftDay.isOpen === rightDay.isOpen &&
+      leftDay.openTime === rightDay.openTime &&
+      leftDay.closeTime === rightDay.closeTime
+    );
+  });
+}
+
 export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantProps) {
   const queryClient = useQueryClient();
   const maxCapacite = 100;
+  const navigate = useNavigate();
 
   const { data: restaurant, isLoading: isLoadingVenue } = useQuery({
     queryKey: ['venue', restaurantId],
@@ -68,7 +102,10 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
     horaires: '',
   });
   const [selectedWeekDay, setSelectedWeekDay] = useState<WeekDayKey>('mon');
-  const [weeklySchedule, setWeeklySchedule] = useState<Record<WeekDayKey, DaySchedule>>(DEFAULT_WEEKLY_SCHEDULE);
+  const [weeklySchedule, setWeeklySchedule] = useState<Record<WeekDayKey, DaySchedule>>(
+    cloneWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE),
+  );
+  const [initialEditState, setInitialEditState] = useState<InitialEditState | null>(null);
 
   useEffect(() => {
     if (restaurant) {
@@ -82,7 +119,15 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       setCapaciteMax(restaurant.capacity || 50);
       setBookingMode(restaurant.booking_mode || 'INSTANT');
       setSelectedWeekDay('mon');
-      setWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE);
+      const baseWeeklySchedule = cloneWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE);
+      setWeeklySchedule(baseWeeklySchedule);
+      setInitialEditState({
+        nom: (restaurant.name || '').trim(),
+        telephone: (restaurant.phone || '').trim(),
+        capaciteMax: restaurant.capacity || 50,
+        bookingMode: (restaurant.booking_mode || 'INSTANT') as 'INSTANT' | 'REQUEST',
+        weeklySchedule: cloneWeeklySchedule(baseWeeklySchedule),
+      });
     }
   }, [restaurant]);
 
@@ -95,6 +140,39 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
   const selectedDaySchedule = weeklySchedule[selectedWeekDay];
   const selectedDayLabel = WEEK_DAYS.find((day) => day.key === selectedWeekDay)?.name || 'Jour';
+  const normalizedNom = formData.nom.trim();
+  const normalizedTelephone = formData.telephone.trim();
+
+  const hasChanges = useMemo(() => {
+    if (!initialEditState) return false;
+    return (
+      normalizedNom !== initialEditState.nom ||
+      normalizedTelephone !== initialEditState.telephone ||
+      capaciteMax !== initialEditState.capaciteMax ||
+      bookingMode !== initialEditState.bookingMode ||
+      !areSchedulesEqual(weeklySchedule, initialEditState.weeklySchedule)
+    );
+  }, [initialEditState, normalizedNom, normalizedTelephone, capaciteMax, bookingMode, weeklySchedule]);
+
+  const unsavedChangesGuard = useUnsavedChangesGuard(hasChanges);
+
+  useEffect(() => {
+    const handleSidebarNavigate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ path?: string }>;
+      const targetPath = customEvent.detail?.path;
+      if (!targetPath) return;
+
+      if (hasChanges) {
+        event.preventDefault();
+        unsavedChangesGuard.handleNavigationAttempt(() => navigate(targetPath));
+      }
+    };
+
+    window.addEventListener('match:sidebar-navigate', handleSidebarNavigate as EventListener);
+    return () => {
+      window.removeEventListener('match:sidebar-navigate', handleSidebarNavigate as EventListener);
+    };
+  }, [hasChanges, navigate, unsavedChangesGuard]);
 
   const updateVenueMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -123,6 +201,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasChanges) return;
     if (restaurantId) {
       updateVenueMutation.mutate({
         ...formData,
@@ -130,6 +209,18 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
         bookingMode,
       });
     }
+  };
+
+  const handleBackAttempt = () => {
+    unsavedChangesGuard.handleNavigationAttempt(onBack);
+  };
+
+  const handleDialogStay = () => {
+    unsavedChangesGuard.handleStay();
+  };
+
+  const handleDialogConfirmLeave = () => {
+    unsavedChangesGuard.handleConfirmLeave();
   };
 
   if (isLoadingVenue) {
@@ -170,7 +261,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       <div className="relative z-10 max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-24 lg:pt-28 pb-6 lg:pb-8">
         <div className="mb-6 flex items-center justify-between gap-3">
           <button
-            onClick={onBack}
+            onClick={handleBackAttempt}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/80 dark:bg-gray-900/70 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:text-[#5a03cf] hover:border-[#5a03cf]/40 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -474,29 +565,40 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"
-                onClick={onBack}
+                onClick={handleBackAttempt}
                 disabled={updateVenueMutation.isPending}
                 className="sm:order-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
               >
-                Annuler
+                Retour
               </button>
 
               <button
                 type="submit"
-                disabled={updateVenueMutation.isPending}
-                className="sm:order-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white hover:brightness-110 hover:shadow-lg hover:shadow-[#5a03cf]/25 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                disabled={updateVenueMutation.isPending || !hasChanges}
+                className={`sm:order-2 px-6 py-3 rounded-xl inline-flex items-center justify-center gap-2 transition-all ${
+                  updateVenueMutation.isPending || !hasChanges
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500'
+                    : 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white hover:brightness-110 hover:shadow-lg hover:shadow-[#5a03cf]/25'
+                }`}
               >
                 {updateVenueMutation.isPending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <Save className="w-5 h-5" />
                 )}
-                {updateVenueMutation.isPending ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                {updateVenueMutation.isPending ? 'Modification...' : hasChanges ? 'Valider les modifications' : 'Modifier'}
               </button>
             </div>
           </div>
         </form>
       </div>
+
+      <UnsavedChangesDialog
+        open={unsavedChangesGuard.isDialogOpen}
+        onOpenChange={unsavedChangesGuard.handleDialogOpenChange}
+        onStay={handleDialogStay}
+        onConfirmLeave={handleDialogConfirmLeave}
+      />
     </div>
   );
 }
