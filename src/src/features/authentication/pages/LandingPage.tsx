@@ -1,18 +1,18 @@
-import { ArrowRight, Moon, Sun } from 'lucide-react';
-// import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logo from '../../../../assets/logo.png';
-import { useTheme } from '../../theme/context/ThemeContext';
+import { ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../api/client';
+import { PublicFooter } from '../../../components/PublicFooter';
+import { PublicNavbar } from '../../../components/PublicNavbar';
+import { useBillingPricing } from '../../../hooks/api/useBilling';
+import { formatPricingLabel } from '../../../utils/pricing';
 
 interface LandingPageProps {
   onGetStarted: () => void;
-  onReferral?: () => void;
   onAppPresentation?: () => void;
 }
 
-export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: LandingPageProps) {
-  const { theme, toggleTheme } = useTheme();
+export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProps) {
+  const { data: billingPricing } = useBillingPricing();
 
   // Health check API call
   useQuery({
@@ -53,82 +53,30 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: Lan
     'Mises à jour régulières',
   ];
 
-  const pricing = [
-    {
-      name: 'Mensuel',
-      price: '30€',
-      period: 'par mois',
-      features: [
-        'Gestion illimitée de matchs',
-        'Statistiques en temps réel',
-        'Support client prioritaire',
-        'Boosts mensuels inclus',
-      ],
-    },
-    {
-      name: 'Annuel',
-      price: '300€',
-      period: 'par an',
-      features: [
-        'Gestion illimitée de matchs',
-        'Statistiques en temps réel',
-        'Support client prioritaire',
-        'Boosts illimités',
-        '2 mois offerts',
-      ],
-      popular: true,
-    },
+  const commissionPricingLabel = billingPricing
+    ? formatPricingLabel({
+        default_rate: billingPricing.default_rate,
+        currency: billingPricing.currency,
+        unit: billingPricing.unit,
+      })
+    : 'Tarification à la commission';
+
+  const pricingFeatures = [
+    'Gestion illimitée de matchs',
+    'Statistiques en temps réel',
+    'Support client prioritaire',
+    'Facturation selon l’activité réelle de vos lieux',
   ];
 
   return (
-    <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] relative overflow-hidden">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] relative">
       {/* Ambient background effects */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#5a03cf]/5 dark:bg-[#5a03cf]/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#9cff02]/5 dark:bg-[#9cff02]/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-2xl bg-white/40 dark:bg-black/40 border-b border-white/20 dark:border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <img 
-                src={logo} 
-                alt="Match" 
-                className="h-8 dark:brightness-150" 
-                style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-              />
-            </div>
-            
-            <div className="flex items-center gap-4">
-              {onReferral && (
-                <button
-                  onClick={onReferral}
-                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors hidden sm:block"
-                >
-                  Parrainer un lieu
-                </button>
-              )}
-              <button
-                onClick={onGetStarted}
-                className="relative px-6 py-2.5 bg-white/70 dark:bg-white/10 backdrop-blur-xl rounded-full transition-all duration-300 hover:bg-white/80 dark:hover:bg-white/20 group gradient-border"
-              >
-                <span className="relative z-10 text-gray-900 dark:text-white">Connexion</span>
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="relative p-2.5 bg-white/70 dark:bg-white/10 backdrop-blur-xl rounded-full transition-all duration-300 hover:bg-white/80 dark:hover:bg-white/20 group gradient-border"
-                aria-label="Toggle theme"
-              >
-                <span className="relative z-10 text-gray-900 dark:text-white">
-                  {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       {/* Hero Section */}
       <section className="relative pt-24 pb-32 sm:pt-32 sm:pb-40">
@@ -277,50 +225,38 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: Lan
               <span className="text-gradient">simple et transparente</span>
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-400">
-              1 établissement = 1 abonnement. Sans engagement.
+              Un modèle à la commission, aligné sur l&apos;activité de vos établissements.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {pricing.map((plan, index) => (
-              <div 
-                key={index}
-                className={`relative group ${plan.popular ? 'md:-translate-y-4' : ''}`}
-              >
-                <div className={`glass-card rounded-3xl p-10 backdrop-blur-2xl transition-all duration-500 group-hover:scale-[1.02] h-full flex flex-col ${
-                  plan.popular ? 'gradient-border bg-white/80 dark:bg-white/5' : ''
-                }`}>
-                  {plan.popular && (
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white text-sm rounded-full mb-6 self-start">
-                      <span>Le plus populaire</span>
-                    </div>
-                  )}
-                  <h3 className="text-3xl mb-3 text-gray-900 dark:text-white">{plan.name}</h3>
-                  <div className="mb-8">
-                    <span className="text-5xl text-gray-900 dark:text-white">{plan.price}</span>
-                    <span className="text-gray-600 dark:text-gray-400 ml-2">{plan.period}</span>
+          <div className="max-w-3xl mx-auto">
+            <div className="relative group">
+              <div className="glass-card rounded-3xl p-10 backdrop-blur-2xl transition-all duration-500 group-hover:scale-[1.02] h-full flex flex-col gradient-border bg-white/80 dark:bg-white/5">
+                <div className="mb-6 min-h-9 flex items-start">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white text-sm rounded-full self-start">
+                    <span>Modèle commission</span>
                   </div>
-                  <ul className="space-y-4 mb-10 flex-grow">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center gap-3">
-                        <div className="w-1.5 h-1.5 bg-[#9cff02] rounded-full flex-shrink-0 shadow-lg shadow-[#9cff02]/50" />
-                        <span className="text-gray-700 dark:text-gray-300">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={onGetStarted}
-                    className={`w-full py-4 rounded-full transition-all duration-300 hover:scale-[1.02] ${
-                      plan.popular
-                        ? 'bg-[#5a03cf] text-white hover:bg-[#4a02af] shadow-xl shadow-[#5a03cf]/30'
-                        : 'glass-card text-gray-900 dark:text-white gradient-border backdrop-blur-xl'
-                    }`}
-                  >
-                    Commencer
-                  </button>
                 </div>
+                <h3 className="text-3xl mb-3 text-gray-900 dark:text-white">Tarif par client présent</h3>
+                <div className="mb-8">
+                  <span className="text-5xl text-gray-900 dark:text-white">{commissionPricingLabel}</span>
+                </div>
+                <ul className="space-y-4 mb-10 flex-grow">
+                  {pricingFeatures.map((feature) => (
+                    <li key={feature} className="flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 bg-[#9cff02] rounded-full flex-shrink-0 shadow-lg shadow-[#9cff02]/50" />
+                      <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={onGetStarted}
+                  className="w-full py-4 rounded-full transition-all duration-300 hover:scale-[1.02] bg-[#5a03cf] text-white hover:bg-[#4a02af] shadow-xl shadow-[#5a03cf]/30"
+                >
+                  Commencer
+                </button>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
@@ -351,35 +287,7 @@ export function LandingPage({ onGetStarted, onReferral, onAppPresentation }: Lan
         </div>
       </section>
 
-      {/* Footer - Minimal and clean */}
-      <footer className="relative backdrop-blur-2xl bg-white/40 dark:bg-black/40 border-t border-white/20 dark:border-white/10 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <img 
-                src={logo} 
-                alt="Match" 
-                className="h-6 dark:brightness-150" 
-                style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-              />
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              © 2026 Match. Tous droits réservés.
-            </div>
-            <div className="flex items-center gap-8">
-              <a href="https://matchapp.fr/terms" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
-                Conditions
-              </a>
-              <a href="https://matchapp.fr/terms-of-sale" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
-                CGV
-              </a>
-              <a href="https://matchapp.fr/privacy" className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] dark:hover:text-[#9cff02] transition-colors">
-                Confidentialité
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

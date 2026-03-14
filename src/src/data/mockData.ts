@@ -236,14 +236,14 @@ export interface ReferralHistory {
 // Mock referral code for venue owner
 export const mockVenueOwnerReferralCode: ReferralCode = {
   referral_code: 'MATCH-RESTO-A7B9C2',
-  referral_link: 'https://match.app/signup?ref=MATCH-RESTO-A7B9C2',
+  referral_link: 'https://match.app/register?ref=MATCH-RESTO-A7B9C2',
   created_at: '2026-01-01T10:00:00Z',
 };
 
 // Mock referral code for regular user
 export const mockUserReferralCode: ReferralCode = {
   referral_code: 'MATCH-USER-X9K2M5',
-  referral_link: 'https://match.app/signup?ref=MATCH-USER-X9K2M5',
+  referral_link: 'https://match.app/register?ref=MATCH-USER-X9K2M5',
   created_at: '2026-01-10T10:00:00Z',
 };
 

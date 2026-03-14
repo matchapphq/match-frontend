@@ -11,11 +11,8 @@ import {
   Users, 
   TrendingUp,
 } from 'lucide-react';
-import { 
-  mockVenueOwnerReferralCode, 
-  mockVenueOwnerReferralStats,
-} from '../data/mockData';
 import { useToast } from '../context/ToastContext';
+import { useReferralCode, useReferralStats } from '../hooks/api/useReferral';
 import type { PageType } from '../types';
 
 interface ParrainageWidgetProps {
@@ -23,17 +20,15 @@ interface ParrainageWidgetProps {
 }
 
 export function ParrainageWidget({ onNavigate }: ParrainageWidgetProps) {
-  // Get user role (venue owner or regular user)
-  const userRole = localStorage.getItem('userRole') || 'venue_owner';
-  const isVenueOwner = userRole === 'venue_owner';
   const toast = useToast();
+  const { data: codeData } = useReferralCode();
+  const { data: statsData } = useReferralStats();
 
-  // Use mock data based on user role
-  const codeData = isVenueOwner ? mockVenueOwnerReferralCode : null;
-  const statsData = isVenueOwner ? mockVenueOwnerReferralStats : null;
-
-  const referralCode = codeData ? codeData.referral_code : null;
-  const stats = statsData ?? { total_converted: 0, total_rewards_earned: 0 };
+  const referralCode = codeData?.referral_code ?? null;
+  const stats = {
+    total_converted: statsData?.total_converted ?? 0,
+    total_rewards_earned: statsData?.total_rewards_earned ?? 0,
+  };
 
   const copyToClipboard = () => {
     if (referralCode) {
@@ -63,7 +58,7 @@ export function ParrainageWidget({ onNavigate }: ParrainageWidgetProps) {
       {referralCode && (
         <div className="mb-4">
           <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
-            <span className="flex-1 font-mono text-sm text-[#9cff02]">
+            <span className="flex-1 font-mono text-sm text-[#5a03cf] dark:text-[#9cff02]">
               {referralCode}
             </span>
             <button
@@ -77,19 +72,19 @@ export function ParrainageWidget({ onNavigate }: ParrainageWidgetProps) {
       )}
 
       <div className="flex items-center justify-between mb-4 text-sm">
-        <div className="text-gray-600 dark:text-gray-400">
+        <div className="text-[#5a03cf] dark:text-[#9cff02]">
           <Users className="w-4 h-4 inline-block mr-1"/>
-          {stats.total_converted} ami{stats.total_converted !== 1 ? 's' : ''} parrainé{stats.total_converted !== 1 ? 's' : ''}
+          {stats.total_converted} ami{stats.total_converted > 1 ? 's' : ''} parrainé{stats.total_converted > 1 ? 's' : ''}
         </div>
-        <div className="text-[#9cff02] font-medium">
+        <div className="text-[#5a03cf] dark:text-[#9cff02] font-medium">
           <TrendingUp className="w-4 h-4 inline-block mr-1"/>
-          {stats.total_rewards_earned} boost{stats.total_rewards_earned !== 1 ? 's' : ''}
+          {stats.total_rewards_earned} boost{stats.total_rewards_earned > 1 ? 's' : ''}
         </div>
       </div>
 
       <button
         onClick={handleNavigate}
-        className="w-full px-4 py-2.5 bg-gradient-to-r from-[#9cff02] to-[#5a03cf] text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
+        className="w-full px-4 py-2.5 bg-[#5a03cf] text-white font-semibold rounded-xl hover:bg-[#4a02af] transition-colors shadow-lg shadow-[#5a03cf]/20"
       >
         Voir plus
       </button>

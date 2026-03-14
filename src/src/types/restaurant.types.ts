@@ -24,11 +24,3 @@ export interface RestaurantFormData {
   capaciteMax: number;
   horaires?: string;
 }
-
-export type FormuleType = 'mensuel' | 'annuel';
-
-export interface Formule {
-  type: FormuleType;
-  prix: number;
-  label: string;
-}

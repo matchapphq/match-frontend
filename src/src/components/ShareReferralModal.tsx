@@ -2,10 +2,10 @@
  * Share Referral Modal
  * 
  * Modal pour partager son code de parrainage via différents canaux
- * Design: Liquid glass effect avec les couleurs Match
+ * Design: fond blanc avec boutons Match
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface ShareReferralModalProps {
@@ -13,7 +13,6 @@ interface ShareReferralModalProps {
   onClose: () => void;
   referralCode: string;
   referralLink: string;
-  isVenueOwner?: boolean;
 }
 
 export function ShareReferralModal({
@@ -21,21 +20,29 @@ export function ShareReferralModal({
   onClose,
   referralCode,
   referralLink,
-  isVenueOwner = false,
 }: ShareReferralModalProps) {
   const [customMessage, setCustomMessage] = useState('');
+  const [copiedTarget, setCopiedTarget] = useState<'link' | 'grid-link' | 'message' | null>(null);
   const canUseNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const normalizedReferralLink = referralLink.replace('/signup?ref=', '/register?ref=');
+
+  useEffect(() => {
+    if (!copiedTarget) return;
+    const timeoutId = window.setTimeout(() => {
+      setCopiedTarget(null);
+    }, 1400);
+    return () => window.clearTimeout(timeoutId);
+  }, [copiedTarget]);
 
   if (!isOpen) return null;
 
-  const defaultMessage = isVenueOwner
-    ? `Rejoignez Match, la plateforme #1 pour gérer vos événements sportifs !\n\nUtilisez mon code: ${referralCode}\nou cliquez ici: ${referralLink}\n\nVous aurez 1 mois gratuit ! 🎁`
-    : `Salut ! 👋\n\nJe t'invite à rejoindre Match, la plateforme pour réserver ta place dans les meilleurs bars sportifs !\n\nUtilise mon code: ${referralCode}\nou clique ici: ${referralLink}\n\nTu gagneras un boost ! 🚀`;
+  const defaultMessage = `Bonjour,\n\nJe vous invite à rejoindre Match, la plateforme #1 pour les restaurateurs qui diffusent les grands matchs.\n\nEn utilisant mon lien ou mon code de parrainage, un boost gratuit vous est offert pour démarrer.\n\nCode : ${referralCode}\nLien : ${normalizedReferralLink}`;
 
   const message = customMessage || defaultMessage;
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, target?: 'link' | 'grid-link' | 'message') => {
     navigator.clipboard.writeText(text);
+    if (target) setCopiedTarget(target);
     toast.success('Copié !');
   };
 
@@ -65,125 +72,122 @@ export function ShareReferralModal({
       await navigator.share({
         title: 'Code de parrainage Match',
         text: message,
-        url: referralLink,
+        url: normalizedReferralLink,
       });
-    } catch (error) {
+    } catch {
       // User cancelled or error
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-lg bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-        {/* Header */}
+      <div className="relative w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold">Partagez votre code</h3>
+          <h3 className="text-xl text-gray-900">Partagez votre code</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-[#5a03cf] transition-colors"
           >
             ✕
           </button>
         </div>
 
-        {/* Referral Link */}
         <div className="mb-6">
-          <label className="block text-sm text-white/70 mb-2">
+          <label className="block text-sm text-gray-600 mb-2">
             Votre lien de parrainage
           </label>
-          <div className="flex items-center gap-2 p-3 bg-white/5 border border-white/10 rounded-xl">
+          <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl">
             <input
               type="text"
-              value={referralLink}
+              value={normalizedReferralLink}
               readOnly
-              className="flex-1 bg-transparent text-sm outline-none"
+              className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
             />
             <button
-              onClick={() => copyToClipboard(referralLink)}
-              className="px-3 py-1.5 bg-gradient-to-r from-[#9cff02] to-[#5a03cf] text-black text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+              onClick={() => copyToClipboard(normalizedReferralLink, 'link')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                copiedTarget === 'link'
+                  ? 'bg-[#9cff02] text-[#1f2937] scale-[1.02]'
+                  : 'bg-[#5a03cf] text-white hover:bg-[#4a02af]'
+              }`}
             >
-              📋 Copier
+              {copiedTarget === 'link' ? '✓ Copié' : '📋 Copier'}
             </button>
           </div>
         </div>
 
-        {/* Share Options */}
         <div className="mb-6">
-          <label className="block text-sm text-white/70 mb-3">
+          <label className="block text-sm text-gray-600 mb-3">
             Partagez via
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* WhatsApp */}
             <button
               onClick={shareViaWhatsApp}
-              className="flex flex-col items-center gap-2 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors"
+              className="flex flex-col items-center gap-2 p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-[#5a03cf]/5 hover:border-[#5a03cf]/20 hover:-translate-y-0.5 transition-all text-gray-700"
             >
               <span className="text-2xl">💬</span>
               <span className="text-xs">WhatsApp</span>
             </button>
 
-            {/* Email */}
             <button
               onClick={shareViaEmail}
-              className="flex flex-col items-center gap-2 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors"
+              className="flex flex-col items-center gap-2 p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-[#5a03cf]/5 hover:border-[#5a03cf]/20 hover:-translate-y-0.5 transition-all text-gray-700"
             >
               <span className="text-2xl">✉️</span>
               <span className="text-xs">Email</span>
             </button>
 
-            {/* SMS */}
             <button
               onClick={shareViaSMS}
-              className="flex flex-col items-center gap-2 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors"
+              className="flex flex-col items-center gap-2 p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-[#5a03cf]/5 hover:border-[#5a03cf]/20 hover:-translate-y-0.5 transition-all text-gray-700"
             >
               <span className="text-2xl">📱</span>
               <span className="text-xs">SMS</span>
             </button>
 
-            {/* Copy Link */}
             <button
-              onClick={() => copyToClipboard(referralLink)}
-              className="flex flex-col items-center gap-2 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors"
+              onClick={() => copyToClipboard(message, 'message')}
+              className={`flex flex-col items-center gap-2 p-4 border rounded-xl transition-all text-gray-700 ${
+                copiedTarget === 'message'
+                  ? 'bg-[#9cff02]/20 border-[#9cff02] scale-[1.02]'
+                  : 'bg-gray-50 border-gray-200 hover:bg-[#5a03cf]/5 hover:border-[#5a03cf]/20 hover:-translate-y-0.5'
+              }`}
             >
-              <span className="text-2xl">🔗</span>
-              <span className="text-xs">Lien</span>
+              <span className="text-2xl">{copiedTarget === 'message' ? '✅' : '📄'}</span>
+              <span className="text-xs text-center">{copiedTarget === 'message' ? 'Texte copié' : 'Copier texte'}</span>
             </button>
           </div>
         </div>
 
-        {/* Custom Message */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm text-white/70">Message suggéré</label>
+            <label className="text-sm text-gray-600">Message suggéré</label>
             <button
               onClick={() => setCustomMessage(defaultMessage)}
-              className="text-xs text-[#9cff02] hover:underline"
+              className="text-xs text-[#5a03cf] hover:underline"
             >
-              ✏️ Modifier
+              Réinitialiser
             </button>
           </div>
-          <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
             <textarea
               value={customMessage || defaultMessage}
               onChange={(e) => setCustomMessage(e.target.value)}
-              className="w-full h-32 bg-transparent text-sm outline-none resize-none"
+              className="w-full h-32 bg-transparent text-sm text-gray-700 outline-none resize-none"
               placeholder="Votre message personnalisé..."
             />
           </div>
         </div>
 
-        {/* Share Button (Native API) */}
         {canUseNativeShare && (
           <button
             onClick={shareViaNativeAPI}
-            className="w-full px-6 py-3 bg-gradient-to-r from-[#9cff02] to-[#5a03cf] text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
+            className="w-full px-6 py-3 bg-[#5a03cf] text-white font-semibold rounded-xl hover:bg-[#4a02af] hover:-translate-y-0.5 transition-all"
           >
             Partager maintenant
           </button>

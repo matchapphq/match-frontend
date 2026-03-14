@@ -1,10 +1,9 @@
-import { ArrowRight, ArrowLeft, Check } from 'lucide-react';
-import { Button } from '../../../components/ui/button';
+import { ArrowRight } from 'lucide-react';
+import { PublicFooter } from '../../../components/PublicFooter';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logoMatch from '../../../../assets/logo.png';
 import { useState } from 'react';
+import { PublicNavbar } from '../../../components/PublicNavbar';
 
 interface ReferralPageProps {
   onBackToLanding: () => void;
@@ -28,29 +27,7 @@ export function ReferralPage({ onBackToLanding, onGoToLogin }: ReferralPageProps
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
-      {/* Header sticky */}
-      <div className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-800/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <button
-              onClick={onBackToLanding}
-              className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-[#5a03cf] transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Retour
-            </button>
-            
-            <img 
-              src={logoMatch} 
-              alt="Match" 
-              className="h-8"
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-            />
-            
-            <div className="w-20"></div>
-          </div>
-        </div>
-      </div>
+      <PublicNavbar />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
@@ -210,12 +187,7 @@ export function ReferralPage({ onBackToLanding, onGoToLogin }: ReferralPageProps
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-200/50 dark:border-gray-800/50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>© 2024 Match - Tous droits réservés</p>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

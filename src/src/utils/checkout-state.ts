@@ -6,10 +6,9 @@
  */
 
 export interface CheckoutState {
-  type: 'onboarding' | 'add-venue' | 'boost-purchase' | 'billing-subscription';
+  type: 'onboarding' | 'add-venue' | 'boost-purchase' | 'payment-setup';
   venueId?: string;
   venueName?: string;
-  formule?: 'mensuel' | 'annuel';
   sessionId?: string;
   checkoutUrl?: string;
   returnPage?: string;
@@ -19,6 +18,7 @@ export interface CheckoutState {
 
 const CHECKOUT_STATE_KEY = 'match_pending_checkout';
 const CHECKOUT_STATE_TTL = 30 * 60 * 1000; // 30 minutes
+const PENDING_PAYMENT_VENUE_KEY = 'match_pending_payment_venue_id';
 
 /**
  * Save checkout state before redirecting to Stripe
@@ -59,6 +59,23 @@ export function getCheckoutState(): CheckoutState | null {
  */
 export function clearCheckoutState(): void {
   localStorage.removeItem(CHECKOUT_STATE_KEY);
+}
+
+export function savePendingPaymentVenueId(venueId: string): void {
+  const normalized = venueId.trim();
+  if (!normalized) return;
+  localStorage.setItem(PENDING_PAYMENT_VENUE_KEY, normalized);
+}
+
+export function getPendingPaymentVenueId(): string | null {
+  const value = localStorage.getItem(PENDING_PAYMENT_VENUE_KEY);
+  if (!value) return null;
+  const normalized = value.trim();
+  return normalized || null;
+}
+
+export function clearPendingPaymentVenueId(): void {
+  localStorage.removeItem(PENDING_PAYMENT_VENUE_KEY);
 }
 
 /**
@@ -114,7 +131,6 @@ export interface AppState {
   currentPage: string;
   selectedRestaurantId?: number;
   selectedMatchId?: number;
-  selectedFormule?: 'mensuel' | 'annuel';
   nomBarOnboarding?: string;
 }
 

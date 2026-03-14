@@ -11,8 +11,6 @@ import {
   LogOut,
   Users,
   CalendarCheck,
-  ChevronLeft,
-  ChevronRight,
   Moon,
   Sun
 } from 'lucide-react';
@@ -44,7 +42,7 @@ export function Sidebar() {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   // Close mobile menu when path changes
@@ -53,7 +51,15 @@ export function Sidebar() {
   }, [location.pathname]);
 
   const handleNavigate = (path: string) => {
-    navigate(path);
+    const navigationEvent = new CustomEvent<{ path: string }>('match:sidebar-navigate', {
+      detail: { path },
+      cancelable: true,
+    });
+    const navigationWasBlocked = !window.dispatchEvent(navigationEvent);
+
+    if (!navigationWasBlocked) {
+      navigate(path);
+    }
     setIsMobileOpen(false);
   };
 
@@ -89,7 +95,7 @@ export function Sidebar() {
         `}
       >
         {/* Header */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="h-16 flex items-center justify-center px-4 border-b border-gray-200 dark:border-gray-800">
           {!isCollapsed && (
             <img 
               src={logo} 
@@ -98,7 +104,7 @@ export function Sidebar() {
               style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
             />
           )}
-          <button
+          {/* <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="hidden lg:block p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors ml-auto"
           >
@@ -107,7 +113,7 @@ export function Sidebar() {
             ) : (
               <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             )}
-          </button>
+          </button> */}
         </div>
 
         {/* Navigation */}

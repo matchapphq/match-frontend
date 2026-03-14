@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, CreditCard, Lock, Receipt, ShieldCheck } from 'lucide-react';
 import { PageType } from '../../../types';
 import { saveCheckoutState, getCheckoutState } from '../../../utils/checkout-state';
-import { API_ENDPOINTS } from '../../../utils/api-constants';
-import { apiPost } from '../../../utils/api-helpers';
+import { useBillingPricing } from '../../../hooks/api/useBilling';
+import { formatPricingLabel } from '../../../utils/pricing';
 
 interface PaiementValidationProps {
   onBack: () => void;
   onNavigate: (page: PageType) => void;
-  selectedFormule?: 'mensuel' | 'annuel';
   nomBar?: string;
   checkoutUrl?: string | null;
   isAddingVenue?: boolean;
@@ -16,14 +15,11 @@ interface PaiementValidationProps {
 
 export function PaiementValidation({
   onBack,
-  selectedFormule = 'mensuel',
   nomBar = '',
   checkoutUrl: checkoutUrlProp,
   isAddingVenue = false,
 }: PaiementValidationProps) {
-  const authToken = localStorage.getItem('authToken') || '';
-  const successRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/confirmation' : '/onboarding/confirmation'}`;
-  const cancelRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/payment' : '/onboarding/payment'}`;
+  const { data: billingPricing } = useBillingPricing();
   const [isProcessing, setIsProcessing] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,26 +38,13 @@ export function PaiementValidation({
     }
   }, [checkoutUrl, resolvedVenueName]);
 
-  const formuleDetails = {
-    mensuel: {
-      label: 'Mensuel',
-      prix: '30€',
-      periode: 'mois',
-      total: '30€',
-      description: 'Facturation mensuelle, sans engagement.',
-      cadence: 'Prélèvement mensuel',
-    },
-    annuel: {
-      label: 'Annuel',
-      prix: '300€',
-      periode: 'an',
-      total: '300€',
-      description: 'Facturation annuelle, soit 25€/mois.',
-      cadence: 'Prélèvement annuel',
-    },
-  };
-
-  const details = formuleDetails[selectedFormule];
+  const commissionPricingLabel = billingPricing
+    ? formatPricingLabel({
+        default_rate: billingPricing.default_rate,
+        currency: billingPricing.currency,
+        unit: billingPricing.unit,
+      })
+    : 'Tarification à la commission';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +64,6 @@ export function PaiementValidation({
           saveCheckoutState({
             type: isAddingVenue ? 'add-venue' : 'onboarding',
             venueName: nomBar,
-            formule: selectedFormule,
             returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding',
           });
         }
@@ -89,25 +71,7 @@ export function PaiementValidation({
         return;
       }
 
-      if (nomBar) {
-        throw new Error('La session de création a expiré. Veuillez retourner à l\'étape précédente.');
-      }
-
-      const data = await apiPost(
-        API_ENDPOINTS.SUBSCRIPTIONS_CREATE_CHECKOUT,
-        {
-          plan_id: selectedFormule === 'annuel' ? 'annual' : 'monthly',
-          success_url: successRedirectUrl,
-          cancel_url: cancelRedirectUrl,
-        },
-        authToken || '',
-      );
-
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url;
-      } else {
-        throw new Error('Impossible de créer la session de paiement');
-      }
+      throw new Error('La session de paiement n’est plus disponible. Veuillez reprendre depuis les informations du lieu.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
       setIsProcessing(false);
@@ -164,34 +128,34 @@ export function PaiementValidation({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-blue-200/60 dark:border-blue-900/40 bg-blue-50/80 dark:bg-blue-900/10 p-4">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Formule</p>
-                  <p className="mt-2 text-base text-gray-900 dark:text-white">{details.label}</p>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{details.description}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-blue-200/60 dark:border-blue-900/40 bg-blue-50/80 dark:bg-blue-900/10 p-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Modèle</p>
+                  <p className="mt-2 text-base text-gray-900 dark:text-white">Commission par client présent</p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Facturation basée sur l&apos;activité réelle du lieu.</p>
                 </div>
 
                 <div className="rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/80 dark:bg-emerald-900/10 p-4">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Cadence</p>
-                  <p className="mt-2 text-base text-gray-900 dark:text-white">{details.cadence}</p>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{details.prix} / {details.periode}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Tarif de référence</p>
+                  <p className="mt-2 text-base text-gray-900 dark:text-white">{commissionPricingLabel}</p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Appliqué sur les clients effectivement check-in.</p>
                 </div>
               </div>
 
               <div className="rounded-xl bg-gradient-to-br from-[#5a03cf]/5 to-[#9cff02]/5 dark:from-[#5a03cf]/10 dark:to-[#9cff02]/10 backdrop-blur-sm border border-[#5a03cf]/20 dark:border-[#5a03cf]/30 p-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Montant à valider</p>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Montant associé à l’abonnement sélectionné</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Tarification appliquée</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Cette valeur est utilisée pour calculer vos commissions.</p>
                   </div>
-                  <p className="text-3xl text-[#5a03cf] dark:text-[#c9a7ff]">{details.total}</p>
+                  <p className="text-3xl text-[#5a03cf] dark:text-[#c9a7ff]">{commissionPricingLabel}</p>
                 </div>
               </div>
 
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20 p-4">
                 <p className="flex items-start gap-3 text-sm text-emerald-800 dark:text-emerald-300">
                   <CheckCircle2 className="mt-0.5 w-4 h-4 shrink-0" />
-                  <span>Un abonnement correspond à un seul établissement. Vous pourrez ajouter d'autres lieux ensuite si nécessaire.</span>
+                  <span>Chaque établissement suit ses propres commissions. Vous pourrez ajouter d&apos;autres lieux ensuite si nécessaire.</span>
                 </p>
               </div>
             </div>
@@ -268,13 +232,13 @@ export function PaiementValidation({
                     Redirection vers le paiement...
                   </>
                 ) : (
-                  `Accéder au paiement sécurisé (${details.total})`
+                  'Accéder au paiement sécurisé'
                 )}
               </button>
 
               <div className="space-y-2 pt-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                  Le montant sera prélevé selon la cadence choisie pour cet établissement.
+                  Le moyen de paiement sera utilisé pour régler les commissions de cet établissement.
                 </p>
               </div>
             </form>

@@ -13,9 +13,65 @@ interface Restaurant {
   nom: string;
   adresse: string;
   note: number;
+  totalAvis: number;
   capaciteMax: number;
   image: string;
   matchsOrganises: number;
+  matchsVariation: number | null;
+}
+
+const FALLBACK_VENUE_IMAGE = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop';
+
+function extractPhotoUrl(photo: unknown): string | null {
+  if (!photo) return null;
+  if (typeof photo === 'string') return photo.trim() || null;
+  if (typeof photo !== 'object') return null;
+
+  const value = photo as Record<string, unknown>;
+  const url = typeof value.url === 'string' ? value.url : null;
+  const photoUrl = typeof value.photo_url === 'string' ? value.photo_url : null;
+  const selected = url ?? photoUrl;
+  return selected?.trim() || null;
+}
+
+function resolveVenueImage(venue: any): string {
+  const photos = Array.isArray(venue?.photos) ? venue.photos : [];
+  const coverPhoto = photos.find((photo: any) => (
+    photo?.is_primary === true
+    || photo?.isPrimary === true
+    || photo?.cover === true
+    || photo?.is_cover === true
+  ));
+  const firstPhoto = photos[0] ?? null;
+
+  const selectedPhotoUrl = extractPhotoUrl(coverPhoto ?? firstPhoto);
+  if (selectedPhotoUrl) {
+    return selectedPhotoUrl;
+  }
+
+  const coverImageUrl = typeof venue?.cover_image_url === 'string' ? venue.cover_image_url.trim() : '';
+  if (coverImageUrl) {
+    return coverImageUrl;
+  }
+
+  const logoUrl = typeof venue?.logo_url === 'string' ? venue.logo_url.trim() : '';
+  if (logoUrl) {
+    return logoUrl;
+  }
+
+  return FALLBACK_VENUE_IMAGE;
+}
+
+function formatNote(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return '-';
+  }
+  return value.toFixed(1);
+}
+
+function toFiniteNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
@@ -25,16 +81,26 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
     queryKey: ['partner-venues'],
     queryFn: async () => {
       const response = await apiClient.get('/partners/venues');
-      const venues = response.data?.venues || response.data || [];
-      return venues.map((venue: any) => ({
+      const payload = response.data ?? {};
+      const venues = Array.isArray(payload?.venues)
+        ? payload.venues
+        : Array.isArray(payload)
+          ? payload
+          : [];
+
+      const restaurants = venues.map((venue: any) => ({
         id: venue.id,
         nom: venue.name || 'Établissement',
         adresse: `${venue.street_address || ''}, ${venue.city || ''}`.replace(/^, |, $/g, '') || 'Adresse non renseignée',
-        note: isNaN(Number(venue.average_rating)) ? 0 : Number(venue.average_rating),
-        capaciteMax: isNaN(Number(venue.capacity)) ? 0 : Number(venue.capacity),
-        image: venue.photos?.[0]?.url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
-        matchsOrganises: isNaN(Number(venue.matches_count)) ? 0 : Number(venue.matches_count),
+        note: toFiniteNumber(venue.average_rating),
+        totalAvis: Math.max(0, toFiniteNumber(venue.total_reviews)),
+        capaciteMax: Math.max(0, toFiniteNumber(venue.capacity)),
+        image: resolveVenueImage(venue),
+        matchsOrganises: Math.max(0, toFiniteNumber(venue.matches_count)),
+        matchsVariation: typeof venue.matches_growth_percent === 'number' ? venue.matches_growth_percent : null,
       }));
+
+      return restaurants;
     },
     enabled: !!currentUser,
   });
@@ -90,11 +156,19 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   }
 
   const totalRestaurants = restaurants.length;
-  const noteMoyenne = restaurants.length > 0
-    ? (restaurants.reduce((acc, r) => acc + (r.note || 0), 0) / restaurants.length).toFixed(1)
-    : '0.0';
   const totalCapacite = restaurants.reduce((acc, r) => acc + (r.capaciteMax || 0), 0);
   const totalMatchs = restaurants.reduce((acc, r) => acc + (r.matchsOrganises || 0), 0);
+
+  const weightedRatingFallback = restaurants.reduce((acc, restaurant) => {
+    if (restaurant.note > 0 && restaurant.totalAvis > 0) {
+      acc.weighted += restaurant.note * restaurant.totalAvis;
+      acc.reviews += restaurant.totalAvis;
+    }
+    return acc;
+  }, { weighted: 0, reviews: 0 });
+  const noteMoyenne = weightedRatingFallback.reviews > 0
+    ? (weightedRatingFallback.weighted / weightedRatingFallback.reviews).toFixed(1)
+    : '-';
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
@@ -239,7 +313,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <Star className="w-4 h-4 text-orange-500 fill-orange-500" />
-                        <span className="text-sm text-gray-900 dark:text-white">{restaurant.note}</span>
+                        <span className="text-sm text-gray-900 dark:text-white">{formatNote(restaurant.note)}</span>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">Note</p>
                     </div>
@@ -256,9 +330,22 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
                   <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-gray-600 dark:text-gray-400">{restaurant.matchsOrganises || 0} matchs</span>
-                      <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <span
+                        className={`flex items-center gap-1 ${
+                          restaurant.matchsVariation === null
+                            ? 'text-gray-500 dark:text-gray-400'
+                            : restaurant.matchsVariation > 0
+                              ? 'text-green-600 dark:text-green-400'
+                              : restaurant.matchsVariation < 0
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                        title="Variation du nombre de matchs sur les 30 derniers jours vs les 30 jours précédents"
+                      >
                         <TrendingUp className="w-3 h-3" />
-                        +12%
+                        {restaurant.matchsVariation === null
+                          ? 'Nouveau'
+                          : `${restaurant.matchsVariation > 0 ? '+' : ''}${restaurant.matchsVariation}%`}
                       </span>
                     </div>
                   </div>

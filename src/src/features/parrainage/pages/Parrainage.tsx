@@ -6,7 +6,7 @@
  * Noms anonymisés
  */
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ShareReferralModal } from '../../../components/ShareReferralModal';
 import { ArrowLeft, Copy, Share2, Users, TrendingUp, Gift, Loader2 } from 'lucide-react';
@@ -19,6 +19,7 @@ interface ParrainageProps {
 export function Parrainage({ onBack }: ParrainageProps) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const hasMountedRef = useRef(false);
 
   // Fetch real data from API
   const { data: codeData, isLoading: isLoadingCode } = useReferralCode();
@@ -26,7 +27,8 @@ export function Parrainage({ onBack }: ParrainageProps) {
   const { data: historyData, isLoading: isLoadingHistory } = useReferralHistory({ status: statusFilter });
 
   const referralCode = codeData?.referral_code || '';
-  const referralLink = codeData?.referral_link || `https://match.app/signup?ref=${referralCode}`;
+  const referralLink = (codeData?.referral_link || `https://match.app/register?ref=${referralCode}`)
+    .replace('/signup?ref=', '/register?ref=');
   
   // Default stats if not loaded
   const stats = useMemo(() => ({
@@ -45,6 +47,20 @@ export function Parrainage({ onBack }: ParrainageProps) {
   const filteredHistory = historyData?.referred_users || [];
   
   const isLoading = isLoadingCode || isLoadingStats;
+
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
+    if (isLoadingHistory || filteredHistory.length > 0) return;
+
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: 'smooth',
+    });
+  }, [statusFilter, isLoadingHistory, filteredHistory.length]);
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
@@ -68,7 +84,7 @@ export function Parrainage({ onBack }: ParrainageProps) {
 
         {/* Main Referral Card */}
         <div className="bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] rounded-2xl p-6 sm:p-8 mb-8 text-white shadow-xl">
-          <div className="max-w-2xl">
+          <div className="max-w-4xl">
             <h2 className="text-2xl sm:text-3xl mb-3">Votre code de parrainage</h2>
             <p className="text-white/80 mb-6">
               Partagez votre code avec d'autres restaurateurs. Pour chaque inscription, vous gagnez 1 boost gratuit !
@@ -138,13 +154,13 @@ export function Parrainage({ onBack }: ParrainageProps) {
             <div className="text-sm text-gray-600 dark:text-gray-400">Convertis</div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm border-[#9cff02]/30">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#9cff02]/20 to-[#7cdf00]/20 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">⚡</span>
+              <div className="w-12 h-12 bg-gray-100 dark:from-gray-700 dark:to-gray-800 dark:bg-gradient-to-br rounded-xl flex items-center justify-center">
+                <span className="text-2xl text-gray-900 dark:text-white">⚡</span>
               </div>
             </div>
-            <div className="text-3xl font-bold text-[#5a03cf] mb-1">{stats.total_rewards_earned}</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stats.total_rewards_earned}</div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Boosts gagnés</div>
           </div>
         </div>
@@ -255,7 +271,7 @@ export function Parrainage({ onBack }: ParrainageProps) {
                         <div>
                           <div className="font-medium text-gray-900 dark:text-white">{referral.name}</div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Invité le {new Date(referral.created_at).toLocaleDateString('fr-FR')}
+                            Invité(e) le {new Date(referral.created_at).toLocaleDateString('fr-FR')}
                           </div>
                         </div>
                       </div>
@@ -290,7 +306,6 @@ export function Parrainage({ onBack }: ParrainageProps) {
         onClose={() => setIsShareModalOpen(false)}
         referralCode={referralCode}
         referralLink={referralLink}
-        isVenueOwner={true}
       />
     </div>
   );

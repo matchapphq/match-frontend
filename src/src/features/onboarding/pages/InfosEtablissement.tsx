@@ -1,60 +1,34 @@
 import { ArrowLeft, Building2, ChevronDown, Coffee, Loader2, Receipt, ShieldCheck, Sparkles, Store, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageType } from '../../../types';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
-import { saveCheckoutState } from '../../../utils/checkout-state';
+import { PhoneInputField } from '../../../components/common/PhoneInputField';
+import { useAuth } from '../../authentication/context/AuthContext';
+import { clearPendingPaymentVenueId, saveCheckoutState, savePendingPaymentVenueId } from '../../../utils/checkout-state';
+import { API_ENDPOINTS } from '../../../utils/api-constants';
+import { getPhoneErrorMessage, normalizePhone, type PhoneCountry } from '../../../utils/phone';
 
 interface InfosEtablissementProps {
   onBack: () => void;
-  onNavigate: (page: PageType) => void;
-  selectedFormule?: 'mensuel' | 'annuel';
   onBarInfoSubmit?: (nomBar: string) => void;
-  onCheckoutData?: (url: string, sessionId: string) => void;
   isAddingVenue?: boolean; // True when adding from "Mes lieux" (not onboarding)
 }
 
-function formatFrenchPhoneInput(value: string): string {
-  let digits = value.replace(/\D/g, '');
-
-  if (digits.startsWith('0033')) {
-    digits = `0${digits.slice(4)}`;
-  } else if (digits.startsWith('33')) {
-    digits = `0${digits.slice(2)}`;
-  }
-
-  if (digits.length > 0 && !digits.startsWith('0')) {
-    digits = `0${digits}`;
-  }
-
-  digits = digits.slice(0, 10);
-  return digits.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
-}
-
-function normalizeFrenchPhone(value: string): string | null {
-  let digits = value.replace(/\D/g, '');
-
-  if (digits.startsWith('0033')) {
-    digits = `0${digits.slice(4)}`;
-  } else if (digits.startsWith('33')) {
-    digits = `0${digits.slice(2)}`;
-  }
-
-  if (digits.length === 9 && /^[1-9]\d{8}$/.test(digits)) {
-    digits = `0${digits}`;
-  }
-
-  if (!/^0[1-9]\d{8}$/.test(digits)) {
-    return null;
-  }
-
-  return `+33${digits.slice(1)}`;
+interface CreateVenueResponse {
+  venue?: { id?: string };
+  venue_id?: string;
+  requires_payment_setup?: boolean;
+  is_first_venue?: boolean;
+  payment_setup_flow?: 'post_first_venue' | null;
 }
 
 function sanitizeCapacityInput(value: string): string {
   return value.replace(/[^\d]/g, '');
 }
 
-export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mensuel', onBarInfoSubmit, onCheckoutData, isAddingVenue = false }: InfosEtablissementProps) {
+export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = false }: InfosEtablissementProps) {
+  const { updateOnboardingStep } = useAuth();
+  const navigate = useNavigate();
   const typePickerRef = useRef<HTMLDivElement | null>(null);
   const [formData, setFormData] = useState({
     nomBar: '',
@@ -69,6 +43,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>('FR');
 
   const etablissementTypes = useMemo(() => ([
     {
@@ -115,8 +90,6 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
 
   const selectedType = etablissementTypes.find((type) => type.value === formData.typeEtablissement) || etablissementTypes[0]!;
   const SelectedTypeIcon = selectedType.icon;
-  const successRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/confirmation' : '/onboarding/confirmation'}`;
-  const cancelRedirectUrl = `${window.location.origin}${isAddingVenue ? '/my-venues/add/payment' : '/onboarding/payment'}`;
   const venueTypeMap: Record<string, 'sports_bar' | 'pub' | 'restaurant' | 'cafe'> = {
     bar: 'sports_bar',
     pub: 'pub',
@@ -127,7 +100,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
   const updateField = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
-  const normalizedPhone = formData.telephone.trim() ? normalizeFrenchPhone(formData.telephone) : undefined;
+  const normalizedPhone = formData.telephone.trim() ? normalizePhone(formData.telephone, phoneCountry) : undefined;
 
   useEffect(() => {
     if (!isTypeMenuOpen) return;
@@ -146,14 +119,14 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     if (formData.telephone.trim() && !normalizedPhone) {
-      setError('Le numéro de téléphone doit être au format 06 12 34 56 78.');
-      setIsLoading(false);
+      setError(getPhoneErrorMessage(phoneCountry));
       return;
     }
+
+    setIsLoading(true);
 
     try {
       const payload = {
@@ -169,38 +142,60 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
         capacity: parseInt(formData.capacite) || 0,
         type: venueTypeMap[formData.typeEtablissement] || 'sports_bar',
         description: `Etablissement de type ${selectedType.label.toLowerCase()}`,
-        plan_id: selectedFormule === 'annuel' ? 'annual' : 'monthly',
-        success_url: successRedirectUrl,
-        cancel_url: cancelRedirectUrl,
       };
 
-      const response = await apiClient.post('/partners/venues', payload);
+      const response = await apiClient.post<CreateVenueResponse>(API_ENDPOINTS.PARTNERS_VENUES, payload);
       const data = response.data;
+      const venueId = data.venue_id
+        ? String(data.venue_id)
+        : data.venue?.id
+        ? String(data.venue.id)
+        : '';
+      const requiresPaymentSetup = data.requires_payment_setup === true;
+
+      if (!isAddingVenue) {
+        updateOnboardingStep('facturation');
+      }
+
+      if (requiresPaymentSetup) {
+        if (!venueId) {
+          throw new Error('Identifiant du lieu manquant pour initialiser le paiement.');
+        }
+
+        savePendingPaymentVenueId(venueId);
+        navigate('/onboarding', { replace: true });
+        return;
+      }
+
+      clearPendingPaymentVenueId();
 
       if (onBarInfoSubmit) {
         onBarInfoSubmit(formData.nomBar);
       }
       
-      if (onCheckoutData && data.checkout_url && data.session_id) {
-        onCheckoutData(data.checkout_url, data.session_id);
+      if (isAddingVenue) {
+        saveCheckoutState({
+          type: 'add-venue',
+          venueId,
+          venueName: formData.nomBar,
+          returnPage: 'mes-restaurants',
+        });
+        navigate('/my-venues/add/confirmation', { replace: true });
+      } else {
+        navigate('/onboarding', { replace: true });
       }
-
-      // Save checkout state before redirecting to Stripe
-      // This helps restore context after Stripe redirect
-      saveCheckoutState({
-        type: isAddingVenue ? 'add-venue' : 'onboarding',
-        venueId: data.venue_id,
-        venueName: formData.nomBar,
-        formule: selectedFormule,
-        sessionId: data.session_id,
-        checkoutUrl: data.checkout_url,
-        returnPage: isAddingVenue ? 'mes-restaurants' : 'confirmation-onboarding'
-      });
-      
-      onNavigate('paiement-validation' as PageType);
     } catch (err) {
       console.error('Failed to create venue:', err);
-      setError('Une erreur est survenue lors de la création de l\'établissement.');
+      const message = err instanceof Error ? err.message : '';
+      const normalized = message.trim().toUpperCase();
+      if (
+        normalized === 'PAYMENT_METHOD_REQUIRED' ||
+        normalized.includes('PAYMENT METHOD IS REQUIRED')
+      ) {
+        setError('Ajout impossible sans moyen de paiement. Configurez Stripe depuis votre espace facturation.');
+      } else {
+        setError(message || 'Une erreur est survenue lors de la création de l\'établissement.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -429,16 +424,16 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
                       <label htmlFor="telephone" className="block text-sm mb-2 text-gray-700 dark:text-gray-300">
                         Téléphone de l&apos;établissement
                       </label>
-                      <input
+                      <PhoneInputField
                         id="telephone"
-                        name="tel"
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
+                        name="telephone"
                         value={formData.telephone}
-                        onChange={(e) => updateField('telephone', formatFrenchPhoneInput(e.target.value))}
-                        placeholder="01 23 45 67 89"
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all placeholder-gray-400 dark:placeholder-gray-600"
+                        country={phoneCountry}
+                        onChange={(value) => updateField('telephone', value)}
+                        onCountryChange={setPhoneCountry}
+                        sizeClassName="py-3"
+                        autoComplete="tel-national"
+                        ariaInvalid={formData.telephone.trim().length > 0 && !normalizedPhone}
                       />
                     </div>
 
@@ -467,7 +462,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
                   className="w-full py-4 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-all duration-200 shadow-lg shadow-[#5a03cf]/20 hover:scale-[1.01] mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {isLoading ? 'Création en cours...' : 'Aller vers la confirmation'}
+                  {isLoading ? 'Création en cours...' : 'Valider les informations'}
                 </button>
               </form>
             </div>
@@ -522,7 +517,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
                         2
                       </span>
                       <p className="text-sm text-gray-700 dark:text-gray-300">
-                        Vous passez ensuite à la confirmation et au paiement.
+                        Vous revenez ensuite sur l’onboarding pour finaliser la facturation.
                       </p>
                     </div>
                   </div>
@@ -533,7 +528,7 @@ export function InfosEtablissement({ onBack, onNavigate, selectedFormule = 'mens
                         3
                       </span>
                       <p className="text-sm text-gray-700 dark:text-gray-300">
-                        L’activation du lieu se poursuit une fois la souscription finalisée.
+                        L’activation du lieu se poursuit une fois la configuration du moyen de paiement finalisée.
                       </p>
                     </div>
                   </div>

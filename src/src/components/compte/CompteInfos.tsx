@@ -1,144 +1,24 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useAuth } from '../../features/authentication/context/AuthContext';
-import { ArrowLeft, Camera, CheckCircle2, ChevronDown, Loader2, Mail, UserRound } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, Loader2, Mail, UserRound } from 'lucide-react';
 import apiClient from '../../api/client';
 import { UnsavedChangesDialog } from '../common/UnsavedChangesDialog';
+import { PhoneInputField } from '../common/PhoneInputField';
 import { useToast } from '../../context/ToastContext';
 import { useUpdateProfile, useUserProfile } from '../../hooks/api/useAccount';
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard';
 import { API_ENDPOINTS } from '../../utils/api-constants';
+import {
+  formatPhoneInput,
+  getPhoneErrorMessage,
+  inferPhoneCountry,
+  normalizePhone,
+  type PhoneCountry,
+} from '../../utils/phone';
 import { resolveProfileAvatar } from '../../utils/profile-avatar';
 
 interface CompteInfosProps {
   onBack?: () => void;
-}
-
-type PhoneCountry = 'FR' | 'US';
-
-const PHONE_COUNTRY_ORDER: PhoneCountry[] = ['FR', 'US'];
-
-function getCountryDialCode(country: PhoneCountry): string {
-  return country === 'US' ? '+1' : '+33';
-}
-
-function CountryFlag({ country, className = 'h-4 w-6 rounded-[2px] shadow-sm' }: { country: PhoneCountry; className?: string }) {
-  if (country === 'FR') {
-    return (
-      <svg aria-hidden="true" className={className} viewBox="0 0 3 2">
-        <rect width="1" height="2" x="0" y="0" fill="#0055A4" />
-        <rect width="1" height="2" x="1" y="0" fill="#FFFFFF" />
-        <rect width="1" height="2" x="2" y="0" fill="#EF4135" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg aria-hidden="true" className={className} viewBox="0 0 3 2">
-      <rect width="3" height="2" fill="#B22234" />
-      <rect width="3" height="0.285" y="0.285" fill="#FFFFFF" />
-      <rect width="3" height="0.285" y="0.855" fill="#FFFFFF" />
-      <rect width="3" height="0.285" y="1.425" fill="#FFFFFF" />
-      <rect width="1.2" height="1.1" x="0" y="0" fill="#3C3B6E" />
-    </svg>
-  );
-}
-
-function inferPhoneCountry(value?: string | null): PhoneCountry {
-  const normalized = typeof value === 'string' ? value.trim() : '';
-  if (normalized.startsWith('+1') || normalized.startsWith('1')) return 'US';
-  return 'FR';
-}
-
-function formatFrenchPhoneInput(value: string): string {
-  let digits = value.replace(/\D/g, '');
-
-  if (digits.startsWith('0033')) {
-    digits = `0${digits.slice(4)}`;
-  } else if (digits.startsWith('33')) {
-    digits = `0${digits.slice(2)}`;
-  }
-
-  if (digits.length > 0 && !digits.startsWith('0')) {
-    digits = `0${digits}`;
-  }
-
-  digits = digits.slice(0, 10);
-  return digits.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
-}
-
-function normalizeFrenchPhone(value: string): string | null {
-  let digits = value.replace(/\D/g, '');
-
-  if (digits.startsWith('0033')) {
-    digits = `0${digits.slice(4)}`;
-  } else if (digits.startsWith('33')) {
-    digits = `0${digits.slice(2)}`;
-  }
-
-  if (digits.length === 9 && /^[1-9]\d{8}$/.test(digits)) {
-    digits = `0${digits}`;
-  }
-
-  if (!/^0[1-9]\d{8}$/.test(digits)) {
-    return null;
-  }
-
-  return `+33${digits.slice(1)}`;
-}
-
-function formatUsPhoneInput(value: string): string {
-  let digits = value.replace(/\D/g, '');
-
-  if (digits.startsWith('001')) {
-    digits = digits.slice(3);
-  } else if (digits.startsWith('1') && digits.length > 10) {
-    digits = digits.slice(1);
-  }
-
-  digits = digits.slice(0, 10);
-
-  if (digits.length <= 3) {
-    return digits;
-  }
-  if (digits.length <= 6) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  }
-
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-}
-
-function normalizeUsPhone(value: string): string | null {
-  let digits = value.replace(/\D/g, '');
-
-  if (digits.startsWith('001')) {
-    digits = digits.slice(3);
-  } else if (digits.startsWith('1') && digits.length === 11) {
-    digits = digits.slice(1);
-  }
-
-  if (!/^\d{10}$/.test(digits)) {
-    return null;
-  }
-
-  return `+1${digits}`;
-}
-
-function formatPhoneInput(value: string, country: PhoneCountry): string {
-  return country === 'US' ? formatUsPhoneInput(value) : formatFrenchPhoneInput(value);
-}
-
-function normalizePhone(value: string, country: PhoneCountry): string | null {
-  return country === 'US' ? normalizeUsPhone(value) : normalizeFrenchPhone(value);
-}
-
-function getPhonePlaceholder(country: PhoneCountry): string {
-  return country === 'US' ? '(201) 555-0123' : '06 12 34 56 78';
-}
-
-function getPhoneErrorMessage(country: PhoneCountry): string {
-  return country === 'US'
-    ? 'Numéro invalide. Format attendu : (201) 555-0123'
-    : 'Numéro invalide. Format attendu : 06 12 34 56 78';
 }
 
 export function CompteInfos({ onBack }: CompteInfosProps) {
@@ -146,7 +26,6 @@ export function CompteInfos({ onBack }: CompteInfosProps) {
   const toast = useToast();
   const updateProfileMutation = useUpdateProfile();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const phoneCountryPickerRef = useRef<HTMLDivElement | null>(null);
   const {
     data: userProfile,
     refetch: refetchUserProfile,
@@ -160,7 +39,6 @@ export function CompteInfos({ onBack }: CompteInfosProps) {
   const [phoneInput, setPhoneInput] = useState(initialPhoneDisplay);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [isPhoneCountryMenuOpen, setIsPhoneCountryMenuOpen] = useState(false);
 
   useEffect(() => {
     setFirstName(currentUser?.prenom || '');
@@ -169,21 +47,6 @@ export function CompteInfos({ onBack }: CompteInfosProps) {
     setPhoneCountry(nextPhoneCountry);
     setPhoneInput(formatPhoneInput(currentUser?.telephone || '', nextPhoneCountry));
   }, [currentUser?.prenom, currentUser?.nom, currentUser?.telephone]);
-
-  useEffect(() => {
-    if (!isPhoneCountryMenuOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (phoneCountryPickerRef.current && !phoneCountryPickerRef.current.contains(event.target as Node)) {
-        setIsPhoneCountryMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isPhoneCountryMenuOpen]);
 
   useEffect(() => {
     const nextAvatar =
@@ -260,12 +123,6 @@ export function CompteInfos({ onBack }: CompteInfosProps) {
   const handleBackAttempt = () => {
     if (!onBack) return;
     unsavedChangesGuard.handleNavigationAttempt(onBack);
-  };
-
-  const handlePhoneCountryChange = (nextCountry: PhoneCountry) => {
-    setPhoneCountry(nextCountry);
-    setPhoneInput((previousValue) => formatPhoneInput(previousValue, nextCountry));
-    setIsPhoneCountryMenuOpen(false);
   };
 
   const handleAvatarButtonClick = () => {
@@ -506,54 +363,14 @@ export function CompteInfos({ onBack }: CompteInfosProps) {
                   <label className="mb-2 block text-sm text-gray-700 dark:text-gray-300">
                     Téléphone
                   </label>
-                  <div className="relative" ref={phoneCountryPickerRef}>
-                    <div className="flex min-h-[52px] w-full items-center rounded-xl border border-gray-200 bg-gray-50 px-4 transition-all focus-within:ring-2 focus-within:ring-[#5a03cf] dark:border-gray-700 dark:bg-gray-800">
-                      <button
-                        type="button"
-                        onClick={() => setIsPhoneCountryMenuOpen((previousState) => !previousState)}
-                        className="flex h-full shrink-0 items-center gap-3 pr-4 text-sm text-gray-900 dark:text-white"
-                      >
-                        <CountryFlag country={phoneCountry} />
-                        <span className="font-medium">{phoneCountry}</span>
-                        <span className="text-gray-500 dark:text-gray-400">{getCountryDialCode(phoneCountry)}</span>
-                        <ChevronDown
-                          className={`h-4 w-4 text-gray-400 transition-transform ${isPhoneCountryMenuOpen ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-
-                      <div className="ml-1 flex min-h-[36px] flex-1 items-center border-l border-gray-300 pl-4 dark:border-gray-600">
-                        <input
-                          type="tel"
-                          inputMode="tel"
-                          value={phoneInput}
-                          onChange={(e) => setPhoneInput(formatPhoneInput(e.target.value, phoneCountry))}
-                          className="h-full w-full bg-transparent py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-white dark:placeholder:text-gray-500"
-                          placeholder={getPhonePlaceholder(phoneCountry)}
-                        />
-                      </div>
-                    </div>
-
-                    {isPhoneCountryMenuOpen && (
-                      <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-[190px] rounded-2xl border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
-                        {PHONE_COUNTRY_ORDER.map((country) => (
-                          <button
-                            key={country}
-                            type="button"
-                            onClick={() => handlePhoneCountryChange(country)}
-                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition-colors ${
-                              country === phoneCountry
-                                ? 'bg-[#5a03cf]/10 text-[#5a03cf]'
-                                : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'
-                            }`}
-                          >
-                            <CountryFlag country={country} />
-                            <span className="font-medium">{country}</span>
-                            <span className="text-gray-500 dark:text-gray-400">{getCountryDialCode(country)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <PhoneInputField
+                    value={phoneInput}
+                    country={phoneCountry}
+                    onChange={setPhoneInput}
+                    onCountryChange={setPhoneCountry}
+                    sizeClassName="py-3"
+                    textClassName="text-sm"
+                  />
                 </div>
               </div>
             </div>

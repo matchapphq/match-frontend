@@ -10,6 +10,7 @@ export interface User {
   telephone?: string;
   avatar?: string;
   hasCompletedOnboarding: boolean;
+  hasPaymentMethod?: boolean;
   onboardingStep: OnboardingStep;
   createdAt?: Date;
 }

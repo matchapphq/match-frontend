@@ -595,7 +595,7 @@ export function CompteDonnees({ onBack }: CompteDonneesProps) {
                 </p>
                 <ul className="space-y-2 text-sm text-red-700/90 dark:text-red-300/90">
                   <li>• Sauvegardez les informations que vous souhaitez conserver</li>
-                  <li>• Annulez vos abonnements en cours</li>
+                  <li>• Vérifiez vos commissions et factures en cours</li>
                   <li>• Contactez le support en cas de doute</li>
                 </ul>
               </div>

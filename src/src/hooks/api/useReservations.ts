@@ -49,7 +49,18 @@ export interface CustomerStats {
   customerCount: number;
   totalGuests: number;
   totalReservations: number;
-  period: number;
+  period: number | string;
+  average_age?: number;
+  favorite_sport?: string;
+  total_customers?: number;
+  average_per_match?: number;
+  recent_customers?: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    total_reservations: number;
+    last_visit?: string;
+  }>;
 }
 
 // Hook to fetch reservations for a venue
@@ -131,7 +142,7 @@ export function useVerifyQR() {
   return useMutation({
     mutationFn: async (qrCode: string) => {
       const response = await apiClient.post(API_ENDPOINTS.RESERVATIONS_VERIFY_QR, {
-        qr_code: qrCode,
+        qrContent: qrCode,
       });
       return response.data;
     },
