@@ -60,6 +60,13 @@ function resolveVenueImage(venue: any): string {
   return FALLBACK_VENUE_IMAGE;
 }
 
+function formatNote(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return '-';
+  }
+  return value.toFixed(1);
+}
+
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   const { currentUser } = useAuth();
 
@@ -132,9 +139,12 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   }
 
   const totalRestaurants = restaurants.length;
-  const noteMoyenne = restaurants.length > 0
-    ? (restaurants.reduce((acc, r) => acc + (r.note || 0), 0) / restaurants.length).toFixed(1)
-    : '0.0';
+  const notesValides = restaurants
+    .map((restaurant) => Number(restaurant.note))
+    .filter((note) => Number.isFinite(note) && note > 0);
+  const noteMoyenne = notesValides.length > 0
+    ? (notesValides.reduce((acc, note) => acc + note, 0) / notesValides.length).toFixed(1)
+    : '-';
   const totalCapacite = restaurants.reduce((acc, r) => acc + (r.capaciteMax || 0), 0);
   const totalMatchs = restaurants.reduce((acc, r) => acc + (r.matchsOrganises || 0), 0);
 
@@ -281,7 +291,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <Star className="w-4 h-4 text-orange-500 fill-orange-500" />
-                        <span className="text-sm text-gray-900 dark:text-white">{restaurant.note}</span>
+                        <span className="text-sm text-gray-900 dark:text-white">{formatNote(restaurant.note)}</span>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">Note</p>
                     </div>
