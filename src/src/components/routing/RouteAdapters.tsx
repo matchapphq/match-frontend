@@ -355,6 +355,11 @@ export function RestaurantDetail() {
 
     if (page === 'mes-matchs') {
       navigate(resolvePagePath('mes-matchs'));
+      return;
+    }
+
+    if (page === 'dashboard') {
+      navigate(resolvePagePath('dashboard'));
     }
   };
 
