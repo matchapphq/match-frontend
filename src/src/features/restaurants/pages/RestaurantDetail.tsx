@@ -306,7 +306,8 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
             </button>
             <button
               type="button"
-              className="px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:border-[#5a03cf]/40 hover:text-[#5a03cf] transition-all flex items-center justify-center gap-2"
+              disabled
+              className="px-4 py-3 border rounded-xl transition-all flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
             >
               <Eye className="w-4 h-4" />
               Aperçu public
