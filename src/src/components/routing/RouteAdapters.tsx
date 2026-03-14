@@ -345,12 +345,20 @@ export function ConfirmationOnboarding() {
 export function RestaurantDetail() {
   const { id } = useParams<{ id: string }>();
   const goBack = useGoBack('/my-venues');
-  return <RawRestaurantDetail restaurantId={id ?? null} onBack={goBack} />;
+  const navigate = useNavigate();
+
+  const onNavigate = (page: string) => {
+    if (page === 'modifier-restaurant' && id) {
+      navigate(resolvePagePath('modifier-restaurant', { restaurantId: id }));
+    }
+  };
+
+  return <RawRestaurantDetail restaurantId={id ?? null} onBack={goBack} onNavigate={onNavigate} />;
 }
 
 export function ModifierRestaurant() {
   const { id } = useParams<{ id: string }>();
-  const goBack = useGoBack('/my-venues');
+  const goBack = useGoBack(id ? `/my-venues/${id}` : '/my-venues');
   return <RawModifierRestaurant restaurantId={id ?? null} onBack={goBack} />;
 }
 
