@@ -51,6 +51,26 @@ function extractPhotoUrl(photo: unknown): string | null {
   return selected?.trim() || null;
 }
 
+function mapVenueStatusToUi(status: unknown, isActive: unknown): 'actif' | 'inactif' | 'en_attente' {
+  const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : null;
+  const active = isActive === true;
+
+  switch (normalizedStatus) {
+    case 'approved':
+    case 'active':
+    case 'verified':
+      return active ? 'actif' : 'inactif';
+    case 'pending':
+      return 'en_attente';
+    case 'rejected':
+    case 'suspended':
+    case 'inactive':
+      return 'inactif';
+    default:
+      return active ? 'actif' : 'en_attente';
+  }
+}
+
 export function RestaurantDetail({ restaurantId, onBack, onNavigate }: RestaurantDetailProps) {
   const { data: venue, isLoading, error } = useQuery<VenueDetailView | null>({
     queryKey: ['venue-detail', restaurantId],
@@ -88,7 +108,6 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
       const images = orderedPhotoUrls.length > 0 ? orderedPhotoUrls : [fallbackImage];
       const ratingAverage = Number(v.average_rating ?? venueRes.data?.rating?.average ?? 0);
       const ratingCount = Number(v.total_reviews ?? venueRes.data?.rating?.count ?? 0);
-      const status = v.status ?? (v.is_active ? 'active' : 'pending');
       const address = [v.street_address, v.city].filter(Boolean).join(', ');
 
       return {
@@ -101,7 +120,7 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
         totalAvis: Number.isFinite(ratingCount) ? ratingCount : 0,
         image: images[0] || FALLBACK_VENUE_IMAGE,
         images,
-        statut: status === 'active' ? 'actif' : status === 'inactive' ? 'inactif' : 'en_attente',
+        statut: mapVenueStatusToUi(v.status, v.is_active),
         matchsDiffuses: Number(stats?.top_matches?.length ?? 0) || 0,
         clientsAccueillis: Number(stats?.total_reservations ?? v.total_reservations ?? 0) || 0,
       };
@@ -151,7 +170,7 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
   const isInactive = venue.statut === 'inactif';
   const statusLabel = isActive ? 'Actif' : isInactive ? 'Inactif' : 'En attente de validation';
   const statusClass = isActive
-    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+    ? 'bg-green-100 text-green-800 border border-green-300 shadow-sm'
     : isInactive
       ? 'bg-gray-100 text-gray-700 border border-gray-200'
       : 'bg-orange-50 text-orange-700 border border-orange-200';
