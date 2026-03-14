@@ -13,6 +13,7 @@ interface Restaurant {
   nom: string;
   adresse: string;
   note: number;
+  totalAvis: number;
   capaciteMax: number;
   image: string;
   matchsOrganises: number;
@@ -68,6 +69,11 @@ function formatNote(value: number): string {
   return value.toFixed(1);
 }
 
+function toFiniteNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   const { currentUser } = useAuth();
 
@@ -75,17 +81,26 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
     queryKey: ['partner-venues'],
     queryFn: async () => {
       const response = await apiClient.get('/partners/venues');
-      const venues = response.data?.venues || response.data || [];
-      return venues.map((venue: any) => ({
+      const payload = response.data ?? {};
+      const venues = Array.isArray(payload?.venues)
+        ? payload.venues
+        : Array.isArray(payload)
+          ? payload
+          : [];
+
+      const restaurants = venues.map((venue: any) => ({
         id: venue.id,
         nom: venue.name || 'Établissement',
         adresse: `${venue.street_address || ''}, ${venue.city || ''}`.replace(/^, |, $/g, '') || 'Adresse non renseignée',
-        note: isNaN(Number(venue.average_rating)) ? 0 : Number(venue.average_rating),
-        capaciteMax: isNaN(Number(venue.capacity)) ? 0 : Number(venue.capacity),
+        note: toFiniteNumber(venue.average_rating),
+        totalAvis: Math.max(0, toFiniteNumber(venue.total_reviews)),
+        capaciteMax: Math.max(0, toFiniteNumber(venue.capacity)),
         image: resolveVenueImage(venue),
-        matchsOrganises: isNaN(Number(venue.matches_count)) ? 0 : Number(venue.matches_count),
+        matchsOrganises: Math.max(0, toFiniteNumber(venue.matches_count)),
         matchsVariation: typeof venue.matches_growth_percent === 'number' ? venue.matches_growth_percent : null,
       }));
+
+      return restaurants;
     },
     enabled: !!currentUser,
   });
@@ -141,14 +156,19 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   }
 
   const totalRestaurants = restaurants.length;
-  const notesValides = restaurants
-    .map((restaurant) => Number(restaurant.note))
-    .filter((note) => Number.isFinite(note) && note > 0);
-  const noteMoyenne = notesValides.length > 0
-    ? (notesValides.reduce((acc, note) => acc + note, 0) / notesValides.length).toFixed(1)
-    : '-';
   const totalCapacite = restaurants.reduce((acc, r) => acc + (r.capaciteMax || 0), 0);
   const totalMatchs = restaurants.reduce((acc, r) => acc + (r.matchsOrganises || 0), 0);
+
+  const weightedRatingFallback = restaurants.reduce((acc, restaurant) => {
+    if (restaurant.note > 0 && restaurant.totalAvis > 0) {
+      acc.weighted += restaurant.note * restaurant.totalAvis;
+      acc.reviews += restaurant.totalAvis;
+    }
+    return acc;
+  }, { weighted: 0, reviews: 0 });
+  const noteMoyenne = weightedRatingFallback.reviews > 0
+    ? (weightedRatingFallback.weighted / weightedRatingFallback.reviews).toFixed(1)
+    : '-';
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
