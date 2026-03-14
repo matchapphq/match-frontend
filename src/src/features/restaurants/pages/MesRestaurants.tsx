@@ -16,6 +16,7 @@ interface Restaurant {
   capaciteMax: number;
   image: string;
   matchsOrganises: number;
+  matchsVariation: number | null;
 }
 
 const FALLBACK_VENUE_IMAGE = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop';
@@ -83,6 +84,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
         capaciteMax: isNaN(Number(venue.capacity)) ? 0 : Number(venue.capacity),
         image: resolveVenueImage(venue),
         matchsOrganises: isNaN(Number(venue.matches_count)) ? 0 : Number(venue.matches_count),
+        matchsVariation: typeof venue.matches_growth_percent === 'number' ? venue.matches_growth_percent : null,
       }));
     },
     enabled: !!currentUser,
@@ -308,9 +310,22 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
                   <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-gray-600 dark:text-gray-400">{restaurant.matchsOrganises || 0} matchs</span>
-                      <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <span
+                        className={`flex items-center gap-1 ${
+                          restaurant.matchsVariation === null
+                            ? 'text-gray-500 dark:text-gray-400'
+                            : restaurant.matchsVariation > 0
+                              ? 'text-green-600 dark:text-green-400'
+                              : restaurant.matchsVariation < 0
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                        title="Variation du nombre de matchs sur les 30 derniers jours vs les 30 jours précédents"
+                      >
                         <TrendingUp className="w-3 h-3" />
-                        +12%
+                        {restaurant.matchsVariation === null
+                          ? 'Nouveau'
+                          : `${restaurant.matchsVariation > 0 ? '+' : ''}${restaurant.matchsVariation}%`}
                       </span>
                     </div>
                   </div>
