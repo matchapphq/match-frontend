@@ -35,6 +35,14 @@ interface VenueDetailView {
   statut: 'actif' | 'inactif' | 'en_attente';
   matchsDiffuses: number;
   clientsAccueillis: number;
+  reviews: Array<{
+    id: string;
+    author: string;
+    rating: number;
+    title: string;
+    content: string;
+    createdAt: string;
+  }>;
 }
 
 const FALLBACK_VENUE_IMAGE = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop';
@@ -77,7 +85,7 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
     queryFn: async () => {
       if (!restaurantId) return null;
 
-      const [venueRes, analyticsRes, venueMatchesRes] = await Promise.all([
+      const [venueRes, analyticsRes, venueMatchesRes, reviewsRes] = await Promise.all([
         apiClient.get(`/venues/${restaurantId}`),
         apiClient.get(`/venues/${restaurantId}/analytics/overview`).catch((analyticsError) => {
           console.warn('Failed to fetch venue analytics overview:', analyticsError);
@@ -85,6 +93,10 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
         }),
         apiClient.get(`/venues/${restaurantId}/matches`, { params: { upcoming_only: 'false' } }).catch((matchesError) => {
           console.warn('Failed to fetch venue matches:', matchesError);
+          return null;
+        }),
+        apiClient.get(`/reviews/venue/${restaurantId}`, { params: { page: 1, limit: 6 } }).catch((reviewsError) => {
+          console.warn('Failed to fetch venue reviews:', reviewsError);
           return null;
         }),
       ]);
@@ -139,6 +151,27 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
       const address = [v.street_address, v.city].filter(Boolean).join(', ');
       const clientsAccueillisRaw = Number(stats?.totalReservations ?? stats?.total_reservations ?? v.total_reservations ?? 0);
       const clientsAccueillis = Number.isFinite(clientsAccueillisRaw) ? clientsAccueillisRaw : 0;
+      const rawReviews = Array.isArray(reviewsRes?.data?.reviews) ? reviewsRes.data.reviews : [];
+      const reviews = rawReviews.map((review: any) => {
+        const user = review?.user || {};
+        const firstName = typeof user.first_name === 'string' ? user.first_name : '';
+        const lastName = typeof user.last_name === 'string' ? user.last_name : '';
+        const fallbackName = typeof review?.user_name === 'string' ? review.user_name : '';
+        const author = `${firstName} ${lastName}`.trim() || fallbackName || 'Client Match';
+
+        return {
+          id: String(review?.id ?? `${author}-${review?.created_at ?? ''}`),
+          author,
+          rating: Number(review?.rating ?? 0),
+          title: typeof review?.title === 'string' ? review.title : '',
+          content: typeof review?.content === 'string'
+            ? review.content
+            : typeof review?.comment === 'string'
+              ? review.comment
+              : '',
+          createdAt: typeof review?.created_at === 'string' ? review.created_at : '',
+        };
+      }).filter((review: { title: string; content: string }) => review.title || review.content);
 
       return {
         nom: v.name || 'Établissement',
@@ -153,6 +186,7 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
         statut: mapVenueStatusToUi(v.status, v.is_active),
         matchsDiffuses: venueMatches.length > 0 ? matchsDiffuses : fallbackMatchCount,
         clientsAccueillis,
+        reviews,
       };
     },
     enabled: !!restaurantId,
@@ -395,9 +429,44 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
                 Les avis apparaîtront après vos premières réservations confirmées.
               </p>
             </div>
+          ) : venue.reviews.length === 0 ? (
+            <div className="p-10 text-center">
+              <p className="text-gray-700 dark:text-gray-300">Les avis sont en cours de synchronisation.</p>
+            </div>
           ) : (
-            <div className="p-6">
-              {/* Les avis réels s'afficheront ici */}
+            <div className="p-6 space-y-4">
+              {venue.reviews.map((review) => (
+                <div
+                  key={review.id}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/40 p-4"
+                >
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <div className="min-w-0">
+                      <p className="text-sm text-gray-900 dark:text-white truncate">{review.author}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {review.createdAt
+                          ? new Date(review.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+                          : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }, (_, index) => (
+                        <Star
+                          key={`${review.id}-star-${index}`}
+                          className={`w-4 h-4 ${index < Math.round(review.rating) ? 'fill-orange-500 text-orange-500' : 'text-gray-300 dark:text-gray-600'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {review.title && (
+                    <p className="text-sm text-gray-900 dark:text-white mb-1">{review.title}</p>
+                  )}
+                  {review.content && (
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{review.content}</p>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
