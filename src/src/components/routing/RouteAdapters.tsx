@@ -350,6 +350,11 @@ export function RestaurantDetail() {
   const onNavigate = (page: string) => {
     if (page === 'modifier-restaurant' && id) {
       navigate(resolvePagePath('modifier-restaurant', { restaurantId: id }));
+      return;
+    }
+
+    if (page === 'mes-matchs') {
+      navigate(resolvePagePath('mes-matchs'));
     }
   };
 
