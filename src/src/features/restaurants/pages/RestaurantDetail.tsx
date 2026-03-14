@@ -10,7 +10,7 @@ interface RestaurantDetailProps {
 
 export function RestaurantDetail({ restaurantId, onBack, onNavigate }: RestaurantDetailProps) {
   const { data: venue, isLoading, error } = useQuery({
-    queryKey: ['venue', restaurantId],
+    queryKey: ['venue-detail', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return null;
 
@@ -198,7 +198,7 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
         <div className="bg-white/70 backdrop-blur-xl rounded-xl border border-gray-200/50 p-5 hover:border-gray-300/60 transition-all">
           <p className="text-gray-600 text-sm mb-2">Clients accueillis</p>
           <p className="text-3xl italic" style={{ fontWeight: '700', color: '#5a03cf' }}>
-            {venue.clientsAccueillis.toLocaleString('fr-FR')}
+            {Number(venue.clientsAccueillis ?? 0).toLocaleString('fr-FR')}
           </p>
         </div>
 

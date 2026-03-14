@@ -53,7 +53,15 @@ export function Sidebar() {
   }, [location.pathname]);
 
   const handleNavigate = (path: string) => {
-    navigate(path);
+    const navigationEvent = new CustomEvent<{ path: string }>('match:sidebar-navigate', {
+      detail: { path },
+      cancelable: true,
+    });
+    const navigationWasBlocked = !window.dispatchEvent(navigationEvent);
+
+    if (!navigationWasBlocked) {
+      navigate(path);
+    }
     setIsMobileOpen(false);
   };
 
