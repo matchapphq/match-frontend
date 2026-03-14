@@ -77,17 +77,45 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
     queryFn: async () => {
       if (!restaurantId) return null;
 
-      const venueRes = await apiClient.get(`/venues/${restaurantId}`);
+      const [venueRes, analyticsRes, venueMatchesRes] = await Promise.all([
+        apiClient.get(`/venues/${restaurantId}`),
+        apiClient.get(`/venues/${restaurantId}/analytics/overview`).catch((analyticsError) => {
+          console.warn('Failed to fetch venue analytics overview:', analyticsError);
+          return null;
+        }),
+        apiClient.get(`/venues/${restaurantId}/matches`, { params: { upcoming_only: 'false' } }).catch((matchesError) => {
+          console.warn('Failed to fetch venue matches:', matchesError);
+          return null;
+        }),
+      ]);
+
       const v = venueRes.data?.venue ?? venueRes.data;
       if (!v) return null;
 
-      let stats: any = null;
-      try {
-        const analyticsRes = await apiClient.get(`/venues/${restaurantId}/analytics/overview`);
-        stats = analyticsRes.data?.overview ?? analyticsRes.data?.analytics ?? null;
-      } catch (analyticsError) {
-        console.warn('Failed to fetch venue analytics overview:', analyticsError);
-      }
+      const stats = analyticsRes?.data?.overview ?? analyticsRes?.data?.analytics ?? null;
+      const venueMatches = Array.isArray(venueMatchesRes?.data)
+        ? venueMatchesRes.data
+        : Array.isArray(venueMatchesRes?.data?.matches)
+          ? venueMatchesRes.data.matches
+          : [];
+      const now = new Date();
+      const matchsDiffuses = venueMatches.filter((match: any) => {
+        const normalizedStatus = typeof match?.status === 'string' ? match.status.toLowerCase() : '';
+        if (normalizedStatus === 'finished' || normalizedStatus === 'completed' || normalizedStatus === 'done') {
+          return true;
+        }
+        if (normalizedStatus === 'upcoming' || normalizedStatus === 'scheduled' || normalizedStatus === 'live') {
+          return false;
+        }
+        if (!match?.scheduled_at) return false;
+        const scheduledAt = new Date(match.scheduled_at);
+        return !Number.isNaN(scheduledAt.getTime()) && scheduledAt < now;
+      }).length;
+      const fallbackMatchCount = Array.isArray(stats?.topMatches)
+        ? stats.topMatches.length
+        : Array.isArray(stats?.top_matches)
+          ? stats.top_matches.length
+          : 0;
 
       const candidatePhotos = [
         ...(Array.isArray(v.photos) ? v.photos : []),
@@ -109,6 +137,8 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
       const ratingAverage = Number(v.average_rating ?? venueRes.data?.rating?.average ?? 0);
       const ratingCount = Number(v.total_reviews ?? venueRes.data?.rating?.count ?? 0);
       const address = [v.street_address, v.city].filter(Boolean).join(', ');
+      const clientsAccueillisRaw = Number(stats?.totalReservations ?? stats?.total_reservations ?? v.total_reservations ?? 0);
+      const clientsAccueillis = Number.isFinite(clientsAccueillisRaw) ? clientsAccueillisRaw : 0;
 
       return {
         nom: v.name || 'Établissement',
@@ -121,8 +151,8 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
         image: images[0] || FALLBACK_VENUE_IMAGE,
         images,
         statut: mapVenueStatusToUi(v.status, v.is_active),
-        matchsDiffuses: Number(stats?.top_matches?.length ?? 0) || 0,
-        clientsAccueillis: Number(stats?.total_reservations ?? v.total_reservations ?? 0) || 0,
+        matchsDiffuses: venueMatches.length > 0 ? matchsDiffuses : fallbackMatchCount,
+        clientsAccueillis,
       };
     },
     enabled: !!restaurantId,
@@ -177,9 +207,10 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
   const clientsAccueillis = Number.isFinite(Number(venue.clientsAccueillis))
     ? Number(venue.clientsAccueillis)
     : 0;
-  const noteMoyenne = Number.isFinite(Number(venue.note))
+  const hasReviews = Number(venue.totalAvis) > 0;
+  const noteMoyenne = hasReviews && Number.isFinite(Number(venue.note))
     ? Number(venue.note).toFixed(1)
-    : '0.0';
+    : '-';
   const galleryPhotos = venue.images.length > 0 ? venue.images : [venue.image];
   const visibleGalleryPhotos = galleryPhotos.slice(0, 5);
   const extraPhotosCount = Math.max(0, galleryPhotos.length - visibleGalleryPhotos.length);
