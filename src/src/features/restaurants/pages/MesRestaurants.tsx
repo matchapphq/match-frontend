@@ -18,6 +18,48 @@ interface Restaurant {
   matchsOrganises: number;
 }
 
+const FALLBACK_VENUE_IMAGE = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop';
+
+function extractPhotoUrl(photo: unknown): string | null {
+  if (!photo) return null;
+  if (typeof photo === 'string') return photo.trim() || null;
+  if (typeof photo !== 'object') return null;
+
+  const value = photo as Record<string, unknown>;
+  const url = typeof value.url === 'string' ? value.url : null;
+  const photoUrl = typeof value.photo_url === 'string' ? value.photo_url : null;
+  const selected = url ?? photoUrl;
+  return selected?.trim() || null;
+}
+
+function resolveVenueImage(venue: any): string {
+  const photos = Array.isArray(venue?.photos) ? venue.photos : [];
+  const coverPhoto = photos.find((photo: any) => (
+    photo?.is_primary === true
+    || photo?.isPrimary === true
+    || photo?.cover === true
+    || photo?.is_cover === true
+  ));
+  const firstPhoto = photos[0] ?? null;
+
+  const selectedPhotoUrl = extractPhotoUrl(coverPhoto ?? firstPhoto);
+  if (selectedPhotoUrl) {
+    return selectedPhotoUrl;
+  }
+
+  const coverImageUrl = typeof venue?.cover_image_url === 'string' ? venue.cover_image_url.trim() : '';
+  if (coverImageUrl) {
+    return coverImageUrl;
+  }
+
+  const logoUrl = typeof venue?.logo_url === 'string' ? venue.logo_url.trim() : '';
+  if (logoUrl) {
+    return logoUrl;
+  }
+
+  return FALLBACK_VENUE_IMAGE;
+}
+
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   const { currentUser } = useAuth();
 
@@ -32,7 +74,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
         adresse: `${venue.street_address || ''}, ${venue.city || ''}`.replace(/^, |, $/g, '') || 'Adresse non renseignée',
         note: isNaN(Number(venue.average_rating)) ? 0 : Number(venue.average_rating),
         capaciteMax: isNaN(Number(venue.capacity)) ? 0 : Number(venue.capacity),
-        image: venue.photos?.[0]?.url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+        image: resolveVenueImage(venue),
         matchsOrganises: isNaN(Number(venue.matches_count)) ? 0 : Number(venue.matches_count),
       }));
     },
