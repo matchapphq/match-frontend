@@ -39,7 +39,7 @@ function parseRate(defaultRate: string | number): number | null {
 /**
  * Build a human-readable commission pricing label from atomic API fields.
  *
- * Example: "1,50 € / client présent" (fr-FR)
+ * Example: "1,50 $ / client présent" (fr-FR)
  */
 export function formatPricingLabel(
   pricing: PricingLabelInput,
