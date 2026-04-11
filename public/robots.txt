@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /login
 Disallow: /register
+Disallow: /forgot-password
 Disallow: /onboarding
 Disallow: /dashboard
 Disallow: /matches
