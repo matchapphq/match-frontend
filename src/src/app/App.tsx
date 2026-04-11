@@ -7,6 +7,7 @@ import { ThemeProvider } from '../features/theme/context/ThemeContext';
 import { LanguageProvider } from '../context/LanguageContext';
 import { ToastProvider } from '../context/ToastContext';
 import apiClient from '../api/client';
+import { SeoManager } from '../components/seo/SeoManager';
 import {
   getCheckoutState,
   clearCheckoutState,
@@ -77,6 +78,7 @@ export default function App() {
             <LanguageProvider>
               <ToastProvider>
                 <StripeReturnHandler />
+                <SeoManager />
                 <ScrollToTop />
                 <AppRoutes />
               </ToastProvider>
