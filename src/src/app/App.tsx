@@ -234,7 +234,6 @@ function AppRoutes() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms-of-sale" element={<Cgv />} />
-      <Route path="/cgv" element={<Navigate to="/terms-of-sale" replace />} />
 
       {/* ── Onboarding routes (auth required, onboarding NOT complete) ── */}
       <Route path="/onboarding" element={<RequireAuth><OnboardingWelcome /></RequireAuth>} />

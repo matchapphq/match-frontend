@@ -78,16 +78,6 @@ const PUBLIC_SEO_BY_PATH: Record<string, SeoMeta> = {
     indexable: true,
     language: 'fr',
   },
-  '/cgv': {
-    title: 'Conditions Générales de Vente | Match',
-    description:
-      'Consultez les conditions générales de vente applicables aux services Match.',
-    canonicalPath: '/terms-of-sale',
-    robots: 'index, follow',
-    ogType: 'article',
-    indexable: true,
-    language: 'fr',
-  },
 };
 
 const NOINDEX_PREFIXES = [
