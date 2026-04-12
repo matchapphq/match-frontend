@@ -7,6 +7,7 @@ import { ThemeProvider } from '../features/theme/context/ThemeContext';
 import { LanguageProvider } from '../context/LanguageContext';
 import { ToastProvider } from '../context/ToastContext';
 import apiClient from '../api/client';
+import { SeoManager } from '../components/seo/SeoManager';
 import {
   getCheckoutState,
   clearCheckoutState,
@@ -77,6 +78,7 @@ export default function App() {
             <LanguageProvider>
               <ToastProvider>
                 <StripeReturnHandler />
+                <SeoManager />
                 <ScrollToTop />
                 <AppRoutes />
               </ToastProvider>
@@ -232,7 +234,6 @@ function AppRoutes() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms-of-sale" element={<Cgv />} />
-      <Route path="/cgv" element={<Navigate to="/terms-of-sale" replace />} />
 
       {/* ── Onboarding routes (auth required, onboarding NOT complete) ── */}
       <Route path="/onboarding" element={<RequireAuth><OnboardingWelcome /></RequireAuth>} />

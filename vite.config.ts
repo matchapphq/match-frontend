@@ -50,10 +50,43 @@
         '@': path.resolve(__dirname, './src'),
       },
     },
-    build: {
-      target: 'esnext',
-      outDir: 'build',
+  build: {
+    target: 'esnext',
+    outDir: 'build',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            const featureMatch = id.match(/\/src\/src\/features\/([^/]+)\//);
+            if (featureMatch) {
+              return `feature-${featureMatch[1]}`;
+            }
+
+            const pageMatch = id.match(/\/src\/src\/pages\/([^/]+)\//);
+            if (pageMatch) {
+              return `page-${pageMatch[1]}`;
+            }
+
+            return;
+          }
+
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+            return 'react-vendor';
+          }
+
+          if (id.includes('/@tanstack/') || id.includes('/axios/')) {
+            return 'data-vendor';
+          }
+
+          if (id.includes('/@radix-ui/') || id.includes('/lucide-react/') || id.includes('/recharts/')) {
+            return 'ui-vendor';
+          }
+
+          return 'vendor';
+        },
+      },
     },
+  },
     server: {
      port: 5173,
      host: true,

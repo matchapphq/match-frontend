@@ -2,17 +2,26 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://matchapp.fr/</loc>
+    <lastmod>2026-04-11</lastmod>
   </url>
   <url>
     <loc>https://matchapp.fr/presentation</loc>
+    <lastmod>2026-04-11</lastmod>
   </url>
   <url>
     <loc>https://matchapp.fr/public-referral</loc>
+    <lastmod>2026-04-11</lastmod>
   </url>
   <url>
     <loc>https://matchapp.fr/terms</loc>
+    <lastmod>2026-04-11</lastmod>
   </url>
   <url>
     <loc>https://matchapp.fr/privacy</loc>
+    <lastmod>2026-04-11</lastmod>
+  </url>
+  <url>
+    <loc>https://matchapp.fr/terms-of-sale</loc>
+    <lastmod>2026-04-11</lastmod>
   </url>
 </urlset>

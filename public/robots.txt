@@ -1,7 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /api
 Disallow: /login
 Disallow: /register
+Disallow: /forgot-password
 Disallow: /onboarding
 Disallow: /dashboard
 Disallow: /matches
