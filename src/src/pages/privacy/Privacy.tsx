@@ -63,27 +63,27 @@ export function Privacy() {
             <span className="text-sm">Page légale</span>
           </div>
           <h1 className="text-3xl sm:text-4xl text-gray-900 dark:text-white mb-3">Politique de confidentialité</h1>
-          <p className="text-gray-600 dark:text-gray-400">Dernière mise à jour : 27 février 2026</p>
+          <p className="text-gray-600 dark:text-gray-400">Dernière mise à jour : 7 avril 2026</p>
         </div>
 
         <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-gray-200/50 dark:border-gray-700/50 shadow-xl space-y-6">
           <section className="space-y-3">
-            <h2 className="text-xl text-gray-900 dark:text-white">1. Qui sommes-nous</h2>
+            <h2 className="text-xl text-gray-900 dark:text-white">1. Responsable de traitement</h2>
             <p className="text-gray-700 dark:text-gray-300">
-              Match est un service accessible via le site https://matchapp.fr et l&apos;application Match. Cette politique décrit la manière dont nous collectons, utilisons et protégeons les données personnelles des utilisateurs.
+              MATCH (SAS) est responsable du traitement des données personnelles collectées via le site https://matchapp.fr et l&apos;application mobile Match.
             </p>
             <p className="text-gray-700 dark:text-gray-300">
-              Contact confidentialité : <a className="underline hover:no-underline" href="mailto:support@match-app.fr">support@match-app.fr</a>
+              Contact confidentialité : <a className="underline hover:no-underline" href="mailto:data@matchapp.fr">data@matchapp.fr</a>
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl text-gray-900 dark:text-white">2. Données que nous collectons</h2>
+            <h2 className="text-xl text-gray-900 dark:text-white">2. Données traitées</h2>
             <p className="text-gray-700 dark:text-gray-300">
-              Selon votre usage, nous pouvons collecter : nom, prénom, email, numéro de téléphone, photo de profil, rôle de compte, préférences, données de réservation, et données techniques (adresse IP, logs, appareil, navigateur).
+              Selon votre usage, Match traite notamment : identité de compte (email, nom, prénom, téléphone, photo), rôle de compte, préférences utilisateur, données de réservation, données de facturation professionnelle, et données techniques de session.
             </p>
             <p className="text-gray-700 dark:text-gray-300">
-              Pour la gestion des sessions et la sécurité du compte, nous pouvons également traiter une localisation approximative de connexion (ville, région, pays) déduite à partir de l&apos;adresse IP ou de métadonnées réseau fournies par notre infrastructure.
+              Les données techniques peuvent inclure l&apos;adresse IP, le terminal, le navigateur/user-agent, des journaux de sécurité et une localisation de connexion approximative (ville, région, pays) déduite de l&apos;IP.
             </p>
           </section>
 
@@ -99,7 +99,7 @@ export function Privacy() {
               Les données Google sont stockées dans nos bases applicatives selon les mêmes standards de sécurité que les autres données compte. Elles ne sont pas vendues ni utilisées pour la publicité ciblée.
             </p>
             <p className="text-gray-700 dark:text-gray-300">
-              Vous pouvez à tout moment révoquer l&apos;accès Google depuis votre compte Google (myaccount.google.com/permissions) et demander la suppression de vos données via <a className="underline hover:no-underline" href="mailto:support@match-app.fr">support@match-app.fr</a>.
+              Vous pouvez à tout moment révoquer l&apos;accès Google depuis votre compte Google (myaccount.google.com/permissions) et demander la suppression de vos données via <a className="underline hover:no-underline" href="mailto:data@matchapp.fr">data@matchapp.fr</a>.
             </p>
             <p className="text-gray-700 dark:text-gray-300">
               L&apos;utilisation des informations reçues depuis Google respecte la Google API Services User Data Policy, y compris les exigences de Limited Use lorsqu&apos;elles s&apos;appliquent.
@@ -107,63 +107,80 @@ export function Privacy() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl text-gray-900 dark:text-white">4. Pourquoi nous utilisons vos données</h2>
+            <h2 className="text-xl text-gray-900 dark:text-white">4. Données Apple (Sign In with Apple)</h2>
             <p className="text-gray-700 dark:text-gray-300">
-              Nous traitons vos données pour : créer et sécuriser votre compte, vous authentifier, permettre les réservations et fonctionnalités de l&apos;application, améliorer le service, répondre au support client et respecter nos obligations légales.
+              Si vous utilisez Apple, Match traite les informations d&apos;identification renvoyées par Apple (identifiant Apple, email lorsque fourni et vérifié, éléments de profil transmis lors de la première connexion).
             </p>
             <p className="text-gray-700 dark:text-gray-300">
-              Les données techniques de session, y compris la localisation approximative de connexion lorsqu&apos;elle est disponible, peuvent être utilisées pour détecter des anomalies d&apos;accès, afficher vos sessions actives et renforcer la protection du compte.
-            </p>
-            <p className="text-gray-700 dark:text-gray-300">
-              Nous n&apos;utilisons pas les données Google pour de la revente de données personnelles.
+              Ces données sont utilisées uniquement pour créer ou lier votre compte, authentifier l&apos;accès et sécuriser la session.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl text-gray-900 dark:text-white">5. Bases légales</h2>
+            <h2 className="text-xl text-gray-900 dark:text-white">5. Finalités des traitements</h2>
             <p className="text-gray-700 dark:text-gray-300">
-              Les traitements reposent selon les cas sur : l&apos;exécution du contrat (fourniture du service), l&apos;intérêt légitime (sécurité et amélioration), le respect d&apos;obligations légales, et votre consentement lorsque nécessaire.
+              Match traite vos données pour : authentification, gestion de compte, gestion des réservations, gestion des établissements, facturation professionnelle, sécurité des sessions, support client, gestion des demandes RGPD, et amélioration du service.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              Sur mobile, Match utilise également PostHog pour la mesure d&apos;usage analytique, selon le paramètre de consentement analytics du compte.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl text-gray-900 dark:text-white">6. Durée de conservation</h2>
+            <h2 className="text-xl text-gray-900 dark:text-white">6. Bases légales</h2>
             <p className="text-gray-700 dark:text-gray-300">
-              Nous conservons vos données pendant la durée nécessaire au fonctionnement du service, puis selon les délais légaux applicables. Vous pouvez demander la suppression de votre compte à tout moment, sous réserve des obligations légales de conservation.
+              Les traitements reposent, selon les cas, sur : l&apos;exécution du contrat (fourniture du service), le respect des obligations légales, l&apos;intérêt légitime (sécurité et fonctionnement), et le consentement lorsqu&apos;il est requis.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl text-gray-900 dark:text-white">7. Partage des données</h2>
+            <h2 className="text-xl text-gray-900 dark:text-white">7. Destinataires et sous-traitants</h2>
             <p className="text-gray-700 dark:text-gray-300">
-              Vos données peuvent être partagées uniquement avec des prestataires techniques nécessaires au fonctionnement de Match (hébergement, infrastructure, outils de communication), dans le respect de contrats de confidentialité et de sécurité.
+              Les données peuvent être transmises, dans la limite nécessaire, à des prestataires techniques impliqués dans l&apos;exécution du service, notamment : Stripe (paiement), Google (authentification), Apple (authentification), PostHog (analytics mobile) et des services de géolocalisation IP (ipapi.co, ipwho.is, ipinfo.io) pour la sécurité des sessions.
             </p>
             <p className="text-gray-700 dark:text-gray-300">
-              Lorsque cela est nécessaire à la sécurité des sessions, une résolution technique de localisation approximative associée à une adresse IP peut être effectuée côté serveur par des prestataires techniques agissant pour notre compte.
+              Match peut également recourir à des prestataires d&apos;hébergement, d&apos;infrastructure et d&apos;envoi d&apos;e-mails strictement nécessaires au fonctionnement du service.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl text-gray-900 dark:text-white">8. Sécurité</h2>
+            <h2 className="text-xl text-gray-900 dark:text-white">8. Durées de conservation</h2>
             <p className="text-gray-700 dark:text-gray-300">
-              Nous mettons en place des mesures techniques et organisationnelles adaptées pour protéger vos données contre l&apos;accès non autorisé, l&apos;altération, la perte ou la divulgation.
+              Les données sont conservées pendant la durée nécessaire à la fourniture du service, puis selon les obligations légales applicables.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              En cas de désactivation du compte, les données sont conservées pendant 30 jours avant suppression définitive, avec possibilité de réactivation pendant ce délai.
             </p>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-xl text-gray-900 dark:text-white">9. Vos droits</h2>
             <p className="text-gray-700 dark:text-gray-300">
-              Vous disposez des droits d&apos;accès, de rectification, d&apos;effacement, d&apos;opposition, de limitation et de portabilité de vos données, conformément à la réglementation applicable.
+              Vous disposez des droits d&apos;accès, de rectification, d&apos;effacement, d&apos;opposition, de limitation et de portabilité, conformément à la réglementation applicable.
             </p>
             <p className="text-gray-700 dark:text-gray-300">
-              Pour exercer vos droits : <a className="underline hover:no-underline" href="mailto:support@match-app.fr">support@match-app.fr</a>. Vous pouvez également déposer une réclamation auprès de la CNIL (www.cnil.fr).
+              Pour exercer vos droits : <a className="underline hover:no-underline" href="mailto:data@matchapp.fr">data@matchapp.fr</a>. Vous pouvez également adresser une réclamation à la CNIL (www.cnil.fr).
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl text-gray-900 dark:text-white">10. Modifications</h2>
+            <h2 className="text-xl text-gray-900 dark:text-white">10. Sécurité</h2>
             <p className="text-gray-700 dark:text-gray-300">
-              Cette politique peut évoluer. Toute mise à jour importante sera publiée sur cette page avec une nouvelle date de mise à jour.
+              Match met en œuvre des mesures techniques et organisationnelles adaptées pour protéger les données contre l&apos;accès non autorisé, la perte, l&apos;altération ou la divulgation.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-xl text-gray-900 dark:text-white">11. Cookies et technologies similaires</h2>
+            <p className="text-gray-700 dark:text-gray-300">
+              Sur le web, Match utilise des cookies techniques strictement nécessaires à l&apos;authentification et à la sécurité des sessions. Sur mobile, des SDK peuvent être utilisés pour le fonctionnement du service et la mesure d&apos;usage.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-xl text-gray-900 dark:text-white">12. Modifications</h2>
+            <p className="text-gray-700 dark:text-gray-300">
+              La présente politique peut évoluer. La version de référence est celle publiée sur cette page à sa date de mise à jour.
             </p>
           </section>
         </div>
