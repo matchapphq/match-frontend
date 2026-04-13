@@ -1,6 +1,4 @@
 import { ArrowRight } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import apiClient from '../../../api/client';
 import { PublicFooter } from '../../../components/PublicFooter';
 import { PublicNavbar } from '../../../components/PublicNavbar';
 import { useBillingPricing } from '../../../hooks/api/useBilling';
@@ -13,21 +11,6 @@ interface LandingPageProps {
 
 export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProps) {
   const { data: billingPricing } = useBillingPricing();
-
-  // Health check API call
-  useQuery({
-    queryKey: ['health'],
-    queryFn: async () => {
-      try {
-        const res = await apiClient.get('/health');
-        console.log('API Health Check:', res.data);
-        return res.data;
-      } catch (error) {
-        console.error('API Health Check Failed:', error);
-        throw error;
-      }
-    }
-  });
   
   const features = [
     {
@@ -78,6 +61,7 @@ export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProp
 
       <PublicNavbar />
 
+      <main id="main-content" role="main" className="relative">
       {/* Hero Section */}
       <section className="relative pt-24 pb-32 sm:pt-32 sm:pb-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
@@ -205,9 +189,13 @@ export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProp
             </div>
             <div className="relative">
               <div className="glass-card rounded-3xl overflow-hidden backdrop-blur-2xl gradient-border">
-                <img 
-                  src="https://images.unsplash.com/photo-1759694282882-5e9f4e1ad26e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBiYXIlMjByZXN0YXVyYW50JTIwYXRtb3NwaGVyZXxlbnwxfHx8fDE3Njc0Mzk3MzB8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                <img
+                  src="https://images.unsplash.com/photo-1759694282882-5e9f4e1ad26e?crop=entropy&cs=tinysrgb&fit=max&fm=webp&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBiYXIlMjByZXN0YXVyYW50JTIwYXRtb3NwaGVyZXxlbnwxfHx8fDE3Njc0Mzk3MzB8MA&ixlib=rb-4.1.0&q=70&w=720&h=480&utm_source=figma&utm_medium=referral"
                   alt="Sports bar"
+                  width={720}
+                  height={480}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -286,6 +274,7 @@ export function LandingPage({ onGetStarted, onAppPresentation }: LandingPageProp
           </div>
         </div>
       </section>
+      </main>
 
       <PublicFooter />
     </div>
