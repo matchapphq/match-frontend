@@ -70,6 +70,7 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
         </div>
       </header>
 
+      <main id="main-content" role="main">
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-32">
         <div className="absolute inset-0 bg-gradient-to-br from-[#5a03cf]/5 via-transparent to-[#9cff02]/5" />
@@ -388,6 +389,7 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
           </button>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="bg-white dark:bg-[#1a1a1a] border-t border-gray-200/50 dark:border-white/10 py-12">

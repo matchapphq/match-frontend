@@ -22,6 +22,7 @@ export function AppPresentation() {
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] transition-colors duration-300">
       <PublicNavbar />
 
+      <main id="main-content" role="main">
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-32">
         <div className="absolute inset-0 bg-gradient-to-br from-[#5a03cf]/5 via-transparent to-[#9cff02]/5" />
@@ -340,6 +341,7 @@ export function AppPresentation() {
           </button>
         </div>
       </section>
+      </main>
 
       <PublicFooter />
 
