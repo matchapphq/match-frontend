@@ -1,20 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /api
-Disallow: /login
-Disallow: /register
-Disallow: /forgot-password
-Disallow: /onboarding
-Disallow: /dashboard
-Disallow: /matches
-Disallow: /my-matches
-Disallow: /my-venues
-Disallow: /boost
-Disallow: /referral
-Disallow: /my-reviews
-Disallow: /account
-Disallow: /reservations
-Disallow: /notifications
-Disallow: /qr-scanner
 
 Sitemap: https://matchapp.fr/sitemap.xml

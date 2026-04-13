@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 type SeoMeta = {
   title: string;
   description: string;
+  keywords?: string;
   canonicalPath: string;
   robots: 'index, follow' | 'noindex, nofollow';
   ogType?: 'website' | 'article';
@@ -15,6 +16,8 @@ type SeoMeta = {
 const SITE_URL = 'https://matchapp.fr';
 const SITE_NAME = 'Match';
 const DEFAULT_IMAGE_PATH = '/apple-touch-icon.png?v=7';
+const DEFAULT_KEYWORDS =
+  'match, bar sportif, restaurant sportif, reservations sport, diffusion sportive, calendrier matchs, etablissement partenaire';
 const STRUCTURED_DATA_SCRIPT_ID = 'matchapp-seo-jsonld';
 
 const PUBLIC_SEO_BY_PATH: Record<string, SeoMeta> = {
@@ -22,6 +25,7 @@ const PUBLIC_SEO_BY_PATH: Record<string, SeoMeta> = {
     title: 'Match | Valorisez vos diffusions sportives en établissement',
     description:
       'Match aide les bars et restaurants qui diffusent déjà du sport à gagner en visibilité, attirer plus de clients et augmenter leurs réservations.',
+    keywords: DEFAULT_KEYWORDS,
     canonicalPath: '/',
     robots: 'index, follow',
     ogType: 'website',
@@ -32,6 +36,7 @@ const PUBLIC_SEO_BY_PATH: Record<string, SeoMeta> = {
     title: 'Présentation | Match',
     description:
       'Découvrez comment Match aide les établissements qui diffusent déjà du sport à mieux programmer leurs affiches, attirer du trafic et suivre leurs performances.',
+    keywords: DEFAULT_KEYWORDS,
     canonicalPath: '/presentation',
     robots: 'index, follow',
     ogType: 'website',
@@ -42,6 +47,7 @@ const PUBLIC_SEO_BY_PATH: Record<string, SeoMeta> = {
     title: 'Parrainage | Match',
     description:
       'Rejoignez Match via le programme de parrainage et bénéficiez d’avantages pour votre établissement.',
+    keywords: DEFAULT_KEYWORDS,
     canonicalPath: '/public-referral',
     robots: 'index, follow',
     ogType: 'website',
@@ -52,6 +58,7 @@ const PUBLIC_SEO_BY_PATH: Record<string, SeoMeta> = {
     title: 'Conditions Générales | Match',
     description:
       'Consultez les conditions générales d’utilisation de Match pour les établissements partenaires.',
+    keywords: DEFAULT_KEYWORDS,
     canonicalPath: '/terms',
     robots: 'index, follow',
     ogType: 'article',
@@ -62,6 +69,7 @@ const PUBLIC_SEO_BY_PATH: Record<string, SeoMeta> = {
     title: 'Politique de Confidentialité | Match',
     description:
       'Consultez la politique de confidentialité de Match et la gestion de vos données personnelles.',
+    keywords: DEFAULT_KEYWORDS,
     canonicalPath: '/privacy',
     robots: 'index, follow',
     ogType: 'article',
@@ -72,6 +80,7 @@ const PUBLIC_SEO_BY_PATH: Record<string, SeoMeta> = {
     title: 'Conditions Générales de Vente | Match',
     description:
       'Consultez les conditions générales de vente applicables aux services Match.',
+    keywords: DEFAULT_KEYWORDS,
     canonicalPath: '/terms-of-sale',
     robots: 'index, follow',
     ogType: 'article',
@@ -120,8 +129,9 @@ function resolveSeo(pathname: string): SeoMeta {
 
   if (isNoindexPath(path)) {
     return {
-      title: 'Espace partenaire | Match',
+      title: 'Espace partenaire Match | Gestion des réservations sportives',
       description: 'Accédez à votre espace partenaire Match.',
+      keywords: DEFAULT_KEYWORDS,
       canonicalPath: path,
       robots: 'noindex, nofollow',
       ogType: 'website',
@@ -131,9 +141,10 @@ function resolveSeo(pathname: string): SeoMeta {
   }
 
   return {
-    title: 'Match',
+    title: 'Match | Plateforme pour bars et restaurants sportifs',
     description:
       'Match aide les établissements qui diffusent déjà du sport à gagner en visibilité et en réservations.',
+    keywords: DEFAULT_KEYWORDS,
     canonicalPath: path,
     robots: 'noindex, nofollow',
     ogType: 'website',
@@ -242,6 +253,7 @@ export function SeoManager() {
     document.title = seo.title;
 
     upsertMetaTag('name', 'description', seo.description);
+    upsertMetaTag('name', 'keywords', seo.keywords ?? DEFAULT_KEYWORDS);
     upsertMetaTag('name', 'robots', seo.robots);
 
     upsertMetaTag('property', 'og:title', seo.title);
@@ -251,6 +263,7 @@ export function SeoManager() {
     upsertMetaTag('property', 'og:site_name', SITE_NAME);
     upsertMetaTag('property', 'og:locale', 'fr_FR');
     upsertMetaTag('property', 'og:image', imageUrl);
+    upsertMetaTag('property', 'og:image:alt', 'Logo Match pour les établissements diffusant du sport');
 
     upsertMetaTag('name', 'twitter:card', 'summary_large_image');
     upsertMetaTag('name', 'twitter:title', seo.title);

@@ -52,6 +52,8 @@
     },
   build: {
     target: 'esnext',
+    minify: 'esbuild',
+    cssMinify: true,
     outDir: 'build',
     rollupOptions: {
       output: {
