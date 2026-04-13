@@ -7,12 +7,15 @@ type SeoStaticPage = {
   path: string;
   title: string;
   description: string;
+  keywords: string;
   ogType: "website" | "article";
 };
 
 const SITE_URL = "https://matchapp.fr";
 const SITE_NAME = "Match";
 const IMAGE_URL = `${SITE_URL}/apple-touch-icon.png?v=7`;
+const DEFAULT_KEYWORDS =
+  "match, bar sportif, restaurant sportif, reservations sport, diffusion sportive, calendrier matchs, etablissement partenaire";
 const JSONLD_ID = "matchapp-seo-jsonld";
 
 const PUBLIC_PAGES: SeoStaticPage[] = [
@@ -21,6 +24,7 @@ const PUBLIC_PAGES: SeoStaticPage[] = [
     title: "Match | Valorisez vos diffusions sportives en établissement",
     description:
       "Match aide les bars et restaurants qui diffusent déjà du sport à gagner en visibilité, attirer plus de clients et augmenter leurs réservations.",
+    keywords: DEFAULT_KEYWORDS,
     ogType: "website",
   },
   {
@@ -28,6 +32,7 @@ const PUBLIC_PAGES: SeoStaticPage[] = [
     title: "Présentation | Match",
     description:
       "Découvrez comment Match aide les établissements qui diffusent déjà du sport à mieux programmer leurs affiches, attirer du trafic et suivre leurs performances.",
+    keywords: DEFAULT_KEYWORDS,
     ogType: "website",
   },
   {
@@ -35,6 +40,7 @@ const PUBLIC_PAGES: SeoStaticPage[] = [
     title: "Parrainage | Match",
     description:
       "Rejoignez Match via le programme de parrainage et bénéficiez d’avantages pour votre établissement.",
+    keywords: DEFAULT_KEYWORDS,
     ogType: "website",
   },
   {
@@ -42,6 +48,7 @@ const PUBLIC_PAGES: SeoStaticPage[] = [
     title: "Conditions Générales | Match",
     description:
       "Consultez les conditions générales d’utilisation de Match pour les établissements partenaires.",
+    keywords: DEFAULT_KEYWORDS,
     ogType: "article",
   },
   {
@@ -49,6 +56,7 @@ const PUBLIC_PAGES: SeoStaticPage[] = [
     title: "Politique de Confidentialité | Match",
     description:
       "Consultez la politique de confidentialité de Match et la gestion de vos données personnelles.",
+    keywords: DEFAULT_KEYWORDS,
     ogType: "article",
   },
   {
@@ -56,6 +64,7 @@ const PUBLIC_PAGES: SeoStaticPage[] = [
     title: "Conditions Générales de Vente | Match",
     description:
       "Consultez les conditions générales de vente applicables aux services Match.",
+    keywords: DEFAULT_KEYWORDS,
     ogType: "article",
   },
 ];
@@ -197,6 +206,7 @@ function renderPage(templateHtml: string, page: SeoStaticPage): string {
   html = ensureLangFr(html);
   html = upsertTitle(html, page.title);
   html = upsertMetaTag(html, "name", "description", page.description);
+  html = upsertMetaTag(html, "name", "keywords", page.keywords);
   html = upsertMetaTag(html, "name", "robots", "index, follow");
   html = upsertCanonical(html, canonicalUrl);
 
@@ -207,6 +217,7 @@ function renderPage(templateHtml: string, page: SeoStaticPage): string {
   html = upsertMetaTag(html, "property", "og:site_name", SITE_NAME);
   html = upsertMetaTag(html, "property", "og:locale", "fr_FR");
   html = upsertMetaTag(html, "property", "og:image", IMAGE_URL);
+  html = upsertMetaTag(html, "property", "og:image:alt", "Logo Match pour les établissements diffusant du sport");
 
   html = upsertMetaTag(html, "name", "twitter:card", "summary_large_image");
   html = upsertMetaTag(html, "name", "twitter:title", page.title);
