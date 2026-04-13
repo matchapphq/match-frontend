@@ -88,7 +88,9 @@ export function AuthenticatedLayout() {
           }}
         />
 
-        <Outlet />
+        <main id="main-content" role="main">
+          <Outlet />
+        </main>
       </div>
 
       {/* Notification Bell - Fixed top right */}
