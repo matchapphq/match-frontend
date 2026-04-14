@@ -13,7 +13,8 @@ export function RequirePaymentMethod({ children }: { children: React.ReactNode }
   if (
     currentUser &&
     currentUser.role === 'venue_owner' &&
-    !currentUser.hasPaymentMethod
+    !currentUser.hasPaymentMethod &&
+    !currentUser.hasCompletedOnboarding
   ) {
     const venueQuery = pendingVenueId ? `?venue=${encodeURIComponent(pendingVenueId)}` : '';
     return <Navigate to={`/onboarding/payment-required${venueQuery}`} replace />;

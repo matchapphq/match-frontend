@@ -28,6 +28,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   currentUser: User | null;
   completeOnboarding: () => Promise<void>;
+  skipOnboardingPaymentSetup: () => Promise<void>;
   updateOnboardingStep: (step: LocalOnboardingStep) => Promise<void>;
   checkApiHealth: () => Promise<boolean>;
   refreshUserData: () => Promise<void>;
@@ -52,9 +53,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 function mapApiOnboardingStepToLocal(apiUser: ApiUser): LocalOnboardingStep {
   switch (apiUser.onboarding_step) {
     case 'done':
+    case 'paiement_method_skipped':
       return 'complete';
     case 'paiement_method':
-    case 'paiement_method_skipped':
       return 'facturation';
     case 'first_venue':
       return 'restaurant';
@@ -344,6 +345,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await updateOnboardingStep('complete');
   };
 
+  const skipOnboardingPaymentSetup = async () => {
+    if (!currentUser) return;
+
+    const updatedUser = {
+      ...currentUser,
+      onboardingStep: 'complete' as const,
+      hasCompletedOnboarding: true,
+    };
+    setCurrentUser(updatedUser);
+
+    if (apiStatus !== 'online') return;
+
+    try {
+      await api.updateUserProfile({
+        onboarding_step: 'paiement_method_skipped',
+      });
+    } catch (error) {
+      console.warn('Failed to persist skipped payment onboarding step:', error);
+    }
+  };
+
   const logout = async () => {
     setIsLoggingOut(true);
     try {
@@ -374,6 +396,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       currentUser,
       completeOnboarding,
+      skipOnboardingPaymentSetup,
       updateOnboardingStep,
       checkApiHealth,
       refreshUserData,
