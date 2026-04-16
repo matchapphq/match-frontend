@@ -18,6 +18,7 @@ interface Restaurant {
   image: string;
   matchsOrganises: number;
   matchsVariation: number | null;
+  statut: 'actif' | 'inactif' | 'en_attente';
 }
 
 const FALLBACK_VENUE_IMAGE = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop';
@@ -74,11 +75,60 @@ function toFiniteNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function mapVenueStatusToUi(
+  status: unknown,
+  isActive: unknown,
+  hasPaymentMethod: boolean,
+): 'actif' | 'inactif' | 'en_attente' {
+  if (!hasPaymentMethod) {
+    return 'inactif';
+  }
+
+  const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : null;
+  const active = isActive === true;
+
+  switch (normalizedStatus) {
+    case 'approved':
+    case 'active':
+    case 'verified':
+      return active ? 'actif' : 'inactif';
+    case 'pending':
+      return active ? 'en_attente' : 'inactif';
+    case 'rejected':
+    case 'suspended':
+    case 'inactive':
+      return 'inactif';
+    default:
+      return active ? 'actif' : 'inactif';
+  }
+}
+
+function getStatusUi(statut: Restaurant['statut']) {
+  switch (statut) {
+    case 'actif':
+      return {
+        label: 'Actif',
+        className: 'bg-green-500 text-white',
+      };
+    case 'en_attente':
+      return {
+        label: 'En attente',
+        className: 'bg-amber-500 text-white',
+      };
+    case 'inactif':
+    default:
+      return {
+        label: 'Inactif',
+        className: 'bg-gray-500 text-white',
+      };
+  }
+}
+
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   const { currentUser } = useAuth();
 
   const { data: restaurants = [], isLoading, error } = useQuery<Restaurant[]>({
-    queryKey: ['partner-venues'],
+    queryKey: ['partner-venues', currentUser?.hasPaymentMethod ?? false],
     queryFn: async () => {
       const response = await apiClient.get('/partners/venues');
       const payload = response.data ?? {};
@@ -98,6 +148,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
         image: resolveVenueImage(venue),
         matchsOrganises: Math.max(0, toFiniteNumber(venue.matches_count)),
         matchsVariation: typeof venue.matches_growth_percent === 'number' ? venue.matches_growth_percent : null,
+        statut: mapVenueStatusToUi(venue.status, venue.is_active, currentUser?.hasPaymentMethod ?? false),
       }));
 
       return restaurants;
@@ -255,11 +306,14 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {restaurants.map((restaurant) => (
-              <div
-                key={restaurant.id}
-                className="group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:border-[#5a03cf]/30 hover:shadow-xl hover:shadow-[#5a03cf]/5 transition-all duration-300 relative"
-              >
+            {restaurants.map((restaurant) => {
+              const statusUi = getStatusUi(restaurant.statut);
+
+              return (
+                <div
+                  key={restaurant.id}
+                  className="group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:border-[#5a03cf]/30 hover:shadow-xl hover:shadow-[#5a03cf]/5 transition-all duration-300 relative"
+                >
                 {/* Image */}
                 <div 
                   onClick={() => handleRestaurantClick(restaurant.id)}
@@ -285,8 +339,8 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
 
                   {/* Status Badge */}
                   <div className="absolute bottom-4 left-4">
-                    <span className="px-3 py-1 bg-green-500 text-white text-xs rounded-full backdrop-blur-sm">
-                      Actif
+                    <span className={`px-3 py-1 text-xs rounded-full backdrop-blur-sm ${statusUi.className}`}>
+                      {statusUi.label}
                     </span>
                   </div>
                 </div>
@@ -350,8 +404,9 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+                </div>
+              );
+            })}
 
             {/* Add Card */}
             <button 
