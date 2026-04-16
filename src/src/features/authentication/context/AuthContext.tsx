@@ -14,6 +14,7 @@ export interface User {
   hasCompletedOnboarding: boolean;
   hasPaymentMethod: boolean;
   onboardingStep: 'restaurant' | 'facturation' | 'complete';
+  onboardingApiStep?: ApiUser['onboarding_step'];
 }
 
 type LocalOnboardingStep = User['onboardingStep'];
@@ -91,6 +92,7 @@ function apiUserToUser(apiUser: ApiUser): User {
     hasCompletedOnboarding: onboardingStep === 'complete' || (apiUser.has_completed_onboarding ?? false),
     hasPaymentMethod: apiUser.has_payment_method ?? false,
     onboardingStep,
+    onboardingApiStep: apiUser.onboarding_step ?? null,
   };
 }
 
@@ -266,6 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           hasCompletedOnboarding: false,
           hasPaymentMethod: false,
           onboardingStep: 'restaurant',
+          onboardingApiStep: null,
         };
 
         // Fetch full user profile after login
@@ -327,6 +330,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...currentUser,
       onboardingStep: step,
       hasCompletedOnboarding: step === 'complete',
+      onboardingApiStep: mapLocalOnboardingStepToApi(step),
     };
     setCurrentUser(updatedUser);
 
@@ -352,6 +356,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...currentUser,
       onboardingStep: 'complete' as const,
       hasCompletedOnboarding: true,
+      onboardingApiStep: 'paiement_method_skipped' as const,
     };
     setCurrentUser(updatedUser);
 
