@@ -79,12 +79,24 @@ function mapVenueStatusToUi(
   status: unknown,
   isActive: unknown,
   hasPaymentMethod: boolean,
+  hasCompletedOnboarding: boolean,
 ): 'actif' | 'inactif' | 'en_attente' {
+  const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : null;
+
+  if (hasPaymentMethod && hasCompletedOnboarding) {
+    switch (normalizedStatus) {
+      case 'rejected':
+      case 'suspended':
+        return 'inactif';
+      default:
+        return 'actif';
+    }
+  }
+
   if (!hasPaymentMethod) {
     return 'inactif';
   }
 
-  const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : null;
   const active = isActive === true;
 
   switch (normalizedStatus) {
@@ -126,9 +138,11 @@ function getStatusUi(statut: Restaurant['statut']) {
 
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   const { currentUser } = useAuth();
+  const hasPaymentMethod = currentUser?.hasPaymentMethod ?? false;
+  const hasCompletedOnboarding = currentUser?.hasCompletedOnboarding ?? false;
 
   const { data: restaurants = [], isLoading, error } = useQuery<Restaurant[]>({
-    queryKey: ['partner-venues', currentUser?.hasPaymentMethod ?? false],
+    queryKey: ['partner-venues', hasPaymentMethod, hasCompletedOnboarding],
     queryFn: async () => {
       const response = await apiClient.get('/partners/venues');
       const payload = response.data ?? {};
@@ -148,7 +162,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
         image: resolveVenueImage(venue),
         matchsOrganises: Math.max(0, toFiniteNumber(venue.matches_count)),
         matchsVariation: typeof venue.matches_growth_percent === 'number' ? venue.matches_growth_percent : null,
-        statut: mapVenueStatusToUi(venue.status, venue.is_active, currentUser?.hasPaymentMethod ?? false),
+        statut: mapVenueStatusToUi(venue.status, venue.is_active, hasPaymentMethod, hasCompletedOnboarding),
       }));
 
       return restaurants;

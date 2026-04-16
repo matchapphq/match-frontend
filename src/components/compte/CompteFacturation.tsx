@@ -12,9 +12,11 @@ import {
   Receipt,
   Wallet,
 } from 'lucide-react';
+import { useAuth } from '../../src/features/authentication/context/AuthContext';
 import { usePartnerVenues } from '../../src/hooks/api/useVenues';
 import { useVenueInvoices, useVenuePaymentPortal } from '../../src/hooks/api/useAccount';
 import { useAccruedCommission, useBillingPaymentMethod, useBillingPricing } from '../../src/hooks/api/useBilling';
+import { savePendingPaymentVenueId } from '../../src/utils/checkout-state';
 import { formatPricingLabel } from '../../src/utils/pricing';
 import { toast } from 'sonner';
 
@@ -67,20 +69,36 @@ function formatAmountLabel(value?: string | number | null, currency = 'EUR') {
   }).format(numericValue);
 }
 
-function resolveVenueStatus(venue: { status?: string; is_active?: boolean }) {
+function resolveVenueStatus(
+  venue: { status?: string; is_active?: boolean },
+  context: { hasPaymentMethod: boolean; hasCompletedOnboarding: boolean },
+) {
+  const normalizedStatus = typeof venue.status === 'string' ? venue.status.toLowerCase() : null;
+
+  if (context.hasPaymentMethod && context.hasCompletedOnboarding) {
+    switch (normalizedStatus) {
+      case 'rejected':
+        return 'rejected';
+      case 'suspended':
+        return 'suspended';
+      default:
+        return 'active';
+    }
+  }
+
   if (venue.is_active === true) {
     return 'active';
   }
 
-  if (venue.status === 'pending') {
+  if (normalizedStatus === 'pending') {
     return 'pending';
   }
 
-  if (venue.status === 'rejected') {
+  if (normalizedStatus === 'rejected') {
     return 'rejected';
   }
 
-  if (venue.status === 'suspended') {
+  if (normalizedStatus === 'suspended') {
     return 'suspended';
   }
 
@@ -208,6 +226,7 @@ function getPaymentMethodDisplay(paymentMethod?: {
 export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps) {
   const initialVenueIdFromUrl = useMemo(() => new URLSearchParams(window.location.search).get('venue') || '', []);
   const [selectedEtablissement, setSelectedEtablissement] = useState<string>('');
+  const { currentUser } = useAuth();
 
   const { data: venues, isLoading: isLoadingVenues } = usePartnerVenues();
   const {
@@ -223,12 +242,14 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
     data: paymentMethodStatus,
     isLoading: isLoadingPaymentMethod,
   } = useBillingPaymentMethod();
+  const hasPaymentMethod = paymentMethodStatus?.has_payment_method ?? false;
+  const hasCompletedOnboarding = currentUser?.hasCompletedOnboarding ?? false;
 
   const etablissements = useMemo<BillingVenue[]>(() => {
     if (!venues) return [];
 
     return venues.map((venue) => {
-      const statusKey = resolveVenueStatus(venue);
+      const statusKey = resolveVenueStatus(venue, { hasPaymentMethod, hasCompletedOnboarding });
 
       return {
         id: venue.id,
@@ -238,7 +259,7 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
         statusLabel: getVenueStatusLabel(statusKey),
       };
     });
-  }, [venues]);
+  }, [hasCompletedOnboarding, hasPaymentMethod, venues]);
 
   const formattedInvoices = useMemo<BillingInvoice[]>(() => {
     if (!invoices) return [];
@@ -280,7 +301,10 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
   const currentEtablissement = etablissements.find((item) => item.id === selectedEtablissement) || null;
   const activeVenuesCount = etablissements.filter((item) => item.statusKey === 'active').length;
   const paymentMethodDisplay = getPaymentMethodDisplay(paymentMethodStatus?.payment_method);
-  const hasPaymentMethod = paymentMethodStatus?.has_payment_method ?? false;
+  const isPaymentSetupSkipped =
+    currentUser?.role === 'venue_owner'
+    && currentUser.hasCompletedOnboarding
+    && !hasPaymentMethod;
 
   const pricingLabel = billingPricing
     ? formatPricingLabel({
@@ -320,6 +344,35 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
       }
       toast.error('Erreur lors de l’accès au portail de paiement');
     }
+  };
+
+  const handleGoToPaymentSetupInfo = () => {
+    const setupVenueId = selectedEtablissement || etablissements[0]?.id || initialVenueIdFromUrl || '';
+
+    if (setupVenueId) {
+      savePendingPaymentVenueId(setupVenueId);
+    }
+
+    const params = new URLSearchParams();
+    if (setupVenueId) {
+      params.set('venue', setupVenueId);
+    }
+    params.set('from', 'billing');
+
+    const query = params.toString();
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    window.location.href = query
+      ? `/onboarding/payment-required?${query}`
+      : '/onboarding/payment-required';
+  };
+
+  const handlePaymentCta = () => {
+    if (isPaymentSetupSkipped) {
+      handleGoToPaymentSetupInfo();
+      return;
+    }
+
+    void handleManagePayment();
   };
 
   const handleAddVenueNavigation = () => {
@@ -377,12 +430,12 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
             </button>
 
             <button
-              onClick={handleManagePayment}
-              disabled={paymentPortalMutation.isPending || !selectedEtablissement}
+              onClick={handlePaymentCta}
+              disabled={!isPaymentSetupSkipped && (paymentPortalMutation.isPending || !selectedEtablissement)}
               className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] px-3 py-2.5 text-xs leading-none text-white shadow-lg shadow-[#5a03cf]/20 transition-all hover:from-[#6a13df] hover:to-[#8a33ff] disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
             >
-              {paymentPortalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
-              Portail de paiement
+              {!isPaymentSetupSkipped && paymentPortalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
+              {isPaymentSetupSkipped ? 'Configurer mon moyen de paiement' : 'Portail de paiement'}
             </button>
           </div>
         </div>
@@ -534,12 +587,14 @@ export function CompteFacturation({ onNavigate, onBack }: CompteFacturationProps
                     </div>
 
                     <button
-                      onClick={handleManagePayment}
-                      disabled={paymentPortalMutation.isPending || !selectedEtablissement}
+                      onClick={handlePaymentCta}
+                      disabled={!isPaymentSetupSkipped && (paymentPortalMutation.isPending || !selectedEtablissement)}
                       className="flex w-full items-center justify-center gap-2 border-t border-gray-200 bg-[#f7f4ff] px-4 py-4 text-sm text-gray-900 transition-colors hover:bg-[#f1ebff] disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
                     >
-                      {paymentPortalMutation.isPending ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Wallet className="h-4 w-4 shrink-0" />}
-                      <span className="text-center">Gérer les informations de paiement</span>
+                      {!isPaymentSetupSkipped && paymentPortalMutation.isPending ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Wallet className="h-4 w-4 shrink-0" />}
+                      <span className="text-center">
+                        {isPaymentSetupSkipped ? 'Configurer mon moyen de paiement' : 'Gérer les informations de paiement'}
+                      </span>
                     </button>
                   </div>
                 </div>
