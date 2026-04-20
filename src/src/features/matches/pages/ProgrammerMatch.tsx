@@ -1,5 +1,5 @@
 import { ArrowLeft, Calendar, ChevronRight, MapPin, Check, Search, Trophy, Clock, Users, Loader2, AlertTriangle, CreditCard } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
@@ -53,11 +53,13 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isSearchInputOpen, setIsSearchInputOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
   const [placesDisponibles, setPlacesDisponibles] = useState(30);
   const [isInactiveVenueModalOpen, setIsInactiveVenueModalOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const maxPlaces = 50;
 
   useEffect(() => {
@@ -78,6 +80,12 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
       document.body.style.paddingRight = previousPaddingRight;
     };
   }, [isDatePickerOpen, isInactiveVenueModalOpen]);
+
+  useEffect(() => {
+    if (isSearchInputOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [isSearchInputOpen]);
 
   const isInactiveVenueError = (error: unknown): boolean => {
     const rawMessage = error instanceof Error ? error.message : '';
@@ -142,6 +150,26 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     date: selectedDate || undefined,
     search: searchQuery || undefined,
   });
+
+  const extractDatePart = (startTime: string): string => {
+    return startTime.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '';
+  };
+
+  const extractTimePart = (startTime: string): string => {
+    return startTime.match(/(?:T| )(\d{2}:\d{2})/)?.[1] || '';
+  };
+
+  const formatParisTime = (startTime: string): string => {
+    const date = new Date(startTime);
+    if (Number.isNaN(date.getTime())) return extractTimePart(startTime);
+
+    return new Intl.DateTimeFormat('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Europe/Paris',
+    }).format(date);
+  };
   
   // Transform upcoming matches
   const availableMatches: Match[] = useMemo(() => {
@@ -155,14 +183,18 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     }
     
     return matches.map((m: any) => {
+      const startTime = typeof m.start_time === 'string' ? m.start_time : '';
       let dateStr = '';
       let timeStr = '';
       try {
-        if (m.start_time) {
-          const date = new Date(m.start_time);
+        if (startTime) {
+          dateStr = extractDatePart(startTime);
+          timeStr = formatParisTime(startTime);
+
+          const date = new Date(startTime);
           if (!isNaN(date.getTime())) {
-            dateStr = format(date, 'yyyy-MM-dd');
-            timeStr = format(date, 'HH:mm');
+            if (!dateStr) dateStr = format(date, 'yyyy-MM-dd');
+            if (!timeStr) timeStr = format(date, 'HH:mm');
           }
         }
       } catch (e) {
@@ -178,7 +210,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
         date: dateStr,
         time: timeStr,
         venue: m.venue?.name,
-        startTime: m.start_time,
+        startTime,
       };
     });
   }, [upcomingData, selectedSport]);
@@ -276,7 +308,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
 
     return rawMatches.reduce((acc, match) => {
       const startTime = typeof match?.start_time === 'string' ? match.start_time : '';
-      const dateKey = startTime.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+      const dateKey = extractDatePart(startTime);
       if (!dateKey) return acc;
       acc[dateKey] = (acc[dateKey] || 0) + 1;
       return acc;
@@ -291,6 +323,49 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
       match.team2.toLowerCase().includes(searchQuery.toLowerCase()) ||
       match.league.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const sortedFilteredMatches = useMemo(
+    () =>
+      [...filteredMatches].sort((a, b) => {
+        const aDateTime = a.startTime || `${a.date}T${a.time || '00:00'}:00`;
+        const bDateTime = b.startTime || `${b.date}T${b.time || '00:00'}:00`;
+        return new Date(aDateTime).getTime() - new Date(bDateTime).getTime();
+      }),
+    [filteredMatches]
+  );
+
+  const selectedDateLabel = useMemo(() => {
+    if (!selectedDateObject) return 'Date non définie';
+    const formatted = format(selectedDateObject, 'EEEE d MMMM', { locale: fr });
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }, [selectedDateObject]);
+
+  const getFormattedMatchDate = (dateString: string): string => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    if (!year || !month || !day) return 'Date à confirmer';
+
+    const parsed = new Date(year, month - 1, day);
+    if (Number.isNaN(parsed.getTime())) return 'Date à confirmer';
+
+    const formatted = format(parsed, 'EEEE d MMMM', { locale: fr });
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  };
+
+  const handleTryNextDate = () => {
+    if (!selectedDate) return;
+
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    if (!year || !month || !day) return;
+
+    const nextDate = new Date(year, month - 1, day + 1);
+    nextDate.setHours(0, 0, 0, 0);
+    if (nextDate > calendarRange.endOfYear) {
+      toast.info('Vous avez atteint la fin des dates disponibles cette année.');
+      return;
+    }
+
+    handleDateSelect(format(nextDate, 'yyyy-MM-dd'));
+  };
 
   const handleMatchSelect = (match: Match) => {
     setSelectedMatch(match);
@@ -327,6 +402,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     setSelectedSport(null);
     setSelectedDate(null);
     setSearchQuery('');
+    setIsSearchInputOpen(false);
     setSelectedMatch(null);
     setIsDatePickerOpen(false);
   };
@@ -335,6 +411,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     setStep('date');
     setSelectedDate(null);
     setSearchQuery('');
+    setIsSearchInputOpen(false);
     setSelectedMatch(null);
     setIsDatePickerOpen(false);
   };
@@ -468,7 +545,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
                         className="group w-full flex items-center justify-between gap-4 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/80 dark:bg-gray-800/80 px-4 py-4 text-left hover:border-[#5a03cf]/50 hover:shadow-md hover:shadow-[#5a03cf]/10 transition-all duration-200"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#5a03cf]/10 text-[#5a03cf] dark:bg-[#5a03cf]/20 dark:text-[#caa8ff]">
+                          <span className="inline-flex items-center justify-center rounded-xl px-2.5 py-2.5 bg-[#5a03cf]/10 text-[#5a03cf] dark:bg-[#5a03cf]/20 dark:text-[#caa8ff]">
                             <Calendar className="w-5 h-5" />
                           </span>
                           <div>
@@ -560,79 +637,156 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
                 Trouvez le match que vous souhaitez diffuser
               </p>
 
-              {/* Barre de recherche */}
-              <div className="max-w-2xl mx-auto mb-8">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Rechercher par équipe ou compétition..."
-                    className="w-full pl-12 pr-4 py-4 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 rounded-2xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white placeholder-gray-500"
-                  />
+              <div className="max-w-4xl mx-auto mb-7">
+                <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl p-4 border border-gray-200/60 dark:border-gray-700/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center justify-center rounded-xl px-2.5 py-2 bg-[#5a03cf]/10 text-[#5a03cf] dark:bg-[#5a03cf]/20 dark:text-[#caa8ff]">
+                      <Calendar className="w-4 h-4" />
+                    </span>
+                    <div className="text-left">
+                      <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Date sélectionnée</p>
+                      <p className="text-sm text-gray-900 dark:text-white">{selectedDateLabel}</p>
+                    </div>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-gray-200/70 dark:border-gray-700/70 px-3 py-1.5">
+                    {matchesLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 text-[#5a03cf] animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5 text-[#5a03cf]" />
+                    )}
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                      {matchesLoading
+                        ? 'Recherche en cours...'
+                        : `${sortedFilteredMatches.length} match${sortedFilteredMatches.length > 1 ? 's' : ''} disponible${sortedFilteredMatches.length > 1 ? 's' : ''}`}
+                    </span>
+                  </div>
                 </div>
               </div>
+
             </div>
 
             {/* Résultats de recherche */}
-            <div className="max-w-4xl mx-auto space-y-4">
-              {filteredMatches.length === 0 ? (
-                <div className="text-center py-12 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    Aucun match trouvé. Essayez une autre recherche.
-                  </p>
+            <div className="max-w-4xl mx-auto">
+              <div className="flex justify-end mb-3">
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    if (!isSearchInputOpen) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onClick={() => {
+                    if (isSearchInputOpen) return;
+                    setIsSearchInputOpen(true);
+                  }}
+                  className="inline-flex h-9 px-3 items-center justify-center rounded-full border border-gray-200/70 dark:border-gray-700/70 bg-white/80 dark:bg-gray-900/80 text-gray-600 dark:text-gray-300 hover:border-[#5a03cf]/50 hover:text-[#5a03cf] transition-colors"
+                  aria-label="Afficher la recherche"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+              </div>
+
+              {isSearchInputOpen && (
+                <div className="relative w-full mb-4">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onBlur={(e) => {
+                      if (searchQuery.trim().length > 0) return;
+                      const nextFocused = e.relatedTarget as Node | null;
+                      const wrapper = e.currentTarget.parentElement;
+                      if (wrapper?.contains(nextFocused)) return;
+                      setIsSearchInputOpen(false);
+                    }}
+                    placeholder="Rechercher par équipe ou compétition..."
+                    className="w-full pl-10 pr-4 py-4 bg-white/65 dark:bg-gray-900/65 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 focus:ring-2 focus:ring-[#5a03cf]/15 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-500"
+                  />
                 </div>
-              ) : (
-                filteredMatches.map((match) => (
-                  <button
-                    key={match.id}
-                    onClick={() => handleMatchSelect(match)}
-                    className="w-full text-left bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50 hover:border-[#5a03cf]/50 transition-all duration-300 hover:scale-[1.01]"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        {/* Équipes */}
-                        <div className="flex items-center gap-3 mb-3">
-                          <span className="text-xl text-gray-900 dark:text-white">
-                            {match.team1}
-                          </span>
-                          <span className="text-gray-400">vs</span>
-                          <span className="text-xl text-gray-900 dark:text-white">
-                            {match.team2}
-                          </span>
-                        </div>
-                        
-                        {/* Info complémentaires */}
-                        <div className="flex flex-wrap gap-4 text-sm">
-                          <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                            <Trophy className="w-4 h-4" />
-                            <span>{match.league}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                            <Calendar className="w-4 h-4" />
-                            <span>{new Date(match.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                            <Clock className="w-4 h-4" />
-                            <span>{match.time}</span>
-                          </div>
-                          {match.venue && (
-                            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                              <MapPin className="w-4 h-4" />
-                              <span>{match.venue}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <ArrowLeft className="w-5 h-5 text-[#5a03cf] rotate-180" />
-                      </div>
-                    </div>
-                  </button>
-                ))
               )}
+
+              <div className="space-y-3">
+                {matchesLoading ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={`loading-match-${index}`}
+                      className="animate-pulse bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="h-8 w-24 rounded-xl bg-gray-200/80 dark:bg-gray-700/70" />
+                        <div className="h-4 w-32 rounded bg-gray-200/80 dark:bg-gray-700/70" />
+                      </div>
+                      <div className="h-6 w-3/4 rounded bg-gray-200/80 dark:bg-gray-700/70 mb-3" />
+                      <div className="h-4 w-2/3 rounded bg-gray-200/80 dark:bg-gray-700/70" />
+                    </div>
+                  ))
+                ) : sortedFilteredMatches.length === 0 ? (
+                  <div className="text-center py-12 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
+                    <p className="text-gray-700 dark:text-gray-200 mb-2">
+                      Aucun match disponible pour {selectedDateLabel.toLowerCase()}.
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      Essayez une autre recherche ou passez au jour suivant.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleTryNextDate}
+                      className="inline-flex items-center gap-2 rounded-full border border-gray-200/70 dark:border-gray-700/70 bg-white/80 dark:bg-gray-800/80 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:border-[#5a03cf]/50 hover:text-[#5a03cf] transition-colors"
+                    >
+                      Voir le jour suivant
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  sortedFilteredMatches.map((match) => (
+                    <button
+                      key={match.id}
+                      onClick={() => handleMatchSelect(match)}
+                      className="group relative overflow-hidden w-full text-left bg-white/65 dark:bg-gray-900/65 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/60 dark:border-gray-700/60 hover:border-[#5a03cf]/60 transition-all duration-200 hover:shadow-lg hover:shadow-[#5a03cf]/10"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#5a03cf]/0 via-[#5a03cf]/0 to-[#9cff02]/0 group-hover:from-[#5a03cf]/5 group-hover:via-transparent group-hover:to-[#9cff02]/5 transition-all duration-300" />
+                      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-4">
+                          <div className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[#5a03cf]/20 bg-[#5a03cf]/8 px-3 py-2 text-[#5a03cf] dark:text-[#caa8ff] dark:bg-[#5a03cf]/20 dark:border-[#5a03cf]/30">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-sm">{match.time || '--:--'}</span>
+                          </div>
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <span className="text-lg text-gray-900 dark:text-white">{match.team1}</span>
+                              <span className="text-gray-400">vs</span>
+                              <span className="text-lg text-gray-900 dark:text-white">{match.team2}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/70 dark:border-gray-700/70 px-2.5 py-1 text-gray-600 dark:text-gray-300">
+                                <Trophy className="w-3.5 h-3.5" />
+                                {match.league}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/70 dark:border-gray-700/70 px-2.5 py-1 text-gray-600 dark:text-gray-300">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {getFormattedMatchDate(match.date)}
+                              </span>
+                              {match.venue && (
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/70 dark:border-gray-700/70 px-2.5 py-1 text-gray-600 dark:text-gray-300">
+                                  <MapPin className="w-3.5 h-3.5" />
+                                  {match.venue}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="inline-flex items-center gap-2 text-[#5a03cf] group-hover:translate-x-0.5 transition-transform">
+                          <span className="text-xs uppercase tracking-wide">Programmer</span>
+                          <ArrowLeft className="w-5 h-5 rotate-180" />
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         )}
