@@ -22,6 +22,7 @@ export function PaymentRequired() {
 
   const venueIdFromQuery = useMemo(() => searchParams.get('venue') || '', [searchParams]);
   const autoContinueFromQuery = useMemo(() => searchParams.get('autocontinue') === '1', [searchParams]);
+  const openedFromBilling = useMemo(() => searchParams.get('from') === 'billing', [searchParams]);
   const setupCheckoutMutation = useBillingSetupCheckout();
   const { data: venues } = usePartnerVenues();
   const {
@@ -55,8 +56,11 @@ export function PaymentRequired() {
     if (autoContinueFromQuery) {
       params.set('autocontinue', '1');
     }
+    if (openedFromBilling) {
+      params.set('from', 'billing');
+    }
     navigate(`/onboarding/payment-required?${params.toString()}`, { replace: true });
-  }, [autoContinueFromQuery, navigate, resolvedVenueId, venueIdFromQuery]);
+  }, [autoContinueFromQuery, navigate, openedFromBilling, resolvedVenueId, venueIdFromQuery]);
 
   const navigateAfterActivation = useCallback(async () => {
     if (isRedirecting) return;
@@ -88,7 +92,13 @@ export function PaymentRequired() {
     }
 
     try {
-      const paymentRequiredUrl = `${window.location.origin}/onboarding/payment-required?venue=${encodeURIComponent(resolvedVenueId)}`;
+      const paymentRequiredParams = new URLSearchParams();
+      paymentRequiredParams.set('venue', resolvedVenueId);
+      if (openedFromBilling) {
+        paymentRequiredParams.set('from', 'billing');
+      }
+      const paymentRequiredPath = `/onboarding/payment-required?${paymentRequiredParams.toString()}`;
+      const paymentRequiredUrl = `${window.location.origin}${paymentRequiredPath}`;
       const result = await setupCheckoutMutation.mutateAsync({
         flow: 'post_first_venue',
         venue_id: resolvedVenueId,
@@ -106,7 +116,7 @@ export function PaymentRequired() {
         venueId: resolvedVenueId,
         sessionId: result.session_id,
         checkoutUrl: result.checkout_url,
-        returnPage: `/onboarding/payment-required?venue=${encodeURIComponent(resolvedVenueId)}`,
+        returnPage: paymentRequiredPath,
       });
       // Open Stripe in the same tab to avoid duplicate tabs on return.
       window.location.href = result.checkout_url;
@@ -118,6 +128,9 @@ export function PaymentRequired() {
       );
     }
   };
+
+  const backPath = openedFromBilling ? '/account/billing' : '/onboarding';
+  const backLabel = openedFromBilling ? 'Retour' : 'Retour à l\'onboarding';
 
   const handleManualCheck = async () => {
     setError(null);
@@ -153,11 +166,11 @@ export function PaymentRequired() {
         <div>
           <button
             type="button"
-            onClick={() => navigate('/onboarding')}
+            onClick={() => navigate(backPath)}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-sm">Retour à l&apos;onboarding</span>
+            <span className="text-sm">{backLabel}</span>
           </button>
         </div>
 

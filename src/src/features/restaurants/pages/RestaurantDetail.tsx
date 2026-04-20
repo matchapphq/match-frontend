@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../api/client';
 import { Dialog, DialogContent } from '../../../components/ui/dialog';
+import { useAuth } from '../../authentication/context/AuthContext';
 
 interface RestaurantDetailProps {
   restaurantId: string | null;
@@ -59,8 +60,24 @@ function extractPhotoUrl(photo: unknown): string | null {
   return selected?.trim() || null;
 }
 
-function mapVenueStatusToUi(status: unknown, isActive: unknown): 'actif' | 'inactif' | 'en_attente' {
+function mapVenueStatusToUi(
+  status: unknown,
+  isActive: unknown,
+  hasPaymentMethod: boolean,
+  hasCompletedOnboarding: boolean,
+): 'actif' | 'inactif' | 'en_attente' {
   const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : null;
+
+  if (hasPaymentMethod && hasCompletedOnboarding) {
+    switch (normalizedStatus) {
+      case 'rejected':
+      case 'suspended':
+        return 'inactif';
+      default:
+        return 'actif';
+    }
+  }
+
   const active = isActive === true;
 
   switch (normalizedStatus) {
@@ -80,8 +97,12 @@ function mapVenueStatusToUi(status: unknown, isActive: unknown): 'actif' | 'inac
 }
 
 export function RestaurantDetail({ restaurantId, onBack, onNavigate }: RestaurantDetailProps) {
+  const { currentUser } = useAuth();
+  const hasPaymentMethod = currentUser?.hasPaymentMethod ?? false;
+  const hasCompletedOnboarding = currentUser?.hasCompletedOnboarding ?? false;
+
   const { data: venue, isLoading, error } = useQuery<VenueDetailView | null>({
-    queryKey: ['venue-detail', restaurantId],
+    queryKey: ['venue-detail', restaurantId, hasPaymentMethod, hasCompletedOnboarding],
     queryFn: async () => {
       if (!restaurantId) return null;
 
@@ -183,7 +204,12 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
         totalAvis: Number.isFinite(ratingCount) ? ratingCount : 0,
         image: images[0] || FALLBACK_VENUE_IMAGE,
         images,
-        statut: mapVenueStatusToUi(v.status, v.is_active),
+        statut: mapVenueStatusToUi(
+          v.status,
+          v.is_active,
+          hasPaymentMethod,
+          hasCompletedOnboarding,
+        ),
         matchsDiffuses: venueMatches.length > 0 ? matchsDiffuses : fallbackMatchCount,
         clientsAccueillis,
         reviews,
@@ -236,7 +262,7 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
   const statusClass = isActive
     ? 'bg-green-100 text-green-800 border border-green-300 shadow-sm'
     : isInactive
-      ? 'bg-gray-100 text-gray-700 border border-gray-200'
+      ? 'bg-red-100 text-red-800 border border-red-300 shadow-sm'
       : 'bg-orange-50 text-orange-700 border border-orange-200';
   const clientsAccueillis = Number.isFinite(Number(venue.clientsAccueillis))
     ? Number(venue.clientsAccueillis)

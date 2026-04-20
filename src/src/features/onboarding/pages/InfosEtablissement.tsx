@@ -154,7 +154,7 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
       const requiresPaymentSetup = data.requires_payment_setup === true;
 
       if (!isAddingVenue) {
-        updateOnboardingStep('facturation');
+        await updateOnboardingStep('facturation');
       }
 
       if (requiresPaymentSetup) {

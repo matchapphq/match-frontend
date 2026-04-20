@@ -584,6 +584,7 @@ export interface ApiUser {
   role: 'user' | 'venue_owner' | 'admin';
   has_completed_onboarding?: boolean;
   has_payment_method?: boolean;
+  onboarding_step?: 'first_venue' | 'paiement_method' | 'paiement_method_skipped' | 'done' | null;
   created_at?: string;
 }
 

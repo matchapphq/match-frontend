@@ -14,7 +14,10 @@ export interface User {
   hasCompletedOnboarding: boolean;
   hasPaymentMethod: boolean;
   onboardingStep: 'restaurant' | 'facturation' | 'complete';
+  onboardingApiStep?: ApiUser['onboarding_step'];
 }
+
+type LocalOnboardingStep = User['onboardingStep'];
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -26,7 +29,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   currentUser: User | null;
   completeOnboarding: () => Promise<void>;
-  updateOnboardingStep: (step: 'restaurant' | 'facturation' | 'complete') => void;
+  skipOnboardingPaymentSetup: () => Promise<void>;
+  updateOnboardingStep: (step: LocalOnboardingStep) => Promise<void>;
   checkApiHealth: () => Promise<boolean>;
   refreshUserData: () => Promise<void>;
 }
@@ -47,8 +51,36 @@ export interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function mapApiOnboardingStepToLocal(apiUser: ApiUser): LocalOnboardingStep {
+  switch (apiUser.onboarding_step) {
+    case 'done':
+    case 'paiement_method_skipped':
+      return 'complete';
+    case 'paiement_method':
+      return 'facturation';
+    case 'first_venue':
+      return 'restaurant';
+    default:
+      return apiUser.has_completed_onboarding ? 'complete' : 'restaurant';
+  }
+}
+
+function mapLocalOnboardingStepToApi(step: LocalOnboardingStep): NonNullable<ApiUser['onboarding_step']> {
+  switch (step) {
+    case 'complete':
+      return 'done';
+    case 'facturation':
+      return 'paiement_method';
+    case 'restaurant':
+    default:
+      return 'first_venue';
+  }
+}
+
 // Convert API user to local user format
 function apiUserToUser(apiUser: ApiUser): User {
+  const onboardingStep = mapApiOnboardingStepToLocal(apiUser);
+
   return {
     id: apiUser.id,
     email: apiUser.email,
@@ -57,9 +89,10 @@ function apiUserToUser(apiUser: ApiUser): User {
     telephone: apiUser.phone,
     avatar: apiUser.avatar,
     role: apiUser.role,
-    hasCompletedOnboarding: apiUser.has_completed_onboarding ?? false,
+    hasCompletedOnboarding: onboardingStep === 'complete' || (apiUser.has_completed_onboarding ?? false),
     hasPaymentMethod: apiUser.has_payment_method ?? false,
-    onboardingStep: apiUser.has_completed_onboarding ? 'complete' : 'restaurant',
+    onboardingStep,
+    onboardingApiStep: apiUser.onboarding_step ?? null,
   };
 }
 
@@ -235,6 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           hasCompletedOnboarding: false,
           hasPaymentMethod: false,
           onboardingStep: 'restaurant',
+          onboardingApiStep: null,
         };
 
         // Fetch full user profile after login
@@ -289,29 +323,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeOnboarding = async () => {
-    if (currentUser) {
-      try {
-        if (apiStatus === 'online') {
-          await api.completeUserOnboarding();
-        }
-      } catch (error) {
-        console.warn('Failed to complete onboarding via API:', error);
-      }
-      
-      const updatedUser = { ...currentUser, hasCompletedOnboarding: true, onboardingStep: 'complete' as const };
-      setCurrentUser(updatedUser);
+  const updateOnboardingStep = async (step: LocalOnboardingStep) => {
+    if (!currentUser) return;
+
+    const updatedUser = {
+      ...currentUser,
+      onboardingStep: step,
+      hasCompletedOnboarding: step === 'complete',
+      onboardingApiStep: mapLocalOnboardingStepToApi(step),
+    };
+    setCurrentUser(updatedUser);
+
+    if (apiStatus !== 'online') return;
+
+    try {
+      await api.updateUserProfile({
+        onboarding_step: mapLocalOnboardingStepToApi(step),
+      });
+    } catch (error) {
+      console.warn('Failed to persist onboarding step:', error);
     }
   };
 
-  const updateOnboardingStep = (step: 'restaurant' | 'facturation' | 'complete') => {
-    if (currentUser) {
-      const updatedUser = { 
-        ...currentUser, 
-        onboardingStep: step,
-        hasCompletedOnboarding: step === 'complete'
-      };
-      setCurrentUser(updatedUser);
+  const completeOnboarding = async () => {
+    await updateOnboardingStep('complete');
+  };
+
+  const skipOnboardingPaymentSetup = async () => {
+    if (!currentUser) return;
+
+    const updatedUser = {
+      ...currentUser,
+      onboardingStep: 'complete' as const,
+      hasCompletedOnboarding: true,
+      onboardingApiStep: 'paiement_method_skipped' as const,
+    };
+    setCurrentUser(updatedUser);
+
+    if (apiStatus !== 'online') return;
+
+    try {
+      await api.updateUserProfile({
+        onboarding_step: 'paiement_method_skipped',
+      });
+    } catch (error) {
+      console.warn('Failed to persist skipped payment onboarding step:', error);
     }
   };
 
@@ -345,6 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       currentUser,
       completeOnboarding,
+      skipOnboardingPaymentSetup,
       updateOnboardingStep,
       checkApiHealth,
       refreshUserData,

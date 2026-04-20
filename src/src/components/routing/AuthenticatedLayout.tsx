@@ -38,6 +38,9 @@ export function AuthenticatedLayout() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const isQrScanner = location.pathname === '/qr-scanner';
+  const isPaymentSetupSkipped =
+    currentUser?.role === 'venue_owner'
+    && currentUser.onboardingApiStep === 'paiement_method_skipped';
 
   const handleBellNavigate = (page: PageType) => {
     navigateTo(page);
@@ -79,14 +82,16 @@ export function AuthenticatedLayout() {
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
       <Sidebar />
       <div className="lg:ml-64 flex flex-col min-h-screen">
-        <NotificationBanner
-          type="info"
-          message="🎉 Nouveau : Le système de réservations est maintenant disponible !"
-          action={{
-            label: "Découvrir",
-            onClick: () => navigate('/reservations') // already English
-          }}
-        />
+        {isPaymentSetupSkipped && (
+          <NotificationBanner
+            type="info"
+            message="⚠️ Activez votre compte : configurez votre moyen de paiement pour activer vos établissements."
+            action={{
+              label: 'Configurer la facturation',
+              onClick: () => navigate('/account/billing'),
+            }}
+          />
+        )}
 
         <main id="main-content" role="main">
           <Outlet />

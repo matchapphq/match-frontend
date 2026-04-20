@@ -164,7 +164,7 @@ export function Cgv() {
 
 export function OnboardingWelcome() {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, skipOnboardingPaymentSetup } = useAuth();
   const onContinue = (page: PageType) => {
     if (page === 'ajouter-restaurant') navigate('/onboarding/info');
     else if (page === 'facturation') {
@@ -172,9 +172,15 @@ export function OnboardingWelcome() {
     }
     else navigate('/dashboard');
   };
+  const onSkipPaymentSetup = async () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    await skipOnboardingPaymentSetup();
+    navigate('/onboarding', { replace: true });
+  };
   return (
     <RawOnboardingWelcome
       onContinue={onContinue}
+      onSkipPaymentSetup={onSkipPaymentSetup}
       currentStep={currentUser?.onboardingStep || 'restaurant'}
       userName={currentUser?.prenom || ''}
     />
@@ -282,7 +288,15 @@ export function ModifierMatch() {
 }
 
 export function ProgrammerMatch() {
-  const goBack = useGoBack('/dashboard');
+  const navigate = useNavigate();
+  const goBack = () => {
+    const historyState = window.history.state as { idx?: number } | null;
+    if (typeof historyState?.idx === 'number' && historyState.idx > 0) {
+      navigate(-1);
+      return;
+    }
+    navigate('/dashboard');
+  };
   return <RawProgrammerMatch onBack={goBack} />;
 }
 
