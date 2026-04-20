@@ -1,11 +1,20 @@
-import { ArrowLeft, Calendar, ChevronRight, MapPin, Check, Search, Trophy, Clock, Users, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, ChevronRight, MapPin, Check, Search, Trophy, Clock, Users, Loader2, AlertTriangle, CreditCard } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
 import { useSports, useUpcomingMatches, useScheduleMatch } from '../../../hooks/api/useMatches';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../../components/ui/dialog';
 
 interface ProgrammerMatchProps {
   onBack: () => void;
@@ -30,6 +39,7 @@ interface Match {
 };
 
 export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
+  const navigate = useNavigate();
   const [step, setStep] = useState<'sport' | 'date' | 'search' | 'configure'>('sport');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -37,7 +47,28 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
   const [placesDisponibles, setPlacesDisponibles] = useState(30);
+  const [isInactiveVenueModalOpen, setIsInactiveVenueModalOpen] = useState(false);
   const maxPlaces = 50;
+
+  const isInactiveVenueError = (error: unknown): boolean => {
+    const rawMessage = error instanceof Error ? error.message : '';
+    if (!rawMessage) return false;
+
+    const normalized = rawMessage.toUpperCase();
+    return (
+      normalized.includes('VENUE_INACTIVE_PAYMENT_REQUIRED') ||
+      normalized.includes('VENUE IS INACTIVE UNTIL A VALID PAYMENT METHOD IS CONFIGURED')
+    );
+  };
+
+  const handleOpenPaymentRequired = () => {
+    const params = new URLSearchParams();
+    if (selectedVenueId) {
+      params.set('venue', selectedVenueId);
+    }
+    params.set('from', 'billing');
+    navigate(`/onboarding/payment-required?${params.toString()}`);
+  };
   
   // Sport name to emoji mapping
   const getSportEmojiByName = (name: string): string => {
@@ -181,6 +212,10 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
       toast.success('Match programmé avec succès !');
       onBack();
     } catch (error: any) {
+      if (isInactiveVenueError(error)) {
+        setIsInactiveVenueModalOpen(true);
+        return;
+      }
       toast.error(error.message || 'Erreur lors de la programmation du match');
     }
   };
@@ -530,6 +565,39 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
           </div>
         )}
       </div>
+
+      <Dialog open={isInactiveVenueModalOpen} onOpenChange={setIsInactiveVenueModalOpen}>
+        <DialogContent className="max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+          <DialogHeader className="space-y-3 text-left">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <DialogTitle className="text-lg text-gray-900 dark:text-white">
+              Établissement inactif
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-gray-600 dark:text-gray-400">
+              Ce lieu ne peut pas programmer de match tant que le moyen de paiement n&apos;est pas configuré.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex-row justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsInactiveVenueModalOpen(false)}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              Plus tard
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenPaymentRequired}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] px-4 py-2.5 text-sm text-white hover:brightness-110"
+            >
+              <CreditCard className="h-4 w-4" />
+              Configurer le paiement
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
