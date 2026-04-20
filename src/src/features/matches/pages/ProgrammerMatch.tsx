@@ -264,6 +264,25 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     return parsed;
   }, [selectedDate]);
 
+  const matchesCountByDate = useMemo<Record<string, number>>(() => {
+    let rawMatches: any[] = [];
+    if (Array.isArray(upcomingData)) {
+      rawMatches = upcomingData;
+    } else if (upcomingData?.matches) {
+      rawMatches = upcomingData.matches;
+    } else if (upcomingData?.data) {
+      rawMatches = upcomingData.data;
+    }
+
+    return rawMatches.reduce((acc, match) => {
+      const startTime = typeof match?.start_time === 'string' ? match.start_time : '';
+      const dateKey = startTime.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+      if (!dateKey) return acc;
+      acc[dateKey] = (acc[dateKey] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [upcomingData]);
+
   // Filter matches based on search (API already filters by sport and date)
   const filteredMatches = availableMatches.filter(
     (match) =>
@@ -412,24 +431,32 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
 
               <div className="max-w-4xl mx-auto mb-8 space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {quickDateOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleDateSelect(option.value)}
-                      className="group text-left bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/60 dark:border-gray-700/60 hover:border-[#5a03cf]/60 hover:shadow-lg hover:shadow-[#5a03cf]/10 transition-all duration-200"
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <span className="text-lg text-gray-900 dark:text-white">{option.title}</span>
-                        {option.badge && (
-                          <span className="text-[11px] px-2 py-1 rounded-full bg-[#9cff02]/20 text-[#3f2c00] dark:text-[#d8ff7a] border border-[#9cff02]/30">
-                            {option.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{option.subtitle}</p>
-                    </button>
-                  ))}
+                  {quickDateOptions.map((option) => {
+                    const matchCount = matchesCountByDate[option.value] || 0;
+                    const countLabel = `${matchCount} match${matchCount > 1 ? 's' : ''} disponible${matchCount > 1 ? 's' : ''} ce jour`;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleDateSelect(option.value)}
+                        className="group text-left bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/60 dark:border-gray-700/60 hover:border-[#5a03cf]/60 hover:shadow-lg hover:shadow-[#5a03cf]/10 transition-all duration-200"
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <span className="text-lg text-gray-900 dark:text-white">{option.title}</span>
+                          {option.badge && (
+                            <span className="text-[11px] px-2 py-1 rounded-full bg-[#9cff02]/20 text-[#3f2c00] dark:text-[#d8ff7a] border border-[#9cff02]/30">
+                              {option.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{option.subtitle}</p>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          ({matchesLoading ? 'Chargement des matchs...' : countLabel})
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="mx-auto w-full max-w-lg bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50">
