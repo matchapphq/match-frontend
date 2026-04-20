@@ -131,7 +131,7 @@ function getStatusUi(statut: Restaurant['statut']) {
     default:
       return {
         label: 'Inactif',
-        className: 'bg-gray-500 text-white',
+        className: 'bg-red-500 text-white',
       };
   }
 }

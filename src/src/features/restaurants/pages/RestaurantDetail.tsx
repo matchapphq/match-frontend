@@ -262,7 +262,7 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
   const statusClass = isActive
     ? 'bg-green-100 text-green-800 border border-green-300 shadow-sm'
     : isInactive
-      ? 'bg-gray-100 text-gray-700 border border-gray-200'
+      ? 'bg-red-100 text-red-800 border border-red-300 shadow-sm'
       : 'bg-orange-50 text-orange-700 border border-orange-200';
   const clientsAccueillis = Number.isFinite(Number(venue.clientsAccueillis))
     ? Number(venue.clientsAccueillis)
