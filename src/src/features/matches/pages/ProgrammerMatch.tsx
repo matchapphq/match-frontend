@@ -38,11 +38,19 @@ interface Match {
   startTime?: string;
 };
 
+interface QuickDateOption {
+  value: string;
+  title: string;
+  subtitle: string;
+  badge?: string;
+}
+
 export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const navigate = useNavigate();
   const [step, setStep] = useState<'sport' | 'date' | 'search' | 'configure'>('sport');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [customDateValue, setCustomDateValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
@@ -181,6 +189,32 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     setStep('search');
   };
 
+  const quickDateOptions = useMemo<QuickDateOption[]>(() => {
+    const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+
+    return Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() + index);
+
+      const value = format(date, 'yyyy-MM-dd');
+      const title =
+        index === 0
+          ? 'Aujourd’hui'
+          : index === 1
+            ? 'Demain'
+            : capitalize(format(date, 'EEEE', { locale: fr }));
+      const subtitle = format(date, 'd MMMM', { locale: fr });
+
+      return {
+        value,
+        title,
+        subtitle,
+        badge: index === 0 ? 'Rapide' : undefined,
+      };
+    });
+  }, []);
+
   // Filter matches based on search (API already filters by sport and date)
   const filteredMatches = availableMatches.filter(
     (match) =>
@@ -224,6 +258,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     setStep('sport');
     setSelectedSport(null);
     setSelectedDate(null);
+    setCustomDateValue('');
     setSearchQuery('');
     setSelectedMatch(null);
   };
@@ -231,6 +266,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const handleBackToDate = () => {
     setStep('date');
     setSelectedDate(null);
+    setCustomDateValue('');
     setSearchQuery('');
     setSelectedMatch(null);
   };
@@ -322,19 +358,48 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
                 </span>
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-                Choisissez la date du match que vous souhaitez diffuser
+                Choisissez rapidement une date, ou sélectionnez une date précise
               </p>
 
-              {/* Calendrier */}
-              <div className="max-w-2xl mx-auto mb-8">
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="date"
-                    value={selectedDate || ''}
-                    onChange={(e) => handleDateSelect(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 rounded-2xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white placeholder-gray-500"
-                  />
+              <div className="max-w-4xl mx-auto mb-8 space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {quickDateOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleDateSelect(option.value)}
+                      className="group text-left bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/60 dark:border-gray-700/60 hover:border-[#5a03cf]/60 hover:shadow-lg hover:shadow-[#5a03cf]/10 transition-all duration-200"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <span className="text-lg text-gray-900 dark:text-white">{option.title}</span>
+                        {option.badge && (
+                          <span className="text-[11px] px-2 py-1 rounded-full bg-[#9cff02]/20 text-[#3f2c00] dark:text-[#d8ff7a] border border-[#9cff02]/30">
+                            {option.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{option.subtitle}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Ou choisir une date précise</p>
+                  <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="date"
+                      value={customDateValue}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setCustomDateValue(value);
+                        if (value) {
+                          handleDateSelect(value);
+                        }
+                      }}
+                      className="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
