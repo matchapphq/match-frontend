@@ -1,5 +1,5 @@
 import { ArrowLeft, Calendar, ChevronRight, MapPin, Check, Search, Trophy, Clock, Users, Loader2, AlertTriangle, CreditCard } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
@@ -7,6 +7,8 @@ import { useSports, useUpcomingMatches, useScheduleMatch } from '../../../hooks/
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Calendar as DatePickerCalendar } from '../../../components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -50,13 +52,32 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const [step, setStep] = useState<'sport' | 'date' | 'search' | 'configure'>('sport');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [customDateValue, setCustomDateValue] = useState('');
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
   const [placesDisponibles, setPlacesDisponibles] = useState(30);
   const [isInactiveVenueModalOpen, setIsInactiveVenueModalOpen] = useState(false);
   const maxPlaces = 50;
+
+  useEffect(() => {
+    const shouldLockScroll = isDatePickerOpen || isInactiveVenueModalOpen;
+    if (!shouldLockScroll) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+    };
+  }, [isDatePickerOpen, isInactiveVenueModalOpen]);
 
   const isInactiveVenueError = (error: unknown): boolean => {
     const rawMessage = error instanceof Error ? error.message : '';
@@ -215,6 +236,34 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     });
   }, []);
 
+  const today = useMemo(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }, []);
+
+  const calendarRange = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+
+    return {
+      fromMonth: new Date(year, now.getMonth(), 1),
+      toMonth: new Date(year, 11, 1),
+      endOfYear: new Date(year, 11, 31),
+    };
+  }, []);
+
+  const selectedDateObject = useMemo(() => {
+    if (!selectedDate) return undefined;
+
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    if (!year || !month || !day) return undefined;
+
+    const parsed = new Date(year, month - 1, day);
+    if (Number.isNaN(parsed.getTime())) return undefined;
+    return parsed;
+  }, [selectedDate]);
+
   // Filter matches based on search (API already filters by sport and date)
   const filteredMatches = availableMatches.filter(
     (match) =>
@@ -258,17 +307,17 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     setStep('sport');
     setSelectedSport(null);
     setSelectedDate(null);
-    setCustomDateValue('');
     setSearchQuery('');
     setSelectedMatch(null);
+    setIsDatePickerOpen(false);
   };
 
   const handleBackToDate = () => {
     setStep('date');
     setSelectedDate(null);
-    setCustomDateValue('');
     setSearchQuery('');
     setSelectedMatch(null);
+    setIsDatePickerOpen(false);
   };
 
   const handleBackToSearch = () => {
@@ -383,23 +432,78 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
                   ))}
                 </div>
 
-                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50">
+                <div className="mx-auto w-full max-w-lg bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Ou choisir une date précise</p>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="date"
-                      value={customDateValue}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setCustomDateValue(value);
-                        if (value) {
-                          handleDateSelect(value);
-                        }
-                      }}
-                      className="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
-                    />
-                  </div>
+                  <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="group w-full flex items-center justify-between gap-4 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/80 dark:bg-gray-800/80 px-4 py-4 text-left hover:border-[#5a03cf]/50 hover:shadow-md hover:shadow-[#5a03cf]/10 transition-all duration-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#5a03cf]/10 text-[#5a03cf] dark:bg-[#5a03cf]/20 dark:text-[#caa8ff]">
+                            <Calendar className="w-5 h-5" />
+                          </span>
+                          <div>
+                            <p className="text-sm text-gray-900 dark:text-white">Ouvrir le calendrier</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {selectedDateObject
+                                ? format(selectedDateObject, 'EEEE d MMMM', { locale: fr })
+                                : 'Sélection simple en un clic'}
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#5a03cf] transition-colors" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      side="bottom"
+                      sideOffset={10}
+                      className="w-[320px] max-w-[calc(100vw-1rem)] sm:w-[340px] rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl text-left dark:border-gray-800 dark:bg-gray-900"
+                    >
+                      <p className="px-2 pb-2 text-xs text-gray-600 dark:text-gray-400">
+                        Choisir une date
+                      </p>
+                      <DatePickerCalendar
+                        mode="single"
+                        locale={fr}
+                        weekStartsOn={1}
+                        fixedWeeks
+                        fromMonth={calendarRange.fromMonth}
+                        toMonth={calendarRange.toMonth}
+                        selected={selectedDateObject}
+                        disabled={[{ before: today }, { after: calendarRange.endOfYear }]}
+                        onSelect={(date) => {
+                          if (!date) return;
+                          const normalized = new Date(date);
+                          normalized.setHours(0, 0, 0, 0);
+                          handleDateSelect(format(normalized, 'yyyy-MM-dd'));
+                          setIsDatePickerOpen(false);
+                        }}
+                        className="w-full p-1"
+                        classNames={{
+                          month: 'w-full flex flex-col gap-3',
+                          table: 'w-full border-collapse',
+                          head_row: 'flex w-full justify-between',
+                          head_cell: 'inline-flex h-8 w-8 items-center justify-center text-center text-sm font-semibold text-gray-600 dark:text-gray-300',
+                          row: 'mt-2 flex w-full justify-between',
+                          day: 'inline-flex h-8 w-8 items-center justify-center rounded-md p-0 text-base font-medium text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 [&.day-disabled]:text-gray-500/70 dark:[&.day-disabled]:text-gray-500/70 [&.day-disabled]:opacity-60 [&.day-outside]:!text-gray-200 dark:[&.day-outside]:!text-gray-300 [&.day-outside]:!font-normal [&.day-outside]:opacity-30 [&.day-outside]:hover:bg-transparent dark:[&.day-outside]:hover:bg-transparent',
+                          caption: 'relative flex items-center justify-center pt-1',
+                          nav: 'absolute inset-y-0 left-0 right-0 flex items-center justify-between',
+                          caption_label: 'text-sm text-gray-900 dark:text-white',
+                          nav_button: 'pointer-events-auto inline-flex h-8 w-8 items-center justify-center border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 hover:bg-white dark:hover:bg-gray-800 opacity-100 rounded-md p-0 disabled:opacity-0 disabled:pointer-events-none',
+                          nav_button_previous: 'ml-1',
+                          nav_button_next: 'mr-1',
+                          day_selected: 'bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white hover:from-[#5a03cf] hover:to-[#7a23ef] focus:from-[#5a03cf] focus:to-[#7a23ef]',
+                          day_today: 'border border-[#5a03cf]/40 text-[#5a03cf] dark:text-[#caa8ff] bg-transparent',
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                    Les dates passées sont automatiquement bloquées.
+                  </p>
                 </div>
               </div>
             </div>
