@@ -288,7 +288,15 @@ export function ModifierMatch() {
 }
 
 export function ProgrammerMatch() {
-  const goBack = useGoBack('/dashboard');
+  const navigate = useNavigate();
+  const goBack = () => {
+    const historyState = window.history.state as { idx?: number } | null;
+    if (typeof historyState?.idx === 'number' && historyState.idx > 0) {
+      navigate(-1);
+      return;
+    }
+    navigate('/dashboard');
+  };
   return <RawProgrammerMatch onBack={goBack} />;
 }
 
