@@ -47,6 +47,12 @@ interface QuickDateOption {
   badge?: string;
 }
 
+interface VenueOption {
+  id: string;
+  nom: string;
+  capacity: number;
+}
+
 export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const navigate = useNavigate();
   const [step, setStep] = useState<'sport' | 'date' | 'search' | 'configure'>('sport');
@@ -57,10 +63,10 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
+  const [isVenuePickerOpen, setIsVenuePickerOpen] = useState(false);
   const [placesDisponibles, setPlacesDisponibles] = useState(30);
   const [isInactiveVenueModalOpen, setIsInactiveVenueModalOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const maxPlaces = 50;
 
   useEffect(() => {
     const shouldLockScroll = isDatePickerOpen || isInactiveVenueModalOpen;
@@ -236,10 +242,25 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     },
   });
   
-  const restaurants = useMemo(() => {
+  const restaurants = useMemo<VenueOption[]>(() => {
     const venues = venuesData || [];
-    return venues.map((v: any) => ({ id: String(v.id), nom: v.name }));
+    return venues.map((v: any) => ({
+      id: String(v.id),
+      nom: v.name,
+      capacity: Math.max(0, Number(v.capacity) || 0),
+    }));
   }, [venuesData]);
+
+  const selectedVenue = useMemo(
+    () => restaurants.find((venue) => venue.id === selectedVenueId),
+    [restaurants, selectedVenueId],
+  );
+
+  const maxPlaces = selectedVenue?.capacity || 50;
+
+  useEffect(() => {
+    setPlacesDisponibles((previous) => Math.min(previous, maxPlaces));
+  }, [maxPlaces]);
   
   // Schedule match mutation
   const scheduleMatchMutation = useScheduleMatch();
@@ -818,111 +839,179 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
               </p>
             </div>
 
-            {/* Récapitulatif du match sélectionné */}
-            <div className="max-w-3xl mx-auto mb-8">
-              <div className="bg-gradient-to-br from-[#5a03cf]/5 to-[#9cff02]/5 dark:from-[#5a03cf]/10 dark:to-[#9cff02]/10 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Match sélectionné</span>
-                  <span className="text-3xl">{SPORTS.find((s) => s.id === selectedMatch.sport)?.emoji}</span>
-                </div>
-                
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-2xl text-gray-900 dark:text-white">
-                    {selectedMatch.team1}
-                  </span>
-                  <span className="text-gray-400">vs</span>
-                  <span className="text-2xl text-gray-900 dark:text-white">
-                    {selectedMatch.team2}
-                  </span>
-                </div>
-                
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                    <Trophy className="w-4 h-4 text-[#5a03cf]" />
-                    <span>{selectedMatch.league}</span>
+            <div className="max-w-4xl mx-auto">
+              <div className="grid gap-6 lg:grid-cols-[1.05fr_1.35fr]">
+                {/* Récapitulatif du match sélectionné */}
+                <aside className="h-fit lg:sticky lg:top-24 bg-gradient-to-br from-[#5a03cf]/6 via-white/70 to-[#9cff02]/8 dark:from-[#5a03cf]/15 dark:via-gray-900/70 dark:to-[#9cff02]/10 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/60 dark:border-gray-700/60 shadow-sm">
+                  <div className="flex items-center justify-between mb-5">
+                    <span className="text-xs uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                      Match sélectionné
+                    </span>
+                    <span className="text-2xl leading-none mb-1">
+                      {SPORTS.find((s) => s.id === selectedMatch.sport)?.emoji}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                    <Calendar className="w-4 h-4 text-[#5a03cf]" />
-                    <span>{getFormattedMatchDate(selectedMatch.date).toLowerCase()}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                    <Clock className="w-4 h-4 text-[#5a03cf]" />
-                    <span>{selectedMatch.time}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Formulaire de configuration */}
-            <div className="max-w-3xl mx-auto">
-              <form className="space-y-6" onSubmit={handleSubmit}>
-                {/* Établissement */}
-                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
-                  <label className="block text-gray-900 dark:text-white mb-3">
-                    Établissement
-                  </label>
-                  <select 
-                    value={selectedVenueId}
-                    onChange={(e) => setSelectedVenueId(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 text-gray-900 dark:text-white"
-                  >
-                    <option key="select-resto" value="">Sélectionnez un établissement</option>
-                    {restaurants.map((resto: { id: string; nom: string }) => (
-                      <option key={resto.id} value={resto.id}>
-                        {resto.nom}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Places disponibles */}
-                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50">
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="text-gray-900 dark:text-white">
-                      Places disponibles
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-[#5a03cf]" />
-                      <span className="text-2xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] bg-clip-text text-transparent">
-                        {placesDisponibles}
+                  <div className="mb-5 rounded-2xl border border-gray-200/70 bg-white/75 p-4 dark:border-gray-700/70 dark:bg-gray-900/70">
+                    <div className="flex flex-wrap items-center gap-2 text-xl text-gray-900 dark:text-white">
+                      <span className="font-medium">{selectedMatch.team1}</span>
+                      <span className="inline-flex rounded-full border border-gray-200/80 px-2 py-0.5 text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700/80 dark:text-gray-400">
+                        vs
                       </span>
+                      <span className="font-medium">{selectedMatch.team2}</span>
                     </div>
                   </div>
-                  
-                  <input
-                    type="range"
-                    min="0"
-                    max={maxPlaces}
-                    value={placesDisponibles}
-                    onChange={(e) => setPlacesDisponibles(Number(e.target.value))}
-                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full appearance-none cursor-pointer"
-                    style={{
-                      background: `linear-gradient(to right, #9cff02 0%, #9cff02 ${(placesDisponibles / maxPlaces) * 100}%, #e5e7eb ${(placesDisponibles / maxPlaces) * 100}%, #e5e7eb 100%)`
-                    }}
-                  />
-                  <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    <span>0</span>
-                    <span>Max: {maxPlaces} places</span>
-                  </div>
-                </div>
 
-                {/* Boutons d'action */}
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white py-4 rounded-full hover:brightness-110 hover:shadow-xl hover:shadow-[#5a03cf]/30 transition-all duration-200"
-                  >
-                    Programmer le match
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleBackToSearch}
-                    className="px-8 py-4 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 rounded-full hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
+                  <div className="mt-4 space-y-2.5">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-gray-200/70 bg-white/70 px-3 py-1.5 text-sm text-gray-700 dark:border-gray-700/70 dark:bg-gray-900/70 dark:text-gray-300">
+                      <Trophy className="h-4 w-4 text-[#5a03cf]" />
+                      {selectedMatch.league}
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-gray-200/70 bg-white/70 px-3 py-1.5 text-sm text-gray-700 dark:border-gray-700/70 dark:bg-gray-900/70 dark:text-gray-300">
+                      <Calendar className="h-4 w-4 text-[#5a03cf]" />
+                      {getFormattedMatchDate(selectedMatch.date).toLowerCase()}
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-gray-200/70 bg-white/70 px-3 py-1.5 text-sm text-gray-700 dark:border-gray-700/70 dark:bg-gray-900/70 dark:text-gray-300">
+                      <Clock className="h-4 w-4 text-[#5a03cf]" />
+                      {selectedMatch.time}
+                    </div>
+                  </div>
+                </aside>
+
+                {/* Formulaire de configuration */}
+                <form className="space-y-5" onSubmit={handleSubmit}>
+                  <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/60 dark:border-gray-700/60 shadow-sm">
+                    <label htmlFor="venue-select" className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
+                      Établissement
+                    </label>
+                    <p className="text-base text-gray-900 dark:text-white mb-3">
+                      Choisissez le lieu où le match sera diffusé
+                    </p>
+                    <Popover open={isVenuePickerOpen} onOpenChange={setIsVenuePickerOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          id="venue-select"
+                          type="button"
+                          className="w-full h-16 px-5 text-left bg-white dark:bg-gray-800 backdrop-blur-sm border border-gray-200/70 dark:border-gray-700/70 rounded-xl focus:outline-none focus:border-[#5a03cf]/50 focus:ring-2 focus:ring-[#5a03cf]/15"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className={`truncate text-base ${selectedVenue ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                {selectedVenue ? selectedVenue.nom : 'Sélectionnez un établissement'}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {selectedVenue ? `Capacité: ${selectedVenue.capacity} places` : 'Choix du lieu'}
+                              </p>
+                            </div>
+                            <ChevronRight className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${isVenuePickerOpen ? 'rotate-[-90deg]' : 'rotate-90'}`} />
+                          </div>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="start"
+                        className="w-[var(--radix-popover-trigger-width)] p-2 bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-700/80 rounded-xl"
+                      >
+                        <div className="max-h-64 overflow-y-auto space-y-1">
+                          {restaurants.length === 0 ? (
+                            <p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                              Aucun établissement disponible
+                            </p>
+                          ) : (
+                            restaurants.map((resto) => {
+                              const isSelected = resto.id === selectedVenueId;
+                              return (
+                                <button
+                                  key={resto.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedVenueId(resto.id);
+                                    setIsVenuePickerOpen(false);
+                                  }}
+                                  className={`w-full flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                                    isSelected
+                                      ? 'bg-[#5a03cf]/10 text-[#5a03cf] dark:bg-[#5a03cf]/20 dark:text-[#d8c2ff]'
+                                      : 'text-gray-800 dark:text-gray-200 hover:bg-gray-100/80 dark:hover:bg-gray-800/80'
+                                  }`}
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm">{resto.nom}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Capacité: {resto.capacity} places</p>
+                                  </div>
+                                  {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {selectedVenueId && (
+                    <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/60 dark:border-gray-700/60 shadow-sm">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <label htmlFor="capacity-range" className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
+                            Capacité disponible
+                          </label>
+                          <p className="text-base text-gray-900 dark:text-white mb-3">
+                            Nombre maximum de réservations acceptées
+                          </p>
+                        </div>
+                        <div className="inline-flex items-center gap-2 rounded-full border border-[#5a03cf]/20 bg-[#5a03cf]/10 px-3 py-1.5 text-[#5a03cf] dark:border-[#5a03cf]/30 dark:bg-[#5a03cf]/20 dark:text-[#d8c2ff]">
+                          <Users className="h-4 w-4" />
+                          <span className="text-lg">{placesDisponibles}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 rounded-xl border border-gray-200/70 bg-white/70 p-4 dark:border-gray-700/70 dark:bg-gray-900/60">
+                        <input
+                          id="capacity-range"
+                          type="range"
+                          min="0"
+                          max={maxPlaces}
+                          value={placesDisponibles}
+                          onChange={(e) => setPlacesDisponibles(Number(e.target.value))}
+                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full appearance-none cursor-pointer"
+                          style={{
+                            background: `linear-gradient(to right, #9cff02 0%, #9cff02 ${(placesDisponibles / maxPlaces) * 100}%, #e5e7eb ${(placesDisponibles / maxPlaces) * 100}%, #e5e7eb 100%)`
+                          }}
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2.5">
+                          <span>0 place</span>
+                          <span>Max {maxPlaces} places</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!selectedVenueId && (
+                    <div className="rounded-3xl border border-dashed border-gray-300/80 dark:border-gray-700/80 bg-gray-50/65 dark:bg-gray-900/50 p-6">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Sélectionnez d&apos;abord un établissement pour définir la capacité.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col-reverse sm:flex-row gap-3 pt-1 px-1">
+                    <button
+                      type="button"
+                      onClick={handleBackToSearch}
+                      className="sm:flex-1 px-8 py-4 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-white/90 dark:hover:bg-gray-700/90 transition-all"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={scheduleMatchMutation.isPending || !selectedVenueId}
+                      className="sm:flex-[1.35] inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] text-white rounded-xl hover:brightness-110 hover:shadow-xl hover:shadow-[#5a03cf]/25 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:brightness-100 disabled:hover:shadow-none"
+                    >
+                      {scheduleMatchMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {scheduleMatchMutation.isPending ? 'Programmation...' : 'Programmer le match'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}
