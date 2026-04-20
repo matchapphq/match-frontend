@@ -159,6 +159,18 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
     return startTime.match(/(?:T| )(\d{2}:\d{2})/)?.[1] || '';
   };
 
+  const formatParisDateKey = (startTime: string): string => {
+    const date = new Date(startTime);
+    if (Number.isNaN(date.getTime())) return extractDatePart(startTime);
+
+    return new Intl.DateTimeFormat('sv-SE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: 'Europe/Paris',
+    }).format(date);
+  };
+
   const formatParisTime = (startTime: string): string => {
     const date = new Date(startTime);
     if (Number.isNaN(date.getTime())) return extractTimePart(startTime);
@@ -188,7 +200,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
       let timeStr = '';
       try {
         if (startTime) {
-          dateStr = extractDatePart(startTime);
+          dateStr = formatParisDateKey(startTime);
           timeStr = formatParisTime(startTime);
 
           const date = new Date(startTime);
@@ -308,7 +320,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
 
     return rawMatches.reduce((acc, match) => {
       const startTime = typeof match?.start_time === 'string' ? match.start_time : '';
-      const dateKey = extractDatePart(startTime);
+      const dateKey = formatParisDateKey(startTime);
       if (!dateKey) return acc;
       acc[dateKey] = (acc[dateKey] || 0) + 1;
       return acc;
@@ -831,7 +843,7 @@ export function ProgrammerMatch({ onBack }: ProgrammerMatchProps) {
                   </div>
                   <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                     <Calendar className="w-4 h-4 text-[#5a03cf]" />
-                    <span>{new Date(selectedMatch.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                    <span>{getFormattedMatchDate(selectedMatch.date).toLowerCase()}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                     <Clock className="w-4 h-4 text-[#5a03cf]" />
