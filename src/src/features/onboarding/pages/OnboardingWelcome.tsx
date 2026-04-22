@@ -1,4 +1,5 @@
 import { ArrowRight, Sparkles, Building2, CreditCard, Rocket } from 'lucide-react';
+import { useState } from 'react';
 import { PageType } from '../../../types';
 // import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
 import logoMatch from '../../../../assets/logo.png';
@@ -7,12 +8,14 @@ import { formatPricingLabel } from '../../../utils/pricing';
 
 interface OnboardingWelcomeProps {
   onContinue: (page: PageType) => void;
+  onSkipPaymentSetup?: () => Promise<void> | void;
   currentStep: 'restaurant' | 'facturation' | 'complete';
   userName: string;
 }
 
-export function OnboardingWelcome({ onContinue, currentStep, userName }: OnboardingWelcomeProps) {
+export function OnboardingWelcome({ onContinue, onSkipPaymentSetup, currentStep, userName }: OnboardingWelcomeProps) {
   const { data: billingPricing } = useBillingPricing();
+  const [isSkippingPayment, setIsSkippingPayment] = useState(false);
   const commissionPricingLabel = billingPricing
     ? formatPricingLabel({
         default_rate: billingPricing.default_rate,
@@ -70,6 +73,16 @@ export function OnboardingWelcome({ onContinue, currentStep, userName }: Onboard
           title: 'Compte prêt',
           description: 'Votre onboarding est terminé. Vous pouvez maintenant commencer à diffuser des matchs.',
         };
+  const handleSkipPaymentSetup = async () => {
+    if (!onSkipPaymentSetup || isSkippingPayment) return;
+
+    try {
+      setIsSkippingPayment(true);
+      await onSkipPaymentSetup();
+    } finally {
+      setIsSkippingPayment(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] p-4 sm:p-8 relative overflow-hidden">
@@ -130,6 +143,16 @@ export function OnboardingWelcome({ onContinue, currentStep, userName }: Onboard
             <span>{stepInfo.buttonText}</span>
             <ArrowRight className="w-5 h-5" />
           </button>
+          {isBillingStep && onSkipPaymentSetup && (
+            <button
+              type="button"
+              onClick={handleSkipPaymentSetup}
+              disabled={isSkippingPayment}
+              className="mt-3 w-full text-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isSkippingPayment ? 'Redirection...' : 'Configurer plus tard et accéder au dashboard'}
+            </button>
+          )}
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
