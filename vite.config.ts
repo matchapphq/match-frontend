@@ -41,6 +41,9 @@ export default defineConfig({
     strictPort: true,
     open: true,
     allowedHosts: ['localhost', '127.0.0.1', 'matchapp.fr', '.matchapp.fr'],
+    headers: {
+      'Permissions-Policy': 'camera=(self)',
+    },
   },
   preview: {
     host: true,
