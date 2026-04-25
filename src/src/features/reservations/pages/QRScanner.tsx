@@ -3,6 +3,7 @@ import { X, Camera, AlertCircle, CheckCircle2, Scan, Loader2, Users } from 'luci
 import { PageType } from '../../../types';
 import { useVerifyQR, useCheckIn } from '../../../hooks/api/useReservations';
 import { toast } from 'sonner';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface QRScannerProps {
   onBack: () => void;
@@ -26,32 +27,11 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
   const [verifiedReservation, setVerifiedReservation] = useState<VerifiedReservation | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const scanningLoopRef = useRef<number | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const SCANNER_ID = "qr-reader";
   
   const verifyQRMutation = useVerifyQR();
   const checkInMutation = useCheckIn();
-
-  useEffect(() => {
-    if (scanning && streamRef.current && videoRef.current) {
-      const video = videoRef.current;
-      video.srcObject = streamRef.current;
-      
-      const handlePlay = async () => {
-        try {
-          await video.play();
-          startScanningLoop();
-        } catch (err) {
-          console.error("Video play failed:", err);
-        }
-      };
-
-      video.onloadedmetadata = handlePlay;
-      handlePlay();
-    }
-  }, [scanning]);
 
   useEffect(() => {
     return () => {
@@ -59,79 +39,76 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
     };
   }, []);
 
-  const stopCamera = () => {
-    if (scanningLoopRef.current) {
-      cancelAnimationFrame(scanningLoopRef.current);
-      scanningLoopRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
+  const stopCamera = async () => {
+    if (scannerRef.current) {
+      if (scannerRef.current.isScanning) {
+        try {
+          await scannerRef.current.stop();
+        } catch (err) {
+          console.error("Failed to stop scanner:", err);
+        }
+      }
+      scannerRef.current = null;
     }
     setScanning(false);
   };
 
-  const startScanningLoop = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    // Use native BarcodeDetector if available
-    const barcodeDetector = 'BarcodeDetector' in window 
-      ? new (window as any).BarcodeDetector({ formats: ['qr_code'] }) 
-      : null;
-
-    const scan = async () => {
-      if (!scanning) return;
-      
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        try {
-          if (barcodeDetector) {
-            const barcodes = await barcodeDetector.detect(video);
-            if (barcodes.length > 0) {
-              const code = barcodes[0].rawValue;
-              handleManualInput(code);
-              return; 
-            }
-          }
-        } catch (err) {
-          console.error('Erreur de détection:', err);
-        }
-      }
-      scanningLoopRef.current = requestAnimationFrame(scan);
-    };
-
-    scanningLoopRef.current = requestAnimationFrame(scan);
-  };
-
   const startCamera = async () => {
     try {
-      const constraints = {
-        video: { 
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
+      // Create instance if not exists
+      if (!scannerRef.current) {
+        scannerRef.current = new Html5Qrcode(SCANNER_ID);
+      }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      
-      setHasPermission(true);
       setScanning(true);
       setError(null);
-    } catch (err) {
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+      };
+
+      await scannerRef.current.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText) => {
+          // Success callback
+          handleManualInput(decodedText);
+        },
+        (errorMessage) => {
+          // parse error, ignore it
+        }
+      );
+      
+      setHasPermission(true);
+    } catch (err: any) {
       console.error('Erreur caméra:', err);
       setHasPermission(false);
-      setError('Impossible d\'accéder à la caméra. Vérifiez les permissions.');
+      setScanning(false);
+      
+      if (err?.toString().includes("NotFoundError")) {
+        setError('Aucune caméra trouvée sur cet appareil.');
+      } else if (err?.toString().includes("NotAllowedError")) {
+        setError('Accès à la caméra refusé. Veuillez autoriser l\'accès dans vos paramètres.');
+      } else {
+        setError('Impossible d\'accéder à la caméra. Vérifiez les permissions et assurez-vous d\'être en HTTPS.');
+      }
     }
   };
 
   const handleManualInput = async (code: string) => {
     if (!code) return;
     
+    // If it's the same code we just scanned, ignore
+    if (scannedData === code && isVerifying) return;
+
     setScannedData(code);
     setIsVerifying(true);
     setError(null);
+    
+    // Stop camera as soon as we have a code
+    await stopCamera();
     
     try {
       const result = await verifyQRMutation.mutateAsync(code);
@@ -148,11 +125,12 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
       });
       
       setSuccess(true);
-      stopCamera();
       toast.success('QR Code vérifié avec succès!');
     } catch (err: any) {
       setError(err.message || 'QR Code invalide ou expiré');
       toast.error('QR Code invalide');
+      // On error, let user try again by resetting success/verifying but keeping error
+      setSuccess(false);
     } finally {
       setIsVerifying(false);
     }
@@ -266,12 +244,9 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
           {scanning && (
             <div className="w-full flex flex-col items-center">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black w-full aspect-[3/4] max-h-[60vh]">
-                <video
-                  ref={videoRef}
+                <div 
+                  id={SCANNER_ID}
                   className="w-full h-full object-cover"
-                  playsInline
-                  autoPlay
-                  muted
                 />
                 
                 {/* Overlay de scan */}
