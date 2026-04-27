@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    // Type checking
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": false,
@@ -10,8 +9,7 @@
     "noImplicitReturns": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    
-    // Module resolution
+
     "target": "ES2020",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
@@ -20,46 +18,52 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    
-    // React
+
     "jsx": "react-jsx",
     "useDefineForClassFields": true,
-    
-    // Emit
+
     "declaration": false,
     "declarationMap": false,
     "sourceMap": true,
     "noEmit": true,
-    
-    // Path aliases
-    "baseUrl": ".",
+
     "paths": {
-      "@/*": ["src/*"],
-      "@app/*": ["src/app/*"],
-      "@components/*": ["src/components/*"],
-      "@features/*": ["src/features/*"],
-      "@hooks/*": ["src/hooks/*"],
-      "@types": ["src/types"],
-      "@types/*": ["src/types/*"],
-      "@utils": ["src/utils"],
-      "@utils/*": ["src/utils/*"],
-      "@constants": ["src/constants"],
-      "@constants/*": ["src/constants/*"],
-      "@context/*": ["src/context/*"],
-      "@data/*": ["src/data/*"],
-      "@styles/*": ["src/styles/*"]
+      "@/*": ["./*"],
+      "@app/*": ["./app/*"],
+      "@components/*": ["./components/*"],
+      "@features/*": ["./features/*"],
+      "@hooks/*": ["./hooks/*"],
+      "@types": ["./types"],
+      "@types/*": ["./types/*"],
+      "@utils": ["./utils"],
+      "@utils/*": ["./utils/*"],
+      "@constants": ["./constants"],
+      "@constants/*": ["./constants/*"],
+      "@context/*": ["./context/*"],
+      "@data/*": ["./data/*"],
+      "@styles/*": ["./styles/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": [
+    "api/**/*",
+    "app/**/*",
+    "components/**/*",
+    "constants/**/*",
+    "context/**/*",
+    "data/**/*",
+    "features/**/*",
+    "hooks/**/*",
+    "pages/**/*",
+    "services/**/*",
+    "styles/**/*",
+    "types/**/*",
+    "utils/**/*",
+    "main.tsx",
+    "vite-env.d.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",
-    "build",
-    "src/pages/ajouter-restaurant/**",
-    "src/pages/mes-restaurants/**",
-    "src/pages/modifier-restaurant/**",
-    "src/pages/paiement-validation/**",
-    "src/index.ts",
-    "src/utils/data-mappers.ts"
+    "build"
   ]
 }

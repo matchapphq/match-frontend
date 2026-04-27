@@ -19,7 +19,7 @@
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: rgba(0, 0, 0, 0.08);
-  --input: transparent;
+  --input: #e4e4e7;
   --input-background: #ffffff;
   --switch-background: #e4e4e7;
   --font-weight-medium: 500;
@@ -60,7 +60,7 @@
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.1);
-  --input: transparent;
+  --input: #3f3f46;
   --input-background: #1a1a1a;
   --switch-background: #3f3f46;
   --ring: #5a03cf;
@@ -505,5 +505,34 @@ html {
   
   .animate-pulse-scale {
     animation: pulse-scale 2s ease-in-out infinite;
+  }
+  
+  /* Notification Toast Animations */
+  @keyframes slide-in-right {
+    0% {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    100% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+  
+  @keyframes shrink-width {
+    0% {
+      width: 100%;
+    }
+    100% {
+      width: 0%;
+    }
+  }
+  
+  .animate-shrink-width {
+    animation: shrink-width 8s linear forwards;
   }
 }

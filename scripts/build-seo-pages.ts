@@ -133,7 +133,6 @@ function upsertTitle(html: string, title: string): string {
 function buildStructuredData(page: SeoStaticPage, canonicalUrl: string): string {
   const graph = [
     {
-      "@context": "https://schema.org",
       "@type": "Organization",
       "@id": `${SITE_URL}#organization`,
       name: SITE_NAME,
@@ -141,7 +140,6 @@ function buildStructuredData(page: SeoStaticPage, canonicalUrl: string): string 
       logo: IMAGE_URL,
     },
     {
-      "@context": "https://schema.org",
       "@type": "WebSite",
       "@id": `${SITE_URL}#website`,
       name: SITE_NAME,
@@ -152,7 +150,6 @@ function buildStructuredData(page: SeoStaticPage, canonicalUrl: string): string 
       },
     },
     {
-      "@context": "https://schema.org",
       "@type": "WebPage",
       "@id": `${canonicalUrl}#webpage`,
       name: page.title,
@@ -168,7 +165,14 @@ function buildStructuredData(page: SeoStaticPage, canonicalUrl: string): string 
     },
   ];
 
-  return JSON.stringify(graph, null, 2);
+  return JSON.stringify(
+    {
+      "@context": "https://schema.org",
+      "@graph": graph,
+    },
+    null,
+    2,
+  );
 }
 
 function upsertJsonLd(html: string, payload: string): string {
