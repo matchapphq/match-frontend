@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../../assets/logo.png';
+import { BrandLogo } from '../../components/BrandLogo';
 
 export function Terms() {
   const navigate = useNavigate();
@@ -42,22 +42,7 @@ export function Terms() {
         )}
 
         <div className="text-center mb-8">
-          <div
-            role="img"
-            aria-label="Match"
-            className="h-10 w-[178px] mx-auto mb-4"
-            style={{
-              background: 'linear-gradient(90deg, #7a13ff 0%, #4310d8 52%, #020143 100%)',
-              WebkitMaskImage: `url(${logo})`,
-              maskImage: `url(${logo})`,
-              WebkitMaskRepeat: 'no-repeat',
-              maskRepeat: 'no-repeat',
-              WebkitMaskPosition: 'center',
-              maskPosition: 'center',
-              WebkitMaskSize: 'contain',
-              maskSize: 'contain',
-            }}
-          />
+          <BrandLogo className="h-10 w-auto mx-auto mb-4" />
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 dark:bg-gray-900/70 border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 mb-4">
             <FileText className="w-4 h-4 text-[#5a03cf]" />
             <span className="text-sm">Page légale</span>

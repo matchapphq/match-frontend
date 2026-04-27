@@ -2,8 +2,7 @@ import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logoMatch from '../../assets/logo.png';
+import { BrandLogo } from '../../components/BrandLogo';
 import { useState } from 'react';
 
 interface ReferralPageProps {
@@ -40,12 +39,7 @@ export function ReferralPage({ onBackToLanding, onGoToLogin }: ReferralPageProps
               Retour
             </button>
             
-            <img 
-              src={logoMatch} 
-              alt="Match" 
-              className="h-8"
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-            />
+            <BrandLogo className="h-8" />
             
             <div className="w-20"></div>
           </div>

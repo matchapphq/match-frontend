@@ -1,7 +1,6 @@
 import { Check, Sparkles, Calendar, Settings } from 'lucide-react';
 import { PageType } from '../../types';
-// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logoMatch from '../../assets/logo.png';
+import { BrandLogo } from '../../components/BrandLogo';
 
 interface ConfirmationOnboardingProps {
   onNavigate: (page: PageType) => void;
@@ -21,12 +20,7 @@ export function ConfirmationOnboarding({ onNavigate, nomBar }: ConfirmationOnboa
       <div className="relative z-10 w-full max-w-2xl">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img 
-            src={logoMatch} 
-            alt="Match" 
-            className="h-12 sm:h-16 mx-auto dark:brightness-150"
-            style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-          />
+          <BrandLogo className="h-12 sm:h-16 mx-auto" />
         </div>
 
         {/* Carte de confirmation */}

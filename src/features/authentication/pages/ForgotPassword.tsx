@@ -5,8 +5,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-//import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logo from '../../../assets/logo.png';
+import { BrandLogo } from '../../../components/BrandLogo';
 import { api } from '../../../services/api';
 
 interface ForgotPasswordProps {
@@ -169,12 +168,7 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <div className="relative">
-            <img 
-              src={logo} 
-              alt="Match" 
-              className="h-12"
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-            />
+            <BrandLogo className="h-12" />
             <div className="absolute -inset-4 bg-gradient-to-r from-[#5a03cf]/20 to-[#9cff02]/20 blur-2xl -z-10" />
           </div>
         </div>
