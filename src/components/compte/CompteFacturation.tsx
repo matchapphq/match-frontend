@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PageType } from '../../src/types';
+import { PageType } from '../../types';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -12,12 +12,12 @@ import {
   Receipt,
   Wallet,
 } from 'lucide-react';
-import { useAuth } from '../../src/features/authentication/context/AuthContext';
-import { usePartnerVenues } from '../../src/hooks/api/useVenues';
-import { useVenueInvoices, useVenuePaymentPortal } from '../../src/hooks/api/useAccount';
-import { useAccruedCommission, useBillingPaymentMethod, useBillingPricing } from '../../src/hooks/api/useBilling';
-import { savePendingPaymentVenueId } from '../../src/utils/checkout-state';
-import { formatPricingLabel } from '../../src/utils/pricing';
+import { useAuth } from '../../features/authentication/context/AuthContext';
+import { usePartnerVenues } from '../../hooks/api/useVenues';
+import { useVenueInvoices, useVenuePaymentPortal } from '../../hooks/api/useAccount';
+import { useAccruedCommission, useBillingPaymentMethod, useBillingPricing } from '../../hooks/api/useBilling';
+import { savePendingPaymentVenueId } from '../../utils/checkout-state';
+import { formatPricingLabel } from '../../utils/pricing';
 import { toast } from 'sonner';
 
 interface CompteFacturationProps {
