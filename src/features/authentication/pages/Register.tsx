@@ -137,6 +137,22 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
           />
           <h1 className="text-3xl mb-2 dark:text-white">Créer un compte</h1>
           <p className="text-gray-600 dark:text-gray-400">Rejoignez Match et développez votre activité</p>
+          <div className="mt-4 p-4 rounded-xl border border-[#5a03cf]/20 bg-[#5a03cf]/5 dark:border-[#c9a7ff]/25 dark:bg-[#5a03cf]/15 text-left">
+            <p className="text-sm text-gray-800 dark:text-gray-200">
+              <span className="font-medium">Espace professionnel :</span> cette inscription est réservée aux établissements
+              {' '}(
+              bars, restaurants, pubs, brasseries).
+            </p>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+              Vous êtes supporter ? Rejoignez Match sur mobile pour découvrir les lieux et réserver vos matchs.
+            </p>
+            <a
+              href="/presentation"
+              className="inline-flex mt-2 text-sm text-[#5a03cf] dark:text-[#c9a7ff] hover:underline"
+            >
+              Découvrir l&apos;application mobile
+            </a>
+          </div>
         </div>
 
         {/* Form Card */}
