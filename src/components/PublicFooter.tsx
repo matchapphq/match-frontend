@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import logo from '../assets/logo.png';
+import { BrandLogo } from './BrandLogo';
 
 function FooterLink({ to, label }: { to: string; label: string }) {
   return (
@@ -19,12 +19,7 @@ export function PublicFooter() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-6 md:grid-cols-[1fr_auto_1fr]">
           <div className="flex justify-center md:justify-start">
-            <img
-              src={logo}
-              alt="Match"
-              className="h-6 dark:brightness-150"
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-            />
+            <BrandLogo className="h-6" />
           </div>
 
           <p className="text-center text-sm text-gray-600 dark:text-gray-400">

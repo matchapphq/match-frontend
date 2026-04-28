@@ -1,7 +1,6 @@
 import { Check, MapPin, Search, Sparkles, Star, Smartphone, Navigation, Users, ArrowRight, Trophy, Zap, Target, Moon, Sun } from 'lucide-react';
 import { PageType } from '../../../types';
-// import logoMatch from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logoMatch from '../../../assets/logo.png';
+import { BrandLogo } from '../../../components/BrandLogo';
 import { ImageWithFallback } from '../../../components/figma/ImageWithFallback';
 import { useTheme } from '../../theme/context/ThemeContext';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -34,12 +33,7 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
-              <img 
-                src={logoMatch} 
-                alt="Match" 
-                className="h-8" 
-                style={{ filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-              />
+              <BrandLogo className="h-8" />
             </div>
             
             <div className="flex items-center gap-4">
@@ -396,12 +390,7 @@ export function AppPresentation({ onNavigate, onBack }: AppPresentationProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <img 
-                src={logoMatch} 
-                alt="Match" 
-                className="h-6" 
-                style={{ filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-              />
+              <BrandLogo className="h-6" />
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
               {t('app.footer.rights')}

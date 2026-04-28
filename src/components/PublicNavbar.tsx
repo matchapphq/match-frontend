@@ -1,6 +1,6 @@
 import { Moon, Sun } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import logo from '../assets/logo.png';
+import { BrandLogo } from './BrandLogo';
 import { useTheme } from '../features/theme/context/ThemeContext';
 
 export function PublicNavbar() {
@@ -14,13 +14,8 @@ export function PublicNavbar() {
     <header className="sticky top-0 z-50 relative backdrop-blur-2xl bg-white/40 dark:bg-black/40 border-b border-[#5a03cf]/10 dark:border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2" aria-label="Retour à l'accueil">
-            <img
-              src={logo}
-              alt="Match"
-              className="h-8 dark:brightness-150"
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-            />
+          <Link to="/" className="flex h-full items-center gap-2" aria-label="Retour à l'accueil">
+            <BrandLogo className="h-8 w-auto transition-transform duration-300 hover:scale-105" />
           </Link>
 
           <div className="flex items-center gap-4">
