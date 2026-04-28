@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "JSQ6M97N79.com.matchapps.match",
+        "paths": ["/join/*"]
+      }
+    ]
+  }
+}
