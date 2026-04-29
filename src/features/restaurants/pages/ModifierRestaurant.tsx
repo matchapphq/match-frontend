@@ -1,5 +1,5 @@
-import { ArrowLeft, Edit, MapPin, Phone, Mail, Users, Zap, Clock, Loader2, CalendarDays, CheckCircle2 } from 'lucide-react';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { ArrowLeft, Edit, MapPin, Phone, Mail, Globe, Users, Zap, Clock, Loader2, CalendarDays, CheckCircle2, Beer, Trash2 } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
@@ -20,23 +20,38 @@ interface DaySchedule {
   isOpen: boolean;
   openTime: string;
   closeTime: string;
+  extraPeriods: Array<{ openTime: string; closeTime: string }>;
 }
 
 interface InitialEditState {
   nom: string;
+  website: string;
   telephoneNormalized: string;
   capaciteMax: number;
   bookingMode: 'INSTANT' | 'REQUEST';
+  happyHourEnabled: boolean;
   weeklySchedule: Record<WeekDayKey, DaySchedule>;
+  happyHourWeeklySchedule: Record<WeekDayKey, DaySchedule>;
 }
 
 interface UpdateVenuePayload {
   nom: string;
+  website?: string;
   telephone: string;
   capaciteMax: number;
   bookingMode: 'INSTANT' | 'REQUEST';
-  openingHours: Record<string, { open: string; close: string; closed: boolean }>;
+  openingHours: Record<string, {
+    open: string;
+    close: string;
+    closed: boolean;
+    close_next_day: boolean;
+    second_open?: string;
+    second_close?: string;
+    second_close_next_day?: boolean;
+  }>;
+  happyHours: Record<string, { open: string; close: string; closed: boolean; close_next_day: boolean }>;
   weeklyScheduleSnapshot: Record<WeekDayKey, DaySchedule>;
+  happyHourWeeklyScheduleSnapshot: Record<WeekDayKey, DaySchedule>;
 }
 
 interface DayConfig {
@@ -65,11 +80,43 @@ const WEEK_DAYS: Array<{ key: WeekDayKey; label: string; name: string }> = DAY_C
   name: day.name,
 }));
 
+const VENUE_TYPE_LABELS: Record<string, string> = {
+  bar: 'bar',
+  restaurant: 'restaurant',
+  fast_food: 'restauration rapide',
+  nightclub: 'boite de nuit',
+  cafe: 'cafe',
+  lounge: 'lounge',
+  pub: 'pub',
+  sports_bar: 'bar sportif',
+};
+
 const DEFAULT_WEEKLY_SCHEDULE: Record<WeekDayKey, DaySchedule> = DAY_CONFIG.reduce((acc, day) => {
   acc[day.key] = {
     isOpen: true,
     openTime: day.defaultOpenTime,
     closeTime: day.defaultCloseTime,
+    extraPeriods: [],
+  };
+  return acc;
+}, {} as Record<WeekDayKey, DaySchedule>);
+
+const DEFAULT_CLOSED_WEEKLY_SCHEDULE: Record<WeekDayKey, DaySchedule> = DAY_CONFIG.reduce((acc, day) => {
+  acc[day.key] = {
+    isOpen: false,
+    openTime: day.defaultOpenTime,
+    closeTime: day.defaultCloseTime,
+    extraPeriods: [],
+  };
+  return acc;
+}, {} as Record<WeekDayKey, DaySchedule>);
+
+const DEFAULT_HAPPY_HOUR_SCHEDULE: Record<WeekDayKey, DaySchedule> = DAY_CONFIG.reduce((acc, day) => {
+  acc[day.key] = {
+    isOpen: false,
+    openTime: day.defaultOpenTime,
+    closeTime: day.defaultCloseTime,
+    extraPeriods: [],
   };
   return acc;
 }, {} as Record<WeekDayKey, DaySchedule>);
@@ -84,9 +131,16 @@ function formatWeeklySchedule(schedule: Record<WeekDayKey, DaySchedule>) {
 
 function cloneWeeklySchedule(schedule: Record<WeekDayKey, DaySchedule>) {
   return WEEK_DAYS.reduce((acc, day) => {
-    acc[day.key] = { ...schedule[day.key] };
+    acc[day.key] = {
+      ...schedule[day.key],
+      extraPeriods: schedule[day.key].extraPeriods.map((period) => ({ ...period })),
+    };
     return acc;
   }, {} as Record<WeekDayKey, DaySchedule>);
+}
+
+function hasAtLeastOneOpenDay(schedule: Record<WeekDayKey, DaySchedule>) {
+  return WEEK_DAYS.some((day) => schedule[day.key].isOpen);
 }
 
 function normalizeHour(value: unknown, fallback: string) {
@@ -97,8 +151,59 @@ function normalizeHour(value: unknown, fallback: string) {
   return fallback;
 }
 
-function mapOpeningHoursToWeeklySchedule(openingHours: unknown) {
-  const schedule = cloneWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE);
+function formatTime24Input(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  if (digits.length === 0) return '';
+
+  const hourRaw = digits.slice(0, 2);
+  const minuteRaw = digits.slice(2, 4);
+
+  let hour = hourRaw;
+  if (hourRaw.length === 2) {
+    const hourNumber = Math.min(23, Number(hourRaw));
+    hour = String(Number.isFinite(hourNumber) ? hourNumber : 0).padStart(2, '0');
+  }
+
+  if (digits.length <= 2) return hour;
+
+  let minute = minuteRaw;
+  if (minuteRaw.length === 2) {
+    const minuteNumber = Math.min(59, Number(minuteRaw));
+    minute = String(Number.isFinite(minuteNumber) ? minuteNumber : 0).padStart(2, '0');
+  }
+
+  return `${hour}:${minute}`;
+}
+
+function clampTime24(value: string, fallback: string) {
+  const formatted = formatTime24Input(value);
+  if (!/^\d{2}:\d{2}$/.test(formatted)) return fallback;
+  const parts = formatted.split(':');
+  if (parts.length !== 2) return fallback;
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return fallback;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return fallback;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function isCompleteTime24(value: string) {
+  return /^\d{2}:\d{2}$/.test(value);
+}
+
+function isDayScheduleComplete(day: DaySchedule) {
+  if (!day.isOpen) return true;
+  if (!isCompleteTime24(day.openTime) || !isCompleteTime24(day.closeTime)) return false;
+  return day.extraPeriods.every((period) =>
+    isCompleteTime24(period.openTime) && isCompleteTime24(period.closeTime),
+  );
+}
+
+function mapOpeningHoursToWeeklySchedule(
+  openingHours: unknown,
+  fallbackSchedule: Record<WeekDayKey, DaySchedule> = DEFAULT_WEEKLY_SCHEDULE,
+) {
+  const schedule = cloneWeeklySchedule(fallbackSchedule);
   if (!openingHours) return schedule;
 
   if (Array.isArray(openingHours)) {
@@ -122,6 +227,7 @@ function mapOpeningHoursToWeeklySchedule(openingHours: unknown) {
         isOpen: entry.is_closed !== true,
         openTime: normalizeHour(firstPeriod?.open, fallback.openTime),
         closeTime: normalizeHour(firstPeriod?.close, fallback.closeTime),
+        extraPeriods: [],
       };
     }
 
@@ -143,6 +249,14 @@ function mapOpeningHoursToWeeklySchedule(openingHours: unknown) {
         isOpen: parsedDay.closed !== true,
         openTime: normalizeHour(parsedDay.open, fallback.openTime),
         closeTime: normalizeHour(parsedDay.close, fallback.closeTime),
+        extraPeriods: [
+          (typeof parsedDay.second_open === 'string' && typeof parsedDay.second_close === 'string')
+            ? {
+                openTime: normalizeHour(parsedDay.second_open, '00:00'),
+                closeTime: normalizeHour(parsedDay.second_close, '00:00'),
+              }
+            : null,
+        ].filter(Boolean) as Array<{ openTime: string; closeTime: string }>,
       };
     });
   }
@@ -152,16 +266,44 @@ function mapOpeningHoursToWeeklySchedule(openingHours: unknown) {
 
 function mapWeeklyScheduleToOpeningHours(
   schedule: Record<WeekDayKey, DaySchedule>,
-): Record<string, { open: string; close: string; closed: boolean }> {
+  options?: { omitClosedDays?: boolean },
+): Record<string, {
+  open: string;
+  close: string;
+  closed: boolean;
+  close_next_day: boolean;
+  second_open?: string;
+  second_close?: string;
+  second_close_next_day?: boolean;
+}> {
   return DAY_CONFIG.reduce((acc, day) => {
     const config = schedule[day.key];
+    if (options?.omitClosedDays && !config.isOpen) {
+      return acc;
+    }
+    const closeNextDay = config.closeTime < config.openTime;
     acc[day.backendKey] = {
       open: config.openTime,
       close: config.closeTime,
       closed: !config.isOpen,
+      close_next_day: closeNextDay,
+      ...(config.extraPeriods[0]
+        ? {
+            second_open: config.extraPeriods[0].openTime,
+            second_close: config.extraPeriods[0].closeTime,
+            second_close_next_day: config.extraPeriods[0].closeTime < config.extraPeriods[0].openTime,
+          } : {}),
     };
     return acc;
-  }, {} as Record<string, { open: string; close: string; closed: boolean }>);
+  }, {} as Record<string, {
+    open: string;
+    close: string;
+    closed: boolean;
+    close_next_day: boolean;
+    second_open?: string;
+    second_close?: string;
+    second_close_next_day?: boolean;
+  }>);
 }
 
 function sanitizeCapacity(value: unknown) {
@@ -190,16 +332,22 @@ function areSchedulesEqual(
     return (
       leftDay.isOpen === rightDay.isOpen &&
       leftDay.openTime === rightDay.openTime &&
-      leftDay.closeTime === rightDay.closeTime
+      leftDay.closeTime === rightDay.closeTime &&
+      JSON.stringify(leftDay.extraPeriods) === JSON.stringify(rightDay.extraPeriods)
     );
   });
 }
+
 
 export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
   const suppressNextPopstateRef = useRef(false);
+  const rightRailRef = useRef<HTMLDivElement | null>(null);
+  const stickyStackRef = useRef<HTMLDivElement | null>(null);
+  const [stickyStackStyle, setStickyStackStyle] = useState<CSSProperties>({});
+  const [stickyStackMinHeight, setStickyStackMinHeight] = useState<number>(0);
 
   const { data: restaurant, isLoading: isLoadingVenue } = useQuery({
     queryKey: ['venue', restaurantId],
@@ -218,11 +366,17 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
     adresse: '',
     telephone: '',
     email: '',
+    website: '',
     horaires: '',
   });
   const [selectedWeekDay, setSelectedWeekDay] = useState<WeekDayKey>('mon');
+  const [happyHourEnabled, setHappyHourEnabled] = useState(false);
+  const [selectedHappyHourWeekDay, setSelectedHappyHourWeekDay] = useState<WeekDayKey>('mon');
   const [weeklySchedule, setWeeklySchedule] = useState<Record<WeekDayKey, DaySchedule>>(
     cloneWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE),
+  );
+  const [happyHourWeeklySchedule, setHappyHourWeeklySchedule] = useState<Record<WeekDayKey, DaySchedule>>(
+    cloneWeeklySchedule(DEFAULT_HAPPY_HOUR_SCHEDULE),
   );
   const [initialEditState, setInitialEditState] = useState<InitialEditState | null>(null);
   const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>('FR');
@@ -230,7 +384,14 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
   useEffect(() => {
     if (restaurant) {
       const venueCapacity = sanitizeEditableCapacity(restaurant.capacity);
-      const venueSchedule = mapOpeningHoursToWeeklySchedule(restaurant.opening_hours);
+      const venueSchedule = mapOpeningHoursToWeeklySchedule(
+        restaurant.opening_hours,
+        DEFAULT_CLOSED_WEEKLY_SCHEDULE,
+      );
+      const venueHappyHourSchedule = mapOpeningHoursToWeeklySchedule(
+        restaurant.happy_hours,
+        DEFAULT_HAPPY_HOUR_SCHEDULE,
+      );
       const nextPhoneCountry = inferPhoneCountry(restaurant.phone);
       const formattedPhone = formatPhoneInput(restaurant.phone || '', nextPhoneCountry);
       const normalizedPhoneBaseline = normalizePhoneForComparison(formattedPhone, nextPhoneCountry);
@@ -240,19 +401,26 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
         adresse: address || 'Adresse non renseignée',
         telephone: formattedPhone,
         email: restaurant.email || '',
+        website: restaurant.website || '',
         horaires: formatWeeklySchedule(venueSchedule),
       });
       setCapaciteMax(venueCapacity);
       setBookingMode(restaurant.booking_mode || 'INSTANT');
+      setHappyHourEnabled(hasAtLeastOneOpenDay(venueHappyHourSchedule));
       setPhoneCountry(nextPhoneCountry);
       setSelectedWeekDay('mon');
+      setSelectedHappyHourWeekDay('mon');
       setWeeklySchedule(venueSchedule);
+      setHappyHourWeeklySchedule(venueHappyHourSchedule);
       setInitialEditState({
         nom: (restaurant.name || '').trim(),
+        website: (restaurant.website || '').trim(),
         telephoneNormalized: normalizedPhoneBaseline,
         capaciteMax: venueCapacity,
         bookingMode: (restaurant.booking_mode || 'INSTANT') as 'INSTANT' | 'REQUEST',
+        happyHourEnabled: hasAtLeastOneOpenDay(venueHappyHourSchedule),
         weeklySchedule: cloneWeeklySchedule(venueSchedule),
+        happyHourWeeklySchedule: cloneWeeklySchedule(venueHappyHourSchedule),
       });
     }
   }, [restaurant]);
@@ -266,20 +434,34 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
   const selectedDaySchedule = weeklySchedule[selectedWeekDay];
   const selectedDayLabel = WEEK_DAYS.find((day) => day.key === selectedWeekDay)?.name || 'Jour';
+  const venueTypeLabel = VENUE_TYPE_LABELS[String(restaurant?.type || '').toLowerCase()] || "etablissement";
+  const selectedHappyHourDaySchedule = happyHourWeeklySchedule[selectedHappyHourWeekDay];
+  const selectedHappyHourDayLabel = WEEK_DAYS.find((day) => day.key === selectedHappyHourWeekDay)?.name || 'Jour';
   const savedCapacity = sanitizeCapacity(restaurant?.capacity);
   const normalizedNom = formData.nom.trim();
+  const normalizedWebsite = formData.website.trim();
   const normalizedTelephone = normalizePhoneForComparison(formData.telephone, phoneCountry);
 
   const hasChanges = useMemo(() => {
     if (!initialEditState) return false;
     return (
       normalizedNom !== initialEditState.nom ||
+      normalizedWebsite !== initialEditState.website ||
       normalizedTelephone !== initialEditState.telephoneNormalized ||
       capaciteMax !== initialEditState.capaciteMax ||
       bookingMode !== initialEditState.bookingMode ||
-      !areSchedulesEqual(weeklySchedule, initialEditState.weeklySchedule)
+      happyHourEnabled !== initialEditState.happyHourEnabled ||
+      !areSchedulesEqual(weeklySchedule, initialEditState.weeklySchedule) ||
+      !areSchedulesEqual(happyHourWeeklySchedule, initialEditState.happyHourWeeklySchedule)
     );
-  }, [initialEditState, normalizedNom, normalizedTelephone, capaciteMax, bookingMode, weeklySchedule]);
+  }, [initialEditState, normalizedNom, normalizedWebsite, normalizedTelephone, capaciteMax, bookingMode, happyHourEnabled, weeklySchedule, happyHourWeeklySchedule]);
+
+  const hasIncompleteSchedule = useMemo(() => {
+    const openingIncomplete = WEEK_DAYS.some((day) => !isDayScheduleComplete(weeklySchedule[day.key]));
+    if (openingIncomplete) return true;
+    if (!happyHourEnabled) return false;
+    return WEEK_DAYS.some((day) => !isDayScheduleComplete(happyHourWeeklySchedule[day.key]));
+  }, [weeklySchedule, happyHourEnabled, happyHourWeeklySchedule]);
 
   const unsavedChangesGuard = useUnsavedChangesGuard(hasChanges);
 
@@ -326,6 +508,68 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
     };
   }, [hasChanges, unsavedChangesGuard]);
 
+  useEffect(() => {
+    const updateStickyStack = () => {
+      const rail = rightRailRef.current;
+      const stack = stickyStackRef.current;
+      if (!rail || !stack) return;
+
+      const isDesktop = window.innerWidth >= 1024;
+      if (!isDesktop) {
+        setStickyStackStyle({});
+        setStickyStackMinHeight(0);
+        return;
+      }
+
+      const topOffset = 24;
+      const railRect = rail.getBoundingClientRect();
+      const railTop = railRect.top + window.scrollY;
+      const railHeight = rail.offsetHeight;
+      const railBottom = railTop + railHeight;
+      const stackHeight = stack.offsetHeight;
+      const desiredTop = window.scrollY + topOffset;
+
+      setStickyStackMinHeight(stackHeight);
+
+      if (desiredTop <= railTop) {
+        setStickyStackStyle({});
+        return;
+      }
+
+      if (desiredTop + stackHeight >= railBottom) {
+        setStickyStackStyle({
+          position: 'absolute',
+          top: Math.max(0, railHeight - stackHeight),
+          left: 0,
+          right: 0,
+          width: '100%',
+        });
+        return;
+      }
+
+      setStickyStackStyle({
+        position: 'fixed',
+        top: topOffset,
+        left: railRect.left,
+        width: railRect.width,
+        zIndex: 20,
+      });
+    };
+
+    const onScrollOrResize = () => {
+      window.requestAnimationFrame(updateStickyStack);
+    };
+
+    updateStickyStack();
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize);
+
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [capaciteMax, bookingMode]);
+
   const updateVenueMutation = useMutation({
     mutationFn: async (data: UpdateVenuePayload) => {
       const basicPayload = {
@@ -334,6 +578,8 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
         capacity: data.capaciteMax,
         booking_mode: data.bookingMode,
         opening_hours: data.openingHours,
+        happy_hours: data.happyHours,
+        ...(data.website ? { website: data.website } : {}),
       };
       await apiClient.put(`/venues/${restaurantId}`, basicPayload);
     },
@@ -344,10 +590,13 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       const nextPhoneCountry = inferPhoneCountry(variables.telephone);
       setInitialEditState({
         nom: variables.nom.trim(),
+        website: variables.website?.trim() || '',
         telephoneNormalized: normalizePhoneForComparison(variables.telephone, nextPhoneCountry),
         capaciteMax: variables.capaciteMax,
         bookingMode: variables.bookingMode,
+        happyHourEnabled,
         weeklySchedule: cloneWeeklySchedule(variables.weeklyScheduleSnapshot),
+        happyHourWeeklySchedule: cloneWeeklySchedule(variables.happyHourWeeklyScheduleSnapshot),
       });
       toast.success('Modifications enregistrées');
     },
@@ -360,6 +609,10 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasChanges) return;
+    if (hasIncompleteSchedule) {
+      toast.error('Complète tous les horaires avant de sauvegarder.');
+      return;
+    }
     const normalizedPhone = formData.telephone.trim()
       ? normalizePhone(formData.telephone, phoneCountry)
       : '';
@@ -369,13 +622,25 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
     }
     if (restaurantId) {
       const weeklyScheduleSnapshot = cloneWeeklySchedule(weeklySchedule);
+      const happyHourWeeklyScheduleSnapshot = cloneWeeklySchedule(happyHourWeeklySchedule);
+      const openingHoursPayload = mapWeeklyScheduleToOpeningHours(
+        weeklyScheduleSnapshot,
+        { omitClosedDays: true },
+      );
+      const happyHoursPayload = happyHourEnabled
+        ? mapWeeklyScheduleToOpeningHours(happyHourWeeklyScheduleSnapshot, { omitClosedDays: true })
+        : {};
+      const sanitizedWebsite = formData.website.trim();
       updateVenueMutation.mutate({
         ...formData,
+        website: sanitizedWebsite || undefined,
         telephone: normalizedPhone || formData.telephone.trim(),
         capaciteMax: sanitizeEditableCapacity(capaciteMax),
         bookingMode,
-        openingHours: mapWeeklyScheduleToOpeningHours(weeklyScheduleSnapshot),
+        openingHours: openingHoursPayload,
+        happyHours: happyHoursPayload,
         weeklyScheduleSnapshot,
+        happyHourWeeklyScheduleSnapshot,
       });
     }
   };
@@ -390,14 +655,18 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
     setFormData((prev) => ({
       ...prev,
       nom: initialEditState.nom,
+      website: initialEditState.website,
       telephone: formatPhoneInput(initialEditState.telephoneNormalized, resetPhoneCountry),
       horaires: formatWeeklySchedule(initialEditState.weeklySchedule),
     }));
     setCapaciteMax(initialEditState.capaciteMax);
     setBookingMode(initialEditState.bookingMode);
+    setHappyHourEnabled(initialEditState.happyHourEnabled);
     setWeeklySchedule(cloneWeeklySchedule(initialEditState.weeklySchedule));
+    setHappyHourWeeklySchedule(cloneWeeklySchedule(initialEditState.happyHourWeeklySchedule));
     setPhoneCountry(resetPhoneCountry);
     setSelectedWeekDay('mon');
+    setSelectedHappyHourWeekDay('mon');
   };
 
   const handleDialogStay = () => {
@@ -437,7 +706,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
   }
 
   return (
-    <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] pb-24 lg:pb-0 relative overflow-hidden">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] pb-24 lg:pb-0 relative">
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#5a03cf]/5 dark:bg-[#5a03cf]/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#9cff02]/5 dark:bg-[#9cff02]/10 rounded-full blur-3xl" />
@@ -542,45 +811,59 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Horaires d'ouverture</label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white dark:bg-gray-900 p-4">
-                        <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-3">
-                          <CalendarDays className="w-4 h-4 text-[#5a03cf]" />
-                          Jours ouverts
-                        </label>
-                        <div className="flex items-center gap-2">
-                          {WEEK_DAYS.map((day) => {
-                            const dayConfig = weeklySchedule[day.key];
-                            const isSelected = selectedWeekDay === day.key;
-                            return (
-                              <button
-                                key={day.key}
-                                type="button"
-                                onClick={() => setSelectedWeekDay(day.key)}
-                                title={`${day.name} - ${dayConfig.isOpen ? 'Ouvert' : 'Fermé'}`}
-                                className={`h-10 flex-1 rounded-lg border text-xs transition-all ${
-                                  isSelected
-                                    ? 'border-[#5a03cf] bg-[#5a03cf]/10 text-[#5a03cf]'
-                                    : dayConfig.isOpen
-                                      ? 'border-[#9cff02]/40 bg-[#9cff02]/10 text-[#2f6a00] dark:text-[#9cff02]'
-                                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400'
-                                }`}
-                              >
-                                {day.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                          Sélectionnez un jour à gauche, puis réglez ses horaires à droite.
-                        </p>
-                      </div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-2">
+                      <Globe className="w-4 h-4 text-[#5a03cf]" />
+                      Site web
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      placeholder="https://..."
+                      className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
+                    />
+                  </div>
 
+                  <div>
+                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Horaires d'ouverture</label>
+                    <div className="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white dark:bg-gray-900 p-4 mb-4">
+                      <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-3">
+                        <CalendarDays className="w-4 h-4 text-[#5a03cf]" />
+                        Choix du jour
+                      </label>
+                      <div className="flex items-center gap-2">
+                        {WEEK_DAYS.map((day) => {
+                          const isSelected = selectedWeekDay === day.key;
+                          const dayIsOpen = weeklySchedule[day.key].isOpen;
+                          return (
+                            <button
+                              key={day.key}
+                              type="button"
+                              onClick={() => {
+                                setSelectedWeekDay(day.key);
+                                setSelectedHappyHourWeekDay(day.key);
+                              }}
+                              title={day.name}
+                              className={`h-10 flex-1 rounded-lg border text-xs transition-all ${
+                                isSelected
+                                  ? 'border-[#5a03cf] bg-[#5a03cf]/10 text-[#5a03cf]'
+                                  : dayIsOpen
+                                    ? 'border-[#9cff02]/40 bg-[#9cff02]/10 text-[#2f6a00] dark:text-[#9cff02]'
+                                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400'
+                              }`}
+                            >
+                              {day.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white dark:bg-gray-900 p-4">
                         <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-2">
                           <Clock className="w-4 h-4 text-[#5a03cf]" />
-                          Horaires du {selectedDayLabel}
+                          Ouverture ({selectedDayLabel})
                         </label>
                         <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-1 mb-3">
                           <button
@@ -626,49 +909,310 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
                         {selectedDaySchedule.isOpen ? (
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                Ouvre à
-                              </label>
+                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Ouvre à</label>
                               <input
-                                type="time"
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="00:00"
+                                maxLength={5}
                                 value={selectedDaySchedule.openTime}
                                 onChange={(e) =>
                                   setWeeklySchedule((prev) => ({
                                     ...prev,
                                     [selectedWeekDay]: {
                                       ...prev[selectedWeekDay],
-                                      openTime: e.target.value,
+                                      openTime: formatTime24Input(e.target.value),
                                     },
                                   }))
                                 }
-                                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                Ferme à
-                              </label>
-                              <input
-                                type="time"
-                                value={selectedDaySchedule.closeTime}
-                                onChange={(e) =>
+                                onBlur={(e) =>
                                   setWeeklySchedule((prev) => ({
                                     ...prev,
                                     [selectedWeekDay]: {
                                       ...prev[selectedWeekDay],
-                                      closeTime: e.target.value,
+                                      openTime: clampTime24(e.target.value, prev[selectedWeekDay].openTime),
                                     },
                                   }))
                                 }
-                                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
+                                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
                                 required
                               />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Ferme à</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="00:00"
+                                  maxLength={5}
+                                  value={selectedDaySchedule.closeTime}
+                                  onChange={(e) =>
+                                    setWeeklySchedule((prev) => ({
+                                      ...prev,
+                                      [selectedWeekDay]: {
+                                        ...prev[selectedWeekDay],
+                                        closeTime: formatTime24Input(e.target.value),
+                                      },
+                                    }))
+                                  }
+                                  onBlur={(e) =>
+                                    setWeeklySchedule((prev) => ({
+                                      ...prev,
+                                      [selectedWeekDay]: {
+                                        ...prev[selectedWeekDay],
+                                        closeTime: clampTime24(e.target.value, prev[selectedWeekDay].closeTime),
+                                      },
+                                    }))
+                                  }
+                                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
+                                  required
+                                />
+                                {isCompleteTime24(selectedDaySchedule.openTime) &&
+                                isCompleteTime24(selectedDaySchedule.closeTime) &&
+                                selectedDaySchedule.closeTime < selectedDaySchedule.openTime ? (
+                                  <span className="shrink-0 inline-block origin-left scale-75 text-xs leading-none font-medium text-[#5a03cf]">+1</span>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                         ) : (
                           <div className="rounded-lg border border-gray-200/80 dark:border-gray-700/80 bg-gray-50 dark:bg-gray-800/50 px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
-                            Ce jour est fermé.
+                            Votre {venueTypeLabel} est fermé le {selectedDayLabel}.
+                          </div>
+                        )}
+
+                        {selectedDaySchedule.isOpen ? (
+                          <div className="mt-3">
+                            <div className="my-3 h-px bg-gray-200/70 dark:bg-gray-700/70" />
+                            {selectedDaySchedule.extraPeriods.map((period, index) => (
+                              <div key={index} className="mb-3">
+                                <div className="mb-2 border-t border-gray-200 dark:border-gray-700 pt-2 flex items-center justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setWeeklySchedule((prev) => ({
+                                        ...prev,
+                                        [selectedWeekDay]: {
+                                          ...prev[selectedWeekDay],
+                                          extraPeriods: prev[selectedWeekDay].extraPeriods.filter((_, i) => i !== index),
+                                        },
+                                      }))
+                                    }
+                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                    aria-label={`Supprimer le créneau ${index + 2}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Réouvre à</label>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      placeholder="00:00"
+                                      maxLength={5}
+                                      value={period.openTime}
+                                      onChange={(e) =>
+                                        setWeeklySchedule((prev) => ({
+                                          ...prev,
+                                          [selectedWeekDay]: {
+                                            ...prev[selectedWeekDay],
+                                            extraPeriods: prev[selectedWeekDay].extraPeriods.map((p, i) => i === index
+                                              ? { ...p, openTime: formatTime24Input(e.target.value) }
+                                              : p),
+                                          },
+                                        }))
+                                      }
+                                      onBlur={(e) =>
+                                        setWeeklySchedule((prev) => ({
+                                          ...prev,
+                                          [selectedWeekDay]: {
+                                            ...prev[selectedWeekDay],
+                                            extraPeriods: prev[selectedWeekDay].extraPeriods.map((p, i) => i === index
+                                              ? { ...p, openTime: clampTime24(e.target.value, p.openTime) }
+                                              : p),
+                                          },
+                                        }))
+                                      }
+                                      className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Ferme à</label>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="00:00"
+                                        maxLength={5}
+                                        value={period.closeTime}
+                                        onChange={(e) =>
+                                          setWeeklySchedule((prev) => ({
+                                            ...prev,
+                                            [selectedWeekDay]: {
+                                              ...prev[selectedWeekDay],
+                                              extraPeriods: prev[selectedWeekDay].extraPeriods.map((p, i) => i === index
+                                                ? { ...p, closeTime: formatTime24Input(e.target.value) }
+                                                : p),
+                                            },
+                                          }))
+                                        }
+                                        onBlur={(e) =>
+                                          setWeeklySchedule((prev) => ({
+                                            ...prev,
+                                            [selectedWeekDay]: {
+                                              ...prev[selectedWeekDay],
+                                              extraPeriods: prev[selectedWeekDay].extraPeriods.map((p, i) => i === index
+                                                ? { ...p, closeTime: clampTime24(e.target.value, p.closeTime) }
+                                                : p),
+                                            },
+                                          }))
+                                        }
+                                        className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
+                                      />
+                                      {isCompleteTime24(period.openTime) &&
+                                      isCompleteTime24(period.closeTime) &&
+                                      period.closeTime < period.openTime ? (
+                                        <span className="shrink-0 inline-block origin-left scale-75 text-xs leading-none font-medium text-[#5a03cf]">+1</span>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {selectedDaySchedule.extraPeriods.length < 1 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setWeeklySchedule((prev) => ({
+                                    ...prev,
+                                    [selectedWeekDay]: {
+                                      ...prev[selectedWeekDay],
+                                      extraPeriods: [
+                                        ...prev[selectedWeekDay].extraPeriods,
+                                        { openTime: '00:00', closeTime: '00:00' },
+                                      ],
+                                    },
+                                  }))
+                                }
+                                className="text-xs text-[#5a03cf] hover:underline"
+                              >
+                                Ajouter un autre créneau
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white dark:bg-gray-900 p-4">
+                        <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-2">
+                          <Beer className="w-4 h-4 text-[#5a03cf]" />
+                          Happy hour ({selectedHappyHourDayLabel})
+                        </label>
+                        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-1 mb-3">
+                          <button
+                            type="button"
+                            onClick={() => setHappyHourEnabled(true)}
+                            className={`px-3 py-1.5 rounded-md text-xs transition-colors ${
+                              happyHourEnabled
+                                ? 'bg-white dark:bg-gray-900 text-[#5a03cf] shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            Oui
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setHappyHourEnabled(false)}
+                            className={`px-3 py-1.5 rounded-md text-xs transition-colors ${
+                              !happyHourEnabled
+                                ? 'bg-white dark:bg-gray-900 text-[#5a03cf] shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            Non
+                          </button>
+                        </div>
+
+                        {happyHourEnabled ? (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Ouvre à</label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="00:00"
+                                maxLength={5}
+                                value={selectedHappyHourDaySchedule.openTime}
+                                onChange={(e) =>
+                                  setHappyHourWeeklySchedule((prev) => ({
+                                    ...prev,
+                                    [selectedHappyHourWeekDay]: {
+                                      ...prev[selectedHappyHourWeekDay],
+                                      openTime: formatTime24Input(e.target.value),
+                                      isOpen: true,
+                                    },
+                                  }))
+                                }
+                                onBlur={(e) =>
+                                  setHappyHourWeeklySchedule((prev) => ({
+                                    ...prev,
+                                    [selectedHappyHourWeekDay]: {
+                                      ...prev[selectedHappyHourWeekDay],
+                                      openTime: clampTime24(e.target.value, prev[selectedHappyHourWeekDay].openTime),
+                                      isOpen: true,
+                                    },
+                                  }))
+                                }
+                                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Ferme à</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="00:00"
+                                  maxLength={5}
+                                  value={selectedHappyHourDaySchedule.closeTime}
+                                  onChange={(e) =>
+                                    setHappyHourWeeklySchedule((prev) => ({
+                                      ...prev,
+                                      [selectedHappyHourWeekDay]: {
+                                        ...prev[selectedHappyHourWeekDay],
+                                        closeTime: formatTime24Input(e.target.value),
+                                        isOpen: true,
+                                      },
+                                    }))
+                                  }
+                                  onBlur={(e) =>
+                                    setHappyHourWeeklySchedule((prev) => ({
+                                      ...prev,
+                                      [selectedHappyHourWeekDay]: {
+                                        ...prev[selectedHappyHourWeekDay],
+                                        closeTime: clampTime24(e.target.value, prev[selectedHappyHourWeekDay].closeTime),
+                                        isOpen: true,
+                                      },
+                                    }))
+                                  }
+                                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
+                                  required
+                                />
+                                {isCompleteTime24(selectedHappyHourDaySchedule.openTime) &&
+                                isCompleteTime24(selectedHappyHourDaySchedule.closeTime) &&
+                                selectedHappyHourDaySchedule.closeTime < selectedHappyHourDaySchedule.openTime ? (
+                                  <span className="shrink-0 inline-block origin-left scale-75 text-xs leading-none font-medium text-[#5a03cf]">+1</span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-gray-200/80 dark:border-gray-700/80 bg-gray-50 dark:bg-gray-800/50 px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
+                            Happy hour désactivé.
                           </div>
                         )}
                       </div>
@@ -678,8 +1222,10 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
               </section>
             </div>
 
-            <div className="space-y-6">
-              <section className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/85 dark:bg-gray-900/75 backdrop-blur-xl p-6 shadow-sm">
+            <div ref={rightRailRef} className="relative">
+              <div style={{ minHeight: stickyStackMinHeight || undefined }}>
+                <div ref={stickyStackRef} style={stickyStackStyle} className="space-y-6">
+                  <section className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/85 dark:bg-gray-900/75 backdrop-blur-xl p-6 shadow-sm">
                 <h2 className="text-lg text-gray-900 dark:text-white mb-4">Capacité</h2>
 
                 <div className="rounded-xl bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 dark:from-[#5a03cf]/20 dark:to-[#9cff02]/20 border border-[#5a03cf]/20 px-4 py-3 mb-4">
@@ -705,9 +1251,9 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
                   }}
                   className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[#5a03cf]/10 focus:border-[#5a03cf]/40 transition-colors"
                 />
-              </section>
+                  </section>
 
-              <section className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/85 dark:bg-gray-900/75 backdrop-blur-xl p-6 shadow-sm">
+                  <section className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/85 dark:bg-gray-900/75 backdrop-blur-xl p-6 shadow-sm">
                 <h2 className="text-lg text-gray-900 dark:text-white mb-2">Mode de réservation</h2>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
                   Choisissez comment gérer les demandes.
@@ -744,7 +1290,9 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
                     <p className="text-xs text-gray-600 dark:text-gray-400">Validation de chaque demande par vos soins.</p>
                   </div>
                 </div>
-              </section>
+                  </section>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -766,7 +1314,7 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
 
                 <button
                   type="submit"
-                  disabled={updateVenueMutation.isPending || !hasChanges}
+                  disabled={updateVenueMutation.isPending || !hasChanges || hasIncompleteSchedule}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5a03cf] to-[#7a23ef] px-5 py-3 text-sm text-white transition-all hover:from-[#6a13df] hover:to-[#8a33ff] disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ fontWeight: 600 }}
                 >
