@@ -6,25 +6,24 @@
  * Noms anonymisés
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ShareReferralModal } from '../../../components/ShareReferralModal';
-import { ArrowLeft, Copy, Share2, Users, TrendingUp, Gift, Loader2 } from 'lucide-react';
+import { Copy, Share2, Users, TrendingUp, Gift, Loader2 } from 'lucide-react';
 import { useReferralCode, useReferralStats, useReferralHistory } from '../../../hooks/api/useReferral';
 
 interface ParrainageProps {
   onBack?: () => void;
 }
 
-export function Parrainage({ onBack }: ParrainageProps) {
+export function Parrainage(_: ParrainageProps) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const hasMountedRef = useRef(false);
 
   // Fetch real data from API
   const { data: codeData, isLoading: isLoadingCode } = useReferralCode();
   const { data: statsData, isLoading: isLoadingStats } = useReferralStats();
-  const { data: historyData, isLoading: isLoadingHistory } = useReferralHistory({ status: statusFilter });
+  const { data: historyData } = useReferralHistory({ status: statusFilter });
 
   const referralCode = codeData?.referral_code || '';
   const referralLink = (codeData?.referral_link || `https://match.app/register?ref=${referralCode}`)
@@ -48,32 +47,11 @@ export function Parrainage({ onBack }: ParrainageProps) {
   
   const isLoading = isLoadingCode || isLoadingStats;
 
-  useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      return;
-    }
-
-    if (isLoadingHistory || filteredHistory.length > 0) return;
-
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
-      behavior: 'smooth',
-    });
-  }, [statusFilter, isLoadingHistory, filteredHistory.length]);
-
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
       <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Retour
-          </button>
           <h1 className="text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900 dark:text-white">
             Programme de <span className="text-[#5a03cf]">Parrainage</span> 🎁
           </h1>

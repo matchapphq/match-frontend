@@ -3,23 +3,10 @@
  * Central export point for the entire application architecture
  */
 
-// App
-export * from './app';
-
-// Features (all domain features)
-export * from './features';
-
-// Components (shared layout & common components)
-export * from './components';
-
-// Types (global TypeScript types)
-export * from './types';
-
-// Constants (configuration & constants)
+// NOTE:
+// Keep this root barrel intentionally narrow to avoid name collisions
+// between domain feature exports, component exports and type exports.
+export { default as App } from './app';
 export * from './constants';
-
-// Hooks (custom React hooks)
 export * from './hooks';
-
-// Utils (utility functions)
 export * from './utils';

@@ -10,9 +10,9 @@
  * 4. Mapping des données backend → UI
  */
 
-import { Plus, MapPin, Star, Users, Edit, Building2, TrendingUp, Eye, MoreVertical, ChevronRight } from 'lucide-react';
-import { PageType } from '../App';
-import { useMyVenues } from '../hooks'; // ✅ Hook API au lieu de Context
+import { Plus, MapPin, Star, Users, Edit, Building2, TrendingUp, Eye, ChevronRight } from 'lucide-react';
+import { PageType } from '../app';
+import { usePartnerVenues } from '../hooks/api/useVenues'; // ✅ Hook API au lieu de Context
 import { useState, useMemo } from 'react';
 
 interface MesRestaurantsProps {
@@ -22,7 +22,7 @@ interface MesRestaurantsProps {
 export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
   // ✅ AVANT : const { getUserRestaurants } = useAppContext();
   // ✅ APRÈS : Hook API avec gestion auto du loading/error
-  const { data: venues, loading, error, refetch } = useMyVenues();
+  const { data: venues, isLoading: loading, error, refetch } = usePartnerVenues();
   
   // États locaux
   const [retrying, setRetrying] = useState(false);
@@ -34,8 +34,8 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
     return venues.map(venue => ({
       id: Number(venue.id),
       nom: venue.name,
-      adresse: `${venue.address}, ${venue.city} ${venue.postal_code}`,
-      telephone: venue.phone,
+      adresse: [venue.street_address, venue.city, venue.postal_code].filter(Boolean).join(', '),
+      telephone: venue.phone || '',
       email: venue.email || '',
       capaciteMax: venue.capacity || 50,
       note: 4.5, // TODO: Calculer depuis les reviews
@@ -44,7 +44,6 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
       horaires: 'Lun-Dim: 11h00 - 02h00', // TODO: Formater depuis venue.opening_hours
       tarif: '30€/mois',
       userId: 'current-user',
-      bookingMode: venue.booking_mode,
       matchsOrganises: 0, // TODO: Compter depuis venue_matches
     }));
   }, [venues]);

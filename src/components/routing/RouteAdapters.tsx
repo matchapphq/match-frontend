@@ -28,6 +28,7 @@ import { Cgv as RawCgv } from '../../pages/cgv/Cgv';
 import { OnboardingWelcome as RawOnboardingWelcome } from '../../features/onboarding/pages/OnboardingWelcome';
 import { AjouterRestaurant as RawAjouterRestaurant } from '../../features/restaurants/pages/AjouterRestaurant';
 import { InfosEtablissement as RawInfosEtablissement } from '../../features/onboarding/pages/InfosEtablissement';
+import { ConfigurerHorairesLieu as RawConfigurerHorairesLieu } from '../../features/onboarding/pages/ConfigurerHorairesLieu';
 import { Facturation as RawFacturation } from '../../features/onboarding/pages/Facturation';
 import { ConfirmationOnboarding as RawConfirmationOnboarding } from '../../features/onboarding/pages/ConfirmationOnboarding';
 import { PaymentRequired as RawPaymentRequired } from '../../features/onboarding/pages/PaymentRequired';
@@ -211,6 +212,10 @@ export function OnboardingInfosEtablissement() {
   );
 }
 
+export function OnboardingConfigurerHorairesLieu() {
+  return <RawConfigurerHorairesLieu isOnboarding={true} />;
+}
+
 export function OnboardingFacturation() {
   const navigate = useNavigate();
   return (
@@ -326,10 +331,14 @@ export function InfosEtablissement() {
   const navigate = useNavigate();
   return (
     <RawInfosEtablissement
-      onBack={() => navigate('/my-venues/add')}
+      onBack={() => navigate('/my-venues')}
       isAddingVenue={true}
     />
   );
+}
+
+export function ConfigurerHorairesLieu() {
+  return <RawConfigurerHorairesLieu />;
 }
 
 export function Facturation() {

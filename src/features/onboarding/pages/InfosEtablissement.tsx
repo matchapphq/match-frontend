@@ -1,34 +1,54 @@
-import { ArrowLeft, Building2, ChevronDown, Coffee, Loader2, Receipt, ShieldCheck, Sparkles, Store, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, Building2, ChevronDown, Coffee, Receipt, ShieldCheck, Sparkles, Store, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import apiClient from '../../../api/client';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PhoneInputField } from '../../../components/common/PhoneInputField';
 import { useAuth } from '../../authentication/context/AuthContext';
-import { clearPendingPaymentVenueId, saveCheckoutState, savePendingPaymentVenueId } from '../../../utils/checkout-state';
-import { API_ENDPOINTS } from '../../../utils/api-constants';
-import { getPhoneErrorMessage, normalizePhone, type PhoneCountry } from '../../../utils/phone';
+import { saveCheckoutState } from '../../../utils/checkout-state';
+import { formatPhoneInput, getPhoneErrorMessage, inferPhoneCountry, normalizePhone, type PhoneCountry } from '../../../utils/phone';
+import { validateWebsiteUrl } from '../../../utils/website';
 
 interface InfosEtablissementProps {
   onBack: () => void;
-  onBarInfoSubmit?: (nomBar: string) => void;
   isAddingVenue?: boolean; // True when adding from "Mes lieux" (not onboarding)
 }
 
-interface CreateVenueResponse {
-  venue?: { id?: string };
-  venue_id?: string;
-  requires_payment_setup?: boolean;
-  is_first_venue?: boolean;
-  payment_setup_flow?: 'post_first_venue' | null;
+interface VenueCreationSummary {
+  name: string;
+  typeLabel: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  phone: string;
+  email: string;
+  website: string;
+  capacity: string;
+  openingConfigured: boolean;
+  happyHourConfigured: boolean;
+}
+
+interface VenueInfoDraft {
+  nomBar: string;
+  adresse: string;
+  ville: string;
+  codePostal: string;
+  telephone: string;
+  email: string;
+  website: string;
+  capacite: string;
+  typeEtablissement: string;
+  phoneCountry: PhoneCountry;
+  useAccountContact: boolean;
 }
 
 function sanitizeCapacityInput(value: string): string {
   return value.replace(/[^\d]/g, '');
 }
 
-export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = false }: InfosEtablissementProps) {
-  const { updateOnboardingStep } = useAuth();
+export function InfosEtablissement({ onBack, isAddingVenue = false }: InfosEtablissementProps) {
+  const { currentUser, refreshUserData } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = (location.state as { venueInfoDraft?: VenueInfoDraft } | null) ?? null;
   const typePickerRef = useRef<HTMLDivElement | null>(null);
   const [formData, setFormData] = useState({
     nomBar: '',
@@ -37,13 +57,15 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
     codePostal: '',
     telephone: '',
     email: '',
+    website: '',
     capacite: '',
     typeEtablissement: 'bar',
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>('FR');
+  const [useAccountContact, setUseAccountContact] = useState(true);
+  const hasRequestedAccountHydrationRef = useRef(false);
 
   const etablissementTypes = useMemo(() => ([
     {
@@ -90,17 +112,56 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
 
   const selectedType = etablissementTypes.find((type) => type.value === formData.typeEtablissement) || etablissementTypes[0]!;
   const SelectedTypeIcon = selectedType.icon;
-  const venueTypeMap: Record<string, 'sports_bar' | 'pub' | 'restaurant' | 'cafe'> = {
-    bar: 'sports_bar',
-    pub: 'pub',
-    brasserie: 'restaurant',
-    restaurant: 'restaurant',
-    cafe: 'cafe',
-  };
   const updateField = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
-  const normalizedPhone = formData.telephone.trim() ? normalizePhone(formData.telephone, phoneCountry) : undefined;
+  const accountPhoneCountry = inferPhoneCountry(currentUser?.telephone || '');
+  const accountPhoneInput = currentUser?.telephone
+    ? formatPhoneInput(currentUser.telephone, accountPhoneCountry)
+    : '';
+  const effectivePhoneCountry = useAccountContact ? accountPhoneCountry : phoneCountry;
+  const effectivePhoneInput = useAccountContact ? accountPhoneInput : formData.telephone;
+  const normalizedPhone = effectivePhoneInput.trim() ? normalizePhone(effectivePhoneInput, effectivePhoneCountry) : undefined;
+  const effectiveEmail = useAccountContact ? (currentUser?.email || '') : formData.email;
+
+  useEffect(() => {
+    const draft = locationState?.venueInfoDraft;
+    if (!draft) {
+      setUseAccountContact(true);
+      return;
+    }
+    setFormData({
+      nomBar: draft.nomBar || '',
+      adresse: draft.adresse || '',
+      ville: draft.ville || '',
+      codePostal: draft.codePostal || '',
+      telephone: draft.telephone || '',
+      email: draft.email || '',
+      website: draft.website || '',
+      capacite: draft.capacite || '',
+      typeEtablissement: draft.typeEtablissement || 'bar',
+    });
+    setPhoneCountry(draft.phoneCountry || 'FR');
+    setUseAccountContact(draft.useAccountContact ?? true);
+  }, [locationState?.venueInfoDraft]);
+
+  useEffect(() => {
+    if (!useAccountContact) {
+      hasRequestedAccountHydrationRef.current = false;
+      return;
+    }
+    if (hasRequestedAccountHydrationRef.current) return;
+
+    const hasAccountPhone = typeof currentUser?.telephone === 'string' && currentUser.telephone.trim().length > 0;
+    const hasAccountEmail = typeof currentUser?.email === 'string' && currentUser.email.trim().length > 0;
+
+    if (hasAccountPhone && hasAccountEmail) return;
+
+    hasRequestedAccountHydrationRef.current = true;
+    void refreshUserData().catch(() => {
+      hasRequestedAccountHydrationRef.current = false;
+    });
+  }, [currentUser?.email, currentUser?.telephone, refreshUserData, useAccountContact]);
 
   useEffect(() => {
     if (!isTypeMenuOpen) return;
@@ -121,84 +182,70 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
     e.preventDefault();
     setError('');
 
-    if (formData.telephone.trim() && !normalizedPhone) {
-      setError(getPhoneErrorMessage(phoneCountry));
+    if (useAccountContact && !currentUser) {
+      setError('Chargement des informations du compte en cours. Réessayez dans un instant.');
       return;
     }
 
-    setIsLoading(true);
+    const resolvedPhoneCountry = effectivePhoneCountry;
+    const resolvedPhoneInput = effectivePhoneInput;
+    const resolvedEmail = effectiveEmail;
+    const resolvedNormalizedPhone = resolvedPhoneInput.trim()
+      ? normalizePhone(resolvedPhoneInput, resolvedPhoneCountry)
+      : undefined;
+    const sanitizedWebsite = formData.website.trim();
 
-    try {
-      const payload = {
-        name: formData.nomBar,
-        street_address: formData.adresse,
-        city: formData.ville,
-        postal_code: formData.codePostal,
-        country: 'France',
-        latitude: 48.8566, // Dummy coordinates
-        longitude: 2.3522,
-        phone: normalizedPhone,
-        email: formData.email || undefined,
-        capacity: parseInt(formData.capacite) || 0,
-        type: venueTypeMap[formData.typeEtablissement] || 'sports_bar',
-        description: `Etablissement de type ${selectedType.label.toLowerCase()}`,
-      };
-
-      const response = await apiClient.post<CreateVenueResponse>(API_ENDPOINTS.PARTNERS_VENUES, payload);
-      const data = response.data;
-      const venueId = data.venue_id
-        ? String(data.venue_id)
-        : data.venue?.id
-        ? String(data.venue.id)
-        : '';
-      const requiresPaymentSetup = data.requires_payment_setup === true;
-
-      if (!isAddingVenue) {
-        await updateOnboardingStep('facturation');
-      }
-
-      if (requiresPaymentSetup) {
-        if (!venueId) {
-          throw new Error('Identifiant du lieu manquant pour initialiser le paiement.');
-        }
-
-        savePendingPaymentVenueId(venueId);
-        navigate('/onboarding', { replace: true });
-        return;
-      }
-
-      clearPendingPaymentVenueId();
-
-      if (onBarInfoSubmit) {
-        onBarInfoSubmit(formData.nomBar);
-      }
-      
-      if (isAddingVenue) {
-        saveCheckoutState({
-          type: 'add-venue',
-          venueId,
-          venueName: formData.nomBar,
-          returnPage: 'mes-restaurants',
-        });
-        navigate('/my-venues/add/confirmation', { replace: true });
-      } else {
-        navigate('/onboarding', { replace: true });
-      }
-    } catch (err) {
-      console.error('Failed to create venue:', err);
-      const message = err instanceof Error ? err.message : '';
-      const normalized = message.trim().toUpperCase();
-      if (
-        normalized === 'PAYMENT_METHOD_REQUIRED' ||
-        normalized.includes('PAYMENT METHOD IS REQUIRED')
-      ) {
-        setError('Ajout impossible sans moyen de paiement. Configurez Stripe depuis votre espace facturation.');
-      } else {
-        setError(message || 'Une erreur est survenue lors de la création de l\'établissement.');
-      }
-    } finally {
-      setIsLoading(false);
+    if (resolvedPhoneInput.trim() && !resolvedNormalizedPhone) {
+      setError(getPhoneErrorMessage(resolvedPhoneCountry));
+      return;
     }
+    const websiteValidation = validateWebsiteUrl(sanitizedWebsite);
+    if (!websiteValidation.isValid) {
+      setError(websiteValidation.reason || 'Site web invalide.');
+      return;
+    }
+
+    const venueSummary: VenueCreationSummary = {
+      name: formData.nomBar.trim(),
+      typeLabel: selectedType.label,
+      address: formData.adresse.trim(),
+      city: formData.ville.trim(),
+      postalCode: formData.codePostal.trim(),
+      phone: resolvedNormalizedPhone || '',
+      email: resolvedEmail.trim(),
+      website: sanitizedWebsite,
+      capacity: formData.capacite.trim(),
+      openingConfigured: false,
+      happyHourConfigured: false,
+    };
+    const venueInfoDraft: VenueInfoDraft = {
+      ...formData,
+      telephone: resolvedPhoneInput,
+      email: resolvedEmail,
+      website: sanitizedWebsite,
+      phoneCountry: resolvedPhoneCountry,
+      useAccountContact,
+    };
+
+    const checkoutType = isAddingVenue ? 'add-venue' : 'onboarding';
+    const hoursPath = isAddingVenue ? '/my-venues/add/hours' : '/onboarding/hours';
+
+    saveCheckoutState({
+      type: checkoutType,
+      venueName: venueSummary.name,
+      returnPage: isAddingVenue ? 'mes-restaurants' : 'onboarding-welcome',
+      venueSummary,
+      venueInfoDraft,
+    });
+
+    navigate(hoursPath, {
+      replace: true,
+      state: {
+        venueName: venueSummary.name,
+        venueSummary,
+        venueInfoDraft,
+      },
+    });
   };
 
   return (
@@ -419,6 +466,26 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
                     </p>
                   </div>
 
+                  <div className="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-gray-50/70 dark:bg-gray-900/50 p-3 flex items-center justify-between gap-3">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Utiliser les informations du compte pour le contact</p>
+                    <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setUseAccountContact(true)}
+                        className={`px-3 py-1.5 rounded-md text-xs transition-colors ${useAccountContact ? 'bg-white dark:bg-gray-800 text-[#5a03cf] shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+                      >
+                        Oui
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUseAccountContact(false)}
+                        className={`px-3 py-1.5 rounded-md text-xs transition-colors ${!useAccountContact ? 'bg-white dark:bg-gray-800 text-[#5a03cf] shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+                      >
+                        Non
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="min-w-0">
                       <label htmlFor="telephone" className="block text-sm mb-2 text-gray-700 dark:text-gray-300">
@@ -427,13 +494,14 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
                       <PhoneInputField
                         id="telephone"
                         name="telephone"
-                        value={formData.telephone}
-                        country={phoneCountry}
+                        value={effectivePhoneInput}
+                        country={effectivePhoneCountry}
                         onChange={(value) => updateField('telephone', value)}
                         onCountryChange={setPhoneCountry}
+                        disabled={useAccountContact}
                         sizeClassName="py-3"
                         autoComplete="tel-national"
-                        ariaInvalid={formData.telephone.trim().length > 0 && !normalizedPhone}
+                        ariaInvalid={effectivePhoneInput.trim().length > 0 && !normalizedPhone}
                       />
                     </div>
 
@@ -447,97 +515,118 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
                         type="email"
                         inputMode="email"
                         autoComplete="email"
-                        value={formData.email}
+                        value={effectiveEmail}
                         onChange={(e) => updateField('email', e.target.value)}
                         placeholder="contact@lesportbar.fr"
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all placeholder-gray-400 dark:placeholder-gray-600"
+                        disabled={useAccountContact}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all placeholder-gray-400 dark:placeholder-gray-600 disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="website" className="block text-sm mb-2 text-gray-700 dark:text-gray-300">
+                      Site web (optionnel)
+                    </label>
+                    <input
+                      id="website"
+                      name="website"
+                      type="url"
+                      inputMode="url"
+                      autoComplete="url"
+                      pattern="https?://.+"
+                      title="Utilisez un lien complet commençant par http:// ou https://"
+                      value={formData.website}
+                      onChange={(e) => updateField('website', e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a03cf] focus:border-transparent transition-all placeholder-gray-400 dark:placeholder-gray-600"
+                    />
                   </div>
                 </section>
 
                 <button
                   type="submit"
-                  disabled={isLoading}
                   className="w-full py-4 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-all duration-200 shadow-lg shadow-[#5a03cf]/20 hover:scale-[1.01] mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {isLoading ? 'Création en cours...' : 'Valider les informations'}
+                  Configurer les horaires
                 </button>
               </form>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
-            <section className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-xl">
-              <div className="flex items-center gap-3 mb-6">
-                <Sparkles className="w-5 h-5 text-[#5a03cf] dark:text-[#7a23ef]" />
-                <h2 className="text-xl text-gray-900 dark:text-white">À retenir</h2>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-900/50 p-4">
-                  <p className="text-sm text-gray-900 dark:text-white">Les informations du lieu sont préparées ici</p>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Le nom, l’adresse, le contact et la capacité servent à configurer votre établissement sur Match.
-                  </p>
+          {!isAddingVenue ? (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
+              <section className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-xl">
+                <div className="flex items-center gap-3 mb-6">
+                  <Sparkles className="w-5 h-5 text-[#5a03cf] dark:text-[#7a23ef]" />
+                  <h2 className="text-xl text-gray-900 dark:text-white">À retenir</h2>
                 </div>
 
-                <div className="rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/80 dark:bg-emerald-900/10 p-4">
-                  <p className="text-sm text-gray-900 dark:text-white">Ces informations restent modifiables</p>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Vous pourrez ajuster ces données plus tard depuis votre espace compte et vos lieux.
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            <section className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-xl flex flex-col">
-              <div className="flex items-center gap-3 mb-6">
-                <ShieldCheck className="w-5 h-5 text-[#5a03cf] dark:text-[#7a23ef]" />
-                <h2 className="text-xl text-gray-900 dark:text-white">Suite du parcours</h2>
-              </div>
-
-              <div className="rounded-xl border border-[#5a03cf]/20 dark:border-[#7a23ef]/30 bg-gradient-to-br from-[#5a03cf]/5 to-[#9cff02]/5 dark:from-[#5a03cf]/10 dark:to-[#9cff02]/10 p-4 flex-1">
-                <div className="space-y-3">
-                  <div className="rounded-xl border border-white/50 bg-white/70 p-3 dark:border-white/10 dark:bg-gray-950/20">
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#5a03cf] text-xs text-white">
-                        1
-                      </span>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        Votre établissement est préparé avec les informations saisies ici.
-                      </p>
-                    </div>
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-900/50 p-4">
+                    <p className="text-sm text-gray-900 dark:text-white">Les informations du lieu sont préparées ici</p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Le nom, l’adresse, le contact et la capacité servent à configurer votre établissement sur Match.
+                    </p>
                   </div>
 
-                  <div className="rounded-xl border border-white/50 bg-white/70 p-3 dark:border-white/10 dark:bg-gray-950/20">
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#5a03cf] text-xs text-white">
-                        2
-                      </span>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        Vous revenez ensuite sur l’onboarding pour finaliser la facturation.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-white/50 bg-white/70 p-3 dark:border-white/10 dark:bg-gray-950/20">
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#5a03cf] text-xs text-white">
-                        3
-                      </span>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        L’activation du lieu se poursuit une fois la configuration du moyen de paiement finalisée.
-                      </p>
-                    </div>
+                  <div className="rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/80 dark:bg-emerald-900/10 p-4">
+                    <p className="text-sm text-gray-900 dark:text-white">Ces informations restent modifiables</p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Vous pourrez ajuster ces données plus tard depuis votre espace compte et vos lieux.
+                    </p>
                   </div>
                 </div>
-              </div>
-            </section>
-          </div>
+              </section>
+
+              <section className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-xl flex flex-col">
+                <div className="flex items-center gap-3 mb-6">
+                  <ShieldCheck className="w-5 h-5 text-[#5a03cf] dark:text-[#7a23ef]" />
+                  <h2 className="text-xl text-gray-900 dark:text-white">Suite du parcours</h2>
+                </div>
+
+                <div className="rounded-xl border border-[#5a03cf]/20 dark:border-[#7a23ef]/30 bg-gradient-to-br from-[#5a03cf]/5 to-[#9cff02]/5 dark:from-[#5a03cf]/10 dark:to-[#9cff02]/10 p-4 flex-1">
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-white/50 bg-white/70 p-3 dark:border-white/10 dark:bg-gray-950/20">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#5a03cf] text-xs text-white">
+                          1
+                        </span>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          Votre établissement est préparé avec les informations saisies ici.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-white/50 bg-white/70 p-3 dark:border-white/10 dark:bg-gray-950/20">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#5a03cf] text-xs text-white">
+                          2
+                        </span>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          Vous revenez ensuite sur l’onboarding pour finaliser la facturation.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-white/50 bg-white/70 p-3 dark:border-white/10 dark:bg-gray-950/20">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#5a03cf] text-xs text-white">
+                          3
+                        </span>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          L’activation du lieu se poursuit une fois la configuration du moyen de paiement finalisée.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          ) : null}
         </div>
       </div>
+
     </div>
   );
 }

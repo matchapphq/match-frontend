@@ -51,6 +51,26 @@ export interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function resolveApiPhone(apiUser: {
+  phone?: string;
+  telephone?: string;
+  phone_number?: string;
+}): string | undefined {
+  const candidates = [
+    apiUser.phone,
+    apiUser.telephone as string | undefined,
+    apiUser.phone_number as string | undefined,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return undefined;
+}
+
 function mapApiOnboardingStepToLocal(apiUser: ApiUser): LocalOnboardingStep {
   switch (apiUser.onboarding_step) {
     case 'done':
@@ -86,7 +106,7 @@ function apiUserToUser(apiUser: ApiUser): User {
     email: apiUser.email,
     nom: apiUser.last_name,
     prenom: apiUser.first_name,
-    telephone: apiUser.phone,
+    telephone: resolveApiPhone(apiUser),
     avatar: apiUser.avatar,
     role: apiUser.role,
     hasCompletedOnboarding: onboardingStep === 'complete' || (apiUser.has_completed_onboarding ?? false),
@@ -263,6 +283,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: response.user.email,
           nom: '',
           prenom: '',
+          telephone: resolveApiPhone(response.user as {
+            phone?: string;
+            telephone?: string;
+            phone_number?: string;
+          }),
           avatar: response.user.avatar,
           role: response.user.role,
           hasCompletedOnboarding: false,

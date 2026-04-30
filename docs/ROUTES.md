@@ -17,6 +17,7 @@ Source: `src/app/App.tsx`.
 - `/onboarding`
 - `/onboarding/add-venue` (redirect vers `/onboarding/info`)
 - `/onboarding/info`
+- `/onboarding/hours`
 - `/onboarding/billing`
 - `/onboarding/confirmation`
 - `/onboarding/payment-required`
@@ -29,8 +30,9 @@ Source: `src/app/App.tsx`.
 - `/my-matches/:id`
 - `/my-matches/:id/edit`
 - `/my-venues`
-- `/my-venues/add`
+- `/my-venues/add` (redirect vers `/my-venues/add/info`)
 - `/my-venues/add/info`
+- `/my-venues/add/hours`
 - `/my-venues/add/billing`
 - `/my-venues/add/confirmation`
 - `/my-venues/:id`
