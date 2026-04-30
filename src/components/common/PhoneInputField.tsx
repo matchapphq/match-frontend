@@ -21,6 +21,7 @@ interface PhoneInputFieldProps {
   ariaInvalid?: boolean;
   sizeClassName?: string;
   textClassName?: string;
+  disabled?: boolean;
 }
 
 export function PhoneInputField({
@@ -35,6 +36,7 @@ export function PhoneInputField({
   ariaInvalid = false,
   sizeClassName = 'py-3',
   textClassName = 'text-base',
+  disabled = false,
 }: PhoneInputFieldProps) {
   const phoneCountryPickerRef = useRef<HTMLDivElement | null>(null);
   const [isPhoneCountryMenuOpen, setIsPhoneCountryMenuOpen] = useState(false);
@@ -69,11 +71,16 @@ export function PhoneInputField({
       className={isPhoneCountryMenuOpen ? 'relative z-50' : 'relative'}
       ref={phoneCountryPickerRef}
     >
-      <div className={`flex w-full items-center rounded-xl border bg-gray-50 px-4 text-gray-900 transition-all focus-within:ring-2 dark:bg-gray-800 dark:text-white ${wrapperClasses}`}>
+      <div
+        className={`flex w-full items-center rounded-xl border bg-gray-50 px-4 text-gray-900 transition-all focus-within:ring-2 dark:bg-gray-800 dark:text-white ${wrapperClasses} ${
+          disabled ? 'opacity-60 cursor-not-allowed' : ''
+        }`}
+      >
         <button
           type="button"
-          onClick={() => setIsPhoneCountryMenuOpen((previousState) => !previousState)}
-          className={`flex shrink-0 items-center gap-3 pr-4 text-gray-900 dark:text-white ${sizeClassName} ${textClassName}`}
+          onClick={() => !disabled && setIsPhoneCountryMenuOpen((previousState) => !previousState)}
+          className={`flex shrink-0 items-center gap-3 pr-4 text-gray-900 dark:text-white ${sizeClassName} ${textClassName} ${disabled ? 'cursor-not-allowed' : ''}`}
+          disabled={disabled}
         >
           <CountryFlag country={country} />
           <span className="font-medium">{country}</span>
@@ -93,8 +100,9 @@ export function PhoneInputField({
             onChange={(event) => onChange(formatPhoneInput(event.target.value, country))}
             autoComplete={autoComplete}
             required={required}
+            disabled={disabled}
             aria-invalid={ariaInvalid}
-            className={`w-full bg-transparent text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-white dark:placeholder:text-gray-500 ${sizeClassName} ${textClassName}`}
+            className={`w-full bg-transparent text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-white dark:placeholder:text-gray-500 disabled:cursor-not-allowed ${sizeClassName} ${textClassName}`}
             placeholder={getPhonePlaceholder(country)}
           />
         </div>
