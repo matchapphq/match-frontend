@@ -37,6 +37,7 @@ import {
   Cgv,
   OnboardingWelcome,
   OnboardingInfosEtablissement,
+  OnboardingConfigurerHorairesLieu,
   OnboardingFacturation,
   OnboardingConfirmationOnboarding,
   OnboardingPaymentRequired,
@@ -240,6 +241,7 @@ function AppRoutes() {
       <Route path="/onboarding" element={<RequireAuth><OnboardingWelcome /></RequireAuth>} />
       <Route path="/onboarding/add-venue" element={<RequireAuth><Navigate to="/onboarding/info" replace /></RequireAuth>} />
       <Route path="/onboarding/info" element={<RequireAuth><OnboardingInfosEtablissement /></RequireAuth>} />
+      <Route path="/onboarding/hours" element={<RequireAuth><OnboardingConfigurerHorairesLieu /></RequireAuth>} />
       <Route path="/onboarding/billing" element={<RequireAuth><OnboardingFacturation /></RequireAuth>} />
       <Route path="/onboarding/confirmation" element={<RequireAuth><OnboardingConfirmationOnboarding /></RequireAuth>} />
       <Route path="/onboarding/payment-required" element={<RequireAuth><OnboardingPaymentRequired /></RequireAuth>} />

@@ -1,25 +1,15 @@
-import { ArrowLeft, Building2, ChevronDown, Coffee, Loader2, Receipt, ShieldCheck, Sparkles, Store, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, Building2, ChevronDown, Coffee, Receipt, ShieldCheck, Sparkles, Store, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import apiClient from '../../../api/client';
 import { PhoneInputField } from '../../../components/common/PhoneInputField';
 import { useAuth } from '../../authentication/context/AuthContext';
-import { clearPendingPaymentVenueId, saveCheckoutState, savePendingPaymentVenueId } from '../../../utils/checkout-state';
-import { API_ENDPOINTS } from '../../../utils/api-constants';
+import { saveCheckoutState } from '../../../utils/checkout-state';
 import { formatPhoneInput, getPhoneErrorMessage, inferPhoneCountry, normalizePhone, type PhoneCountry } from '../../../utils/phone';
+import { validateWebsiteUrl } from '../../../utils/website';
 
 interface InfosEtablissementProps {
   onBack: () => void;
-  onBarInfoSubmit?: (nomBar: string) => void;
   isAddingVenue?: boolean; // True when adding from "Mes lieux" (not onboarding)
-}
-
-interface CreateVenueResponse {
-  venue?: { id?: string };
-  venue_id?: string;
-  requires_payment_setup?: boolean;
-  is_first_venue?: boolean;
-  payment_setup_flow?: 'post_first_venue' | null;
 }
 
 interface VenueCreationSummary {
@@ -54,8 +44,8 @@ function sanitizeCapacityInput(value: string): string {
   return value.replace(/[^\d]/g, '');
 }
 
-export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = false }: InfosEtablissementProps) {
-  const { updateOnboardingStep, currentUser } = useAuth();
+export function InfosEtablissement({ onBack, isAddingVenue = false }: InfosEtablissementProps) {
+  const { currentUser, refreshUserData } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = (location.state as { venueInfoDraft?: VenueInfoDraft } | null) ?? null;
@@ -71,11 +61,11 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
     capacite: '',
     typeEtablissement: 'bar',
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>('FR');
   const [useAccountContact, setUseAccountContact] = useState(true);
+  const hasRequestedAccountHydrationRef = useRef(false);
 
   const etablissementTypes = useMemo(() => ([
     {
@@ -122,17 +112,17 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
 
   const selectedType = etablissementTypes.find((type) => type.value === formData.typeEtablissement) || etablissementTypes[0]!;
   const SelectedTypeIcon = selectedType.icon;
-  const venueTypeMap: Record<string, 'sports_bar' | 'pub' | 'restaurant' | 'cafe'> = {
-    bar: 'sports_bar',
-    pub: 'pub',
-    brasserie: 'restaurant',
-    restaurant: 'restaurant',
-    cafe: 'cafe',
-  };
   const updateField = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
-  const normalizedPhone = formData.telephone.trim() ? normalizePhone(formData.telephone, phoneCountry) : undefined;
+  const accountPhoneCountry = inferPhoneCountry(currentUser?.telephone || '');
+  const accountPhoneInput = currentUser?.telephone
+    ? formatPhoneInput(currentUser.telephone, accountPhoneCountry)
+    : '';
+  const effectivePhoneCountry = useAccountContact ? accountPhoneCountry : phoneCountry;
+  const effectivePhoneInput = useAccountContact ? accountPhoneInput : formData.telephone;
+  const normalizedPhone = effectivePhoneInput.trim() ? normalizePhone(effectivePhoneInput, effectivePhoneCountry) : undefined;
+  const effectiveEmail = useAccountContact ? (currentUser?.email || '') : formData.email;
 
   useEffect(() => {
     const draft = locationState?.venueInfoDraft;
@@ -156,15 +146,22 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
   }, [locationState?.venueInfoDraft]);
 
   useEffect(() => {
-    if (!currentUser || !useAccountContact) return;
-    const inferredCountry = inferPhoneCountry(currentUser.telephone || '');
-    setPhoneCountry(inferredCountry);
-    setFormData((prev) => ({
-      ...prev,
-      telephone: currentUser.telephone ? formatPhoneInput(currentUser.telephone, inferredCountry) : '',
-      email: currentUser.email || '',
-    }));
-  }, [currentUser, useAccountContact]);
+    if (!useAccountContact) {
+      hasRequestedAccountHydrationRef.current = false;
+      return;
+    }
+    if (hasRequestedAccountHydrationRef.current) return;
+
+    const hasAccountPhone = typeof currentUser?.telephone === 'string' && currentUser.telephone.trim().length > 0;
+    const hasAccountEmail = typeof currentUser?.email === 'string' && currentUser.email.trim().length > 0;
+
+    if (hasAccountPhone && hasAccountEmail) return;
+
+    hasRequestedAccountHydrationRef.current = true;
+    void refreshUserData().catch(() => {
+      hasRequestedAccountHydrationRef.current = false;
+    });
+  }, [currentUser?.email, currentUser?.telephone, refreshUserData, useAccountContact]);
 
   useEffect(() => {
     if (!isTypeMenuOpen) return;
@@ -190,18 +187,21 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
       return;
     }
 
-    const accountPhoneCountry = inferPhoneCountry(currentUser?.telephone || '');
-    const resolvedPhoneCountry = useAccountContact ? accountPhoneCountry : phoneCountry;
-    const resolvedPhoneInput = useAccountContact
-      ? (currentUser?.telephone ? formatPhoneInput(currentUser.telephone, accountPhoneCountry) : '')
-      : formData.telephone;
-    const resolvedEmail = useAccountContact ? (currentUser?.email || '') : formData.email;
+    const resolvedPhoneCountry = effectivePhoneCountry;
+    const resolvedPhoneInput = effectivePhoneInput;
+    const resolvedEmail = effectiveEmail;
     const resolvedNormalizedPhone = resolvedPhoneInput.trim()
       ? normalizePhone(resolvedPhoneInput, resolvedPhoneCountry)
       : undefined;
+    const sanitizedWebsite = formData.website.trim();
 
     if (resolvedPhoneInput.trim() && !resolvedNormalizedPhone) {
       setError(getPhoneErrorMessage(resolvedPhoneCountry));
+      return;
+    }
+    const websiteValidation = validateWebsiteUrl(sanitizedWebsite);
+    if (!websiteValidation.isValid) {
+      setError(websiteValidation.reason || 'Site web invalide.');
       return;
     }
 
@@ -213,7 +213,7 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
       postalCode: formData.codePostal.trim(),
       phone: resolvedNormalizedPhone || '',
       email: resolvedEmail.trim(),
-      website: formData.website.trim(),
+      website: sanitizedWebsite,
       capacity: formData.capacite.trim(),
       openingConfigured: false,
       happyHourConfigured: false,
@@ -222,92 +222,30 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
       ...formData,
       telephone: resolvedPhoneInput,
       email: resolvedEmail,
+      website: sanitizedWebsite,
       phoneCountry: resolvedPhoneCountry,
       useAccountContact,
     };
 
-    if (isAddingVenue) {
-      saveCheckoutState({
-        type: 'add-venue',
+    const checkoutType = isAddingVenue ? 'add-venue' : 'onboarding';
+    const hoursPath = isAddingVenue ? '/my-venues/add/hours' : '/onboarding/hours';
+
+    saveCheckoutState({
+      type: checkoutType,
+      venueName: venueSummary.name,
+      returnPage: isAddingVenue ? 'mes-restaurants' : 'onboarding-welcome',
+      venueSummary,
+      venueInfoDraft,
+    });
+
+    navigate(hoursPath, {
+      replace: true,
+      state: {
         venueName: venueSummary.name,
-        returnPage: 'mes-restaurants',
         venueSummary,
         venueInfoDraft,
-      });
-
-      navigate('/my-venues/add/hours', {
-        replace: true,
-        state: {
-          venueName: venueSummary.name,
-          venueSummary,
-          venueInfoDraft,
-        },
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const payload = {
-        name: formData.nomBar,
-        street_address: formData.adresse,
-        city: formData.ville,
-        postal_code: formData.codePostal,
-        country: 'France',
-        latitude: 48.8566, // Dummy coordinates
-        longitude: 2.3522,
-        phone: resolvedNormalizedPhone,
-        email: resolvedEmail.trim() || undefined,
-        website: formData.website.trim() || undefined,
-        capacity: parseInt(formData.capacite) || 0,
-        type: venueTypeMap[formData.typeEtablissement] || 'sports_bar',
-        description: `Etablissement de type ${selectedType.label.toLowerCase()}`,
-      };
-
-      const response = await apiClient.post<CreateVenueResponse>(API_ENDPOINTS.PARTNERS_VENUES, payload);
-      const data = response.data;
-      const venueId = data.venue_id
-        ? String(data.venue_id)
-        : data.venue?.id
-        ? String(data.venue.id)
-        : '';
-      const requiresPaymentSetup = data.requires_payment_setup === true;
-
-      await updateOnboardingStep('facturation');
-
-      if (requiresPaymentSetup) {
-        if (!venueId) {
-          throw new Error('Identifiant du lieu manquant pour initialiser le paiement.');
-        }
-
-        savePendingPaymentVenueId(venueId);
-        navigate('/onboarding', { replace: true });
-        return;
-      }
-
-      clearPendingPaymentVenueId();
-
-      if (onBarInfoSubmit) {
-        onBarInfoSubmit(formData.nomBar);
-      }
-
-      navigate('/onboarding', { replace: true });
-    } catch (err) {
-      console.error('Failed to create venue:', err);
-      const message = err instanceof Error ? err.message : '';
-      const normalized = message.trim().toUpperCase();
-      if (
-        normalized === 'PAYMENT_METHOD_REQUIRED' ||
-        normalized.includes('PAYMENT METHOD IS REQUIRED')
-      ) {
-        setError('Ajout impossible sans moyen de paiement. Configurez Stripe depuis votre espace facturation.');
-      } else {
-        setError(message || 'Une erreur est survenue lors de la création de l\'établissement.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
+      },
+    });
   };
 
   return (
@@ -556,14 +494,14 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
                       <PhoneInputField
                         id="telephone"
                         name="telephone"
-                        value={formData.telephone}
-                        country={phoneCountry}
+                        value={effectivePhoneInput}
+                        country={effectivePhoneCountry}
                         onChange={(value) => updateField('telephone', value)}
                         onCountryChange={setPhoneCountry}
                         disabled={useAccountContact}
                         sizeClassName="py-3"
                         autoComplete="tel-national"
-                        ariaInvalid={formData.telephone.trim().length > 0 && !normalizedPhone}
+                        ariaInvalid={effectivePhoneInput.trim().length > 0 && !normalizedPhone}
                       />
                     </div>
 
@@ -577,7 +515,7 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
                         type="email"
                         inputMode="email"
                         autoComplete="email"
-                        value={formData.email}
+                        value={effectiveEmail}
                         onChange={(e) => updateField('email', e.target.value)}
                         placeholder="contact@lesportbar.fr"
                         disabled={useAccountContact}
@@ -596,6 +534,8 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
                       type="url"
                       inputMode="url"
                       autoComplete="url"
+                      pattern="https?://.+"
+                      title="Utilisez un lien complet commençant par http:// ou https://"
                       value={formData.website}
                       onChange={(e) => updateField('website', e.target.value)}
                       placeholder="https://..."
@@ -606,11 +546,9 @@ export function InfosEtablissement({ onBack, onBarInfoSubmit, isAddingVenue = fa
 
                 <button
                   type="submit"
-                  disabled={isLoading}
                   className="w-full py-4 bg-[#5a03cf] text-white rounded-xl hover:bg-[#4a02af] transition-all duration-200 shadow-lg shadow-[#5a03cf]/20 hover:scale-[1.01] mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {isLoading ? 'Création en cours...' : (isAddingVenue ? 'Configurer les horaires' : 'Valider les informations')}
+                  Configurer les horaires
                 </button>
               </form>
             </div>

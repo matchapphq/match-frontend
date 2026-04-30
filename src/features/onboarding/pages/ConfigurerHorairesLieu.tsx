@@ -2,7 +2,13 @@ import { ArrowLeft, Beer, CalendarDays, Clock, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import apiClient from '../../../api/client';
-import { getCheckoutState, saveCheckoutState } from '../../../utils/checkout-state';
+import { useAuth } from '../../authentication/context/AuthContext';
+import {
+  clearPendingPaymentVenueId,
+  getCheckoutState,
+  saveCheckoutState,
+  savePendingPaymentVenueId,
+} from '../../../utils/checkout-state';
 import { normalizePhone, type PhoneCountry } from '../../../utils/phone';
 import {
   VENUE_DAY_CONFIG as DAY_CONFIG,
@@ -43,6 +49,10 @@ interface VenueInfoDraft {
   typeEtablissement?: string;
   phoneCountry?: PhoneCountry;
   useAccountContact?: boolean;
+}
+
+interface ConfigurerHorairesLieuProps {
+  isOnboarding?: boolean;
 }
 
 const venueTypeMap: Record<string, 'sports_bar' | 'pub' | 'restaurant' | 'cafe'> = {
@@ -87,15 +97,19 @@ function mapScheduleToOpeningHours(schedule: Record<WeekDayKey, DaySchedule>) {
   }, {} as Record<string, { open: string; close: string; closed: boolean; close_next_day: boolean }>);
 }
 
-export function ConfigurerHorairesLieu() {
+export function ConfigurerHorairesLieu({ isOnboarding = false }: ConfigurerHorairesLieuProps) {
+  const { updateOnboardingStep } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = (location.state as { venueId?: string; venueName?: string; venueSummary?: VenueSummary; venueInfoDraft?: VenueInfoDraft } | null) ?? null;
+  const flowType = isOnboarding ? 'onboarding' : 'add-venue';
+  const infoPath = isOnboarding ? '/onboarding/info' : '/my-venues/add/info';
 
   const [venueId, setVenueId] = useState<string>(locationState?.venueId || '');
   const [venueName, setVenueName] = useState<string>(locationState?.venueName || '');
   const [venueSummary, setVenueSummary] = useState<VenueSummary | null>(locationState?.venueSummary || null);
   const [venueInfoDraft, setVenueInfoDraft] = useState<VenueInfoDraft | null>(locationState?.venueInfoDraft || null);
+  const [requiresPaymentSetup, setRequiresPaymentSetup] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -107,12 +121,12 @@ export function ConfigurerHorairesLieu() {
   useEffect(() => {
     if (venueInfoDraft && venueName) return;
     const savedState = getCheckoutState();
-    if (!savedState || savedState.type !== 'add-venue') {
-      navigate('/my-venues/add/info', { replace: true });
+    if (!savedState || savedState.type !== flowType) {
+      navigate(infoPath, { replace: true });
       return;
     }
     if (!savedState.venueInfoDraft && !savedState.venueId) {
-      navigate('/my-venues/add/info', { replace: true });
+      navigate(infoPath, { replace: true });
       return;
     }
 
@@ -120,7 +134,7 @@ export function ConfigurerHorairesLieu() {
     setVenueName(savedState.venueName || '');
     setVenueSummary(savedState.venueSummary || null);
     setVenueInfoDraft(savedState.venueInfoDraft || null);
-  }, [venueInfoDraft, venueName, navigate]);
+  }, [flowType, infoPath, venueInfoDraft, venueName, navigate]);
 
   const selectedDayLabel = DAY_CONFIG.find((day) => day.key === selectedDay)?.name || 'Jour';
   const selectedOpeningDaySchedule = openingSchedule[selectedDay];
@@ -151,8 +165,37 @@ export function ConfigurerHorairesLieu() {
     });
   };
 
-  const createVenueIfNeeded = async (): Promise<string> => {
-    if (venueId) return venueId;
+  const finalizeFlow = async (summaryOverrides: VenueSummary, resolvedVenueId: string, paymentSetupRequired: boolean) => {
+    if (isOnboarding) {
+      if (paymentSetupRequired) {
+        savePendingPaymentVenueId(resolvedVenueId);
+      } else {
+        clearPendingPaymentVenueId();
+      }
+
+      await updateOnboardingStep('facturation');
+
+      saveCheckoutState({
+        type: 'onboarding',
+        venueId: resolvedVenueId,
+        venueName: venueName || 'Nouveau lieu',
+        returnPage: 'onboarding-welcome',
+        venueSummary: {
+          ...resolvedSummary,
+          ...summaryOverrides,
+        },
+        venueInfoDraft: venueInfoDraft || undefined,
+      });
+
+      navigate('/onboarding', { replace: true });
+      return;
+    }
+
+    goToSummary(summaryOverrides, resolvedVenueId);
+  };
+
+  const createVenueIfNeeded = async (): Promise<{ id: string; paymentSetupRequired: boolean }> => {
+    if (venueId) return { id: venueId, paymentSetupRequired: requiresPaymentSetup };
     if (!venueInfoDraft) {
       throw new Error('Les informations du lieu sont manquantes. Revenez à l’étape précédente.');
     }
@@ -178,11 +221,12 @@ export function ConfigurerHorairesLieu() {
       description: `Etablissement de type ${venueSummary?.typeLabel?.toLowerCase() || 'bar'}`,
     };
 
-    const response = await apiClient.post<{ venue?: { id?: string }; venue_id?: string }>(
+    const response = await apiClient.post<{ venue?: { id?: string }; venue_id?: string; requires_payment_setup?: boolean }>(
       '/partners/venues',
       payload,
     );
     const data = response.data;
+    const paymentSetupRequired = data.requires_payment_setup === true;
     const nextVenueId = data.venue_id
       ? String(data.venue_id)
       : data.venue?.id
@@ -194,7 +238,8 @@ export function ConfigurerHorairesLieu() {
     }
 
     setVenueId(nextVenueId);
-    return nextVenueId;
+    setRequiresPaymentSetup(paymentSetupRequired);
+    return { id: nextVenueId, paymentSetupRequired };
   };
 
   const handleScheduleLater = () => {
@@ -202,13 +247,14 @@ export function ConfigurerHorairesLieu() {
     setIsSaving(true);
     void (async () => {
       try {
-        const resolvedVenueId = await createVenueIfNeeded();
-        goToSummary(
+        const { id, paymentSetupRequired } = await createVenueIfNeeded();
+        await finalizeFlow(
           {
             openingConfigured: false,
             happyHourConfigured: false,
           },
-          resolvedVenueId,
+          id,
+          paymentSetupRequired,
         );
       } catch (err) {
         const message = err instanceof Error ? err.message : '';
@@ -258,7 +304,7 @@ export function ConfigurerHorairesLieu() {
     setIsSaving(true);
 
     try {
-      const resolvedVenueId = await createVenueIfNeeded();
+      const { id: resolvedVenueId, paymentSetupRequired } = await createVenueIfNeeded();
       const openingHoursPayload = mapScheduleToOpeningHours(openingSchedule);
       const happyHoursPayload = happyHourEnabled ? mapScheduleToOpeningHours(happyHourSchedule) : {};
 
@@ -267,12 +313,13 @@ export function ConfigurerHorairesLieu() {
         happy_hours: happyHoursPayload,
       });
 
-      goToSummary(
+      await finalizeFlow(
         {
           openingConfigured: true,
           happyHourConfigured: happyHourEnabled && Object.keys(happyHoursPayload).length > 0,
         },
         resolvedVenueId,
+        paymentSetupRequired,
       );
     } catch (err) {
       console.error('Failed to save schedules:', err);
@@ -302,7 +349,7 @@ export function ConfigurerHorairesLieu() {
         <div className="mb-6">
           <button
             onClick={() =>
-              navigate('/my-venues/add/info', {
+              navigate(infoPath, {
                 state: {
                   venueInfoDraft: venueInfoDraft || undefined,
                 },

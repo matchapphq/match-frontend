@@ -212,6 +212,10 @@ export function OnboardingInfosEtablissement() {
   );
 }
 
+export function OnboardingConfigurerHorairesLieu() {
+  return <RawConfigurerHorairesLieu isOnboarding={true} />;
+}
+
 export function OnboardingFacturation() {
   const navigate = useNavigate();
   return (
