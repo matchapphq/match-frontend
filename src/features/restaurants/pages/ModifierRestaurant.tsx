@@ -8,6 +8,7 @@ import { PhoneInputField } from '../../../components/common/PhoneInputField';
 import { useToast } from '../../../context/ToastContext';
 import { useUnsavedChangesGuard } from '../../../hooks/useUnsavedChangesGuard';
 import { formatPhoneInput, getPhoneErrorMessage, inferPhoneCountry, normalizePhone, type PhoneCountry } from '../../../utils/phone';
+import { validateWebsiteUrl } from '../../../utils/website';
 import {
   VENUE_DAY_CONFIG as DAY_CONFIG,
   VENUE_WEEK_DAYS as WEEK_DAYS,
@@ -553,6 +554,12 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       toast.error(getPhoneErrorMessage(phoneCountry));
       return;
     }
+    const sanitizedWebsite = formData.website.trim();
+    const websiteValidation = validateWebsiteUrl(sanitizedWebsite);
+    if (!websiteValidation.isValid) {
+      toast.error(websiteValidation.reason || 'Site web invalide.');
+      return;
+    }
     if (restaurantId) {
       const weeklyScheduleSnapshot = cloneWeeklySchedule(weeklySchedule);
       const happyHourWeeklyScheduleSnapshot = cloneWeeklySchedule(happyHourWeeklySchedule);
@@ -563,7 +570,6 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
       const happyHoursPayload = happyHourEnabled
         ? mapWeeklyScheduleToOpeningHours(happyHourWeeklyScheduleSnapshot, { omitClosedDays: true })
         : {};
-      const sanitizedWebsite = formData.website.trim();
       updateVenueMutation.mutate({
         ...formData,
         website: sanitizedWebsite || undefined,
@@ -750,6 +756,8 @@ export function ModifierRestaurant({ restaurantId, onBack }: ModifierRestaurantP
                     </label>
                     <input
                       type="url"
+                      pattern="https?://.+"
+                      title="Utilisez un lien complet commençant par http:// ou https://"
                       value={formData.website}
                       onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                       placeholder="https://..."
