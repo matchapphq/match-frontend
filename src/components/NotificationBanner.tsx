@@ -70,7 +70,7 @@ export function NotificationBanner({
     <div 
       className={`
         w-full backdrop-blur-xl border-2 ${styles.border} ${styles.bg}
-        px-4 py-3 flex items-center gap-3
+        px-4 h-16 flex items-center gap-3
         shadow-lg
       `}
     >
