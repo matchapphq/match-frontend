@@ -7,6 +7,9 @@ export interface Venue {
   id: string;
   name: string;
   description?: string;
+  capacity?: number;
+  booking_mode?: 'INSTANT' | 'REQUEST' | string;
+  opening_hours?: unknown;
   street_address?: string;
   city?: string;
   postal_code?: string;
