@@ -1,12 +1,12 @@
-import { Calendar, TrendingUp, Users, Eye, MapPin, Zap, Clock, ArrowUpRight, Star, MessageSquare, CheckCircle, Plus, MoreVertical, QrCode, ArrowDownRight, Loader2 } from 'lucide-react';
+import { Calendar, TrendingUp, Users, Eye, Zap, ArrowUpRight, Plus, MoreVertical, ArrowDownRight, Loader2, AlertCircle } from 'lucide-react';
 import { PageType } from '../../../types';
 import { useState, useMemo } from 'react';
 import { useAuth } from '../../authentication/context/AuthContext';
 import { ParrainageWidget } from '../../../components/ParrainageWidget';
-import { NotificationBanner } from '../../../components/NotificationBanner';
-import { useToast } from '../../../context/ToastContext';
 import { usePartnerMatches } from '../../../hooks/api/useMatches';
 import { useCustomerStats } from '../../../hooks/api/useReservations';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -17,16 +17,60 @@ interface DashboardProps {
 export function Dashboard({ onNavigate }: DashboardProps) {
   const { currentUser } = useAuth();
   const [periodFilter, setPeriodFilter] = useState<'7j' | '30j' | '90j'>('30j');
-  const toast = useToast();
 
   // Convert period filter to numeric days
   const periodDays = periodFilter === '7j' ? 7 : periodFilter === '90j' ? 90 : 30;
 
   // Fetch matches from API
-  const { data: matchesData, isLoading: matchesLoading } = usePartnerMatches();
+  const { data: matchesData } = usePartnerMatches();
   
   // Fetch customer stats with period filter
   const { data: customerStatsData } = useCustomerStats(periodDays as 7 | 30 | 90);
+
+  // Fetch analytics summary from backend (no placeholder stats)
+  const { data: analyticsSummary, isError: analyticsError } = useQuery({
+    queryKey: ['partner-analytics-summary', periodDays],
+    queryFn: async () => {
+      const response = await apiClient.get(`/partners/analytics/summary?period=${periodDays}`);
+      return response.data as {
+        total_clients: number;
+        total_reservations: number;
+        total_views: number;
+        matches_completed: number;
+        matches_upcoming: number;
+        average_occupancy: number;
+        trends?: {
+          clients?: number;
+          reservations?: number;
+          matches?: number;
+          views?: number;
+        };
+      };
+    },
+  });
+
+  // Fetch recent activity from backend (no hardcoded feed)
+  const { data: recentActivityData, isLoading: recentActivityLoading, isError: recentActivityError } = useQuery({
+    queryKey: ['partner-recent-activity'],
+    queryFn: async () => {
+      const response = await apiClient.get('/partners/activity?limit=10');
+      return (response.data?.activity || []) as Array<{
+        type: 'reservation' | 'review';
+        id: string;
+        created_at: string;
+        venue_name?: string;
+        user_name?: string;
+        details?: {
+          status?: string;
+          party_size?: number;
+          match?: string | null;
+          rating?: number;
+          title?: string | null;
+        };
+      }>;
+    },
+  });
+
   // totalGuests = sum of party_size (actual number of people, not just reservations)
   const totalClients = customerStatsData?.totalGuests || 0;
   
@@ -108,18 +152,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     {
       id: 'clients-detail' as PageType,
       title: 'Total clients',
-      value: totalClients.toString(),
-      change: '+12.5%',
-      changeType: 'increase' as const,
+      value: String(analyticsSummary?.total_clients ?? totalClients ?? 0),
+      trend: analyticsSummary?.trends?.clients,
       icon: Users,
       color: 'purple' as const,
     },
     {
       id: 'mes-matchs' as PageType,
       title: 'Matchs diffusés',
-      value: matchsTermines.length.toString(),
-      change: '+8.2%',
-      changeType: 'increase' as const,
+      value: String(analyticsSummary?.matches_completed ?? matchsTermines.length),
+      trend: analyticsSummary?.trends?.matches,
       icon: Eye,
       color: 'blue' as const,
       filter: 'terminé' as const,
@@ -127,9 +169,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     {
       id: 'mes-matchs' as PageType,
       title: 'Matchs à venir',
-      value: matchsAVenir.length.toString(),
-      change: '+5.1%',
-      changeType: 'increase' as const,
+      value: String(analyticsSummary?.matches_upcoming ?? matchsAVenir.length),
+      trend: analyticsSummary?.trends?.matches,
       icon: Calendar,
       color: 'green' as const,
       filter: 'à venir' as const,
@@ -137,19 +178,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     {
       id: 'vues-detail' as PageType,
       title: 'Vues totales',
-      value: '1,453',
-      change: '+23.4%',
-      changeType: 'increase' as const,
+      value: String(analyticsSummary?.total_views ?? 0),
+      trend: analyticsSummary?.trends?.views,
       icon: Eye,
       color: 'orange' as const,
     },
-  ];
-
-  const recentActivity = [
-    { type: 'booking', text: 'Nouvelle réservation pour PSG vs OM', time: 'Il y a 2h', match: 'PSG vs OM', matchId: 1, clickable: true },
-    { type: 'view', text: '45 nouvelles vues sur Real Madrid vs Barcelona', time: 'Il y a 3h', match: 'Real Madrid vs Barcelona', matchId: 2, clickable: false },
-    { type: 'match', text: 'Match diffusé: Manchester United vs Liverpool', time: 'Il y a 5h', match: 'Manchester United vs Liverpool', matchId: 3, clickable: false },
-    { type: 'booking', text: '3 réservations pour Bayern vs Dortmund', time: 'Hier', match: 'Bayern vs Dortmund', matchId: 4, clickable: true },
   ];
 
   const upcomingMatches = matchsAVenir.slice(0, 4);
@@ -219,6 +252,12 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             ))}
           </div>
         </div>
+        {analyticsError && (
+          <div className="mb-6 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
+            <AlertCircle className="h-4 w-4" />
+            Certaines statistiques ne sont pas disponibles depuis le back pour le moment.
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -249,18 +288,26 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 <div className="text-3xl text-gray-900 dark:text-white">{stat.value}</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">{stat.title}</div>
                 <div className="flex items-center gap-2">
-                  {stat.changeType === 'increase' ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-                      <TrendingUp className="w-3 h-3" />
-                      {stat.change}
-                    </span>
+                  {typeof stat.trend === 'number' ? (
+                    stat.trend >= 0 ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
+                        <TrendingUp className="w-3 h-3" />
+                        +{stat.trend}%
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full">
+                        <ArrowDownRight className="w-3 h-3" />
+                        {stat.trend}%
+                      </span>
+                    )
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full">
-                      <ArrowDownRight className="w-3 h-3" />
-                      {stat.change}
+                    <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                      Donnée indisponible
                     </span>
                   )}
-                  <span className="text-xs text-gray-500 dark:text-gray-400">vs période précédente</span>
+                  {typeof stat.trend === 'number' && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">vs période précédente</span>
+                  )}
                 </div>
               </div>
             </button>
@@ -309,11 +356,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                         <div className="flex-1">
                           <div className="text-sm text-gray-900 dark:text-white mb-1">{match.equipe1} vs {match.equipe2}</div>
                           <div className="text-xs text-gray-600 dark:text-gray-400">
-                            {new Date(match.date).toLocaleDateString('fr-FR', { 
-                              weekday: 'long', 
-                              day: 'numeric', 
-                              month: 'long' 
-                            })} • {match.heure}
+                            {match.date} • {match.heure}
                           </div>
                         </div>
                         <MoreVertical className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400" />
@@ -349,23 +392,43 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <h2 className="text-lg text-gray-900 dark:text-white">Activité récente</h2>
             </div>
             <div className="p-6">
+              {recentActivityError && (
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
+                  Impossible de charger l'activité récente depuis le back.
+                </div>
+              )}
               <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
+                {recentActivityLoading ? (
+                  <div className="flex items-center justify-center py-6 text-gray-500 dark:text-gray-400">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Chargement...
+                  </div>
+                ) : (recentActivityData || []).length === 0 ? (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 py-2">
+                    Aucune activité récente.
+                  </div>
+                ) : (recentActivityData || []).map((activity) => (
                   <div 
-                    key={index} 
-                    className={`flex gap-3 ${activity.clickable ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 py-2 rounded-lg transition-colors' : ''}`}
-                    onClick={() => activity.clickable && onNavigate('reservations', activity.matchId)}
+                    key={activity.id}
+                    className={`flex gap-3 ${activity.type === 'reservation' ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 py-2 rounded-lg transition-colors' : ''}`}
+                    onClick={() => activity.type === 'reservation' && onNavigate('reservations')}
                   >
                     <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      activity.type === 'booking' ? 'bg-green-500' :
-                      activity.type === 'view' ? 'bg-blue-500' :
-                      'bg-purple-500'
+                      activity.type === 'reservation' ? 'bg-green-500' : 'bg-purple-500'
                     }`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900 dark:text-white mb-1">{activity.text}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
+                      <p className="text-sm text-gray-900 dark:text-white mb-1">
+                        {activity.type === 'reservation'
+                          ? `${activity.user_name || 'Client'} a réservé${activity.details?.match ? ` • ${activity.details.match}` : ''}`
+                          : `${activity.user_name || 'Client'} a laissé un avis${activity.details?.rating ? ` (${activity.details.rating}/5)` : ''}`
+                        }
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {format(new Date(activity.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                        {activity.venue_name ? ` • ${activity.venue_name}` : ''}
+                      </p>
                     </div>
-                    {activity.clickable && (
+                    {activity.type === 'reservation' && (
                       <ArrowUpRight className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 mt-1" />
                     )}
                   </div>
