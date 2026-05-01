@@ -194,7 +194,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         {/* Header */}
         <div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900 dark:text-white">
-            Bonjour, <span className="text-[#5a03cf]">{currentUser?.prenom}</span> 👋
+            Bonjour, <span className="text-[#5a03cf] dark:text-[#9cff02]">{currentUser?.prenom}</span> 👋
           </h1>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Voici un aperçu de votre activité aujourd'hui</p>
         </div>
@@ -219,7 +219,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
           <button
             onClick={() => onNavigate('booster')}
-            className="group relative overflow-hidden bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-2xl p-5 sm:p-6 hover:shadow-2xl hover:shadow-[#9cff02]/30 transition-all duration-300"
+            className="group relative overflow-hidden bg-[#9cff02] text-[#5a03cf] rounded-2xl p-5 sm:p-6 hover:shadow-2xl hover:shadow-[#9cff02]/30 transition-all duration-300"
           >
             <div className="relative z-10 flex items-center justify-between">
               <div className="text-left">
@@ -230,7 +230,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 <Zap className="w-6 h-6" />
               </div>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
         </div>
 
