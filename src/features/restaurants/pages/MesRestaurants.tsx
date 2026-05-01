@@ -1,4 +1,4 @@
-import { MapPin, Star, Edit2, Plus, BarChart3, Eye, Building2, Users, TrendingUp, ChevronRight, Loader2 } from 'lucide-react';
+import { MapPin, Star, Edit2, Plus, Building2, Users, TrendingUp, ChevronRight, Loader2 } from 'lucide-react';
 import { PageType } from '../../../types';
 import { useAuth } from '../../authentication/context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -75,13 +75,36 @@ function toFiniteNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function hasConfiguredOpeningHours(openingHours: unknown): boolean {
+  if (!openingHours) return false;
+
+  if (Array.isArray(openingHours)) {
+    return openingHours.some((day) => {
+      if (!day || typeof day !== 'object') return false;
+      const periods = (day as Record<string, unknown>).periods;
+      return Array.isArray(periods) && periods.length > 0;
+    });
+  }
+
+  if (typeof openingHours === 'object') {
+    return Object.keys(openingHours as Record<string, unknown>).length > 0;
+  }
+
+  return false;
+}
+
 function mapVenueStatusToUi(
   status: unknown,
   isActive: unknown,
   hasPaymentMethod: boolean,
   hasCompletedOnboarding: boolean,
+  hasOpeningHours: boolean,
 ): 'actif' | 'inactif' | 'en_attente' {
   const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : null;
+
+  if (!hasOpeningHours) {
+    return 'inactif';
+  }
 
   if (hasPaymentMethod && hasCompletedOnboarding) {
     switch (normalizedStatus) {
@@ -162,7 +185,13 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
         image: resolveVenueImage(venue),
         matchsOrganises: Math.max(0, toFiniteNumber(venue.matches_count)),
         matchsVariation: typeof venue.matches_growth_percent === 'number' ? venue.matches_growth_percent : null,
-        statut: mapVenueStatusToUi(venue.status, venue.is_active, hasPaymentMethod, hasCompletedOnboarding),
+        statut: mapVenueStatusToUi(
+          venue.status,
+          venue.is_active,
+          hasPaymentMethod,
+          hasCompletedOnboarding,
+          hasConfiguredOpeningHours(venue.opening_hours),
+        ),
       }));
 
       return restaurants;
@@ -237,7 +266,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
-      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
@@ -256,51 +285,51 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
 
 
         {/* Stats Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div className="bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
             <div className="flex items-start justify-between mb-4">
               <div className="w-12 h-12 bg-[#5a03cf]/10 rounded-xl flex items-center justify-center">
                 <Building2 className="w-6 h-6 text-[#5a03cf]" />
               </div>
             </div>
-            <div className="text-3xl text-gray-900 dark:text-white mb-1">{totalRestaurants}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Établissement{totalRestaurants > 1 ? 's' : ''}</div>
+            <div className="text-2xl sm:text-3xl text-gray-900 dark:text-white mb-1">{totalRestaurants}</div>
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Établissement{totalRestaurants > 1 ? 's' : ''}</div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-800/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-orange-200 dark:border-orange-800 shadow-sm">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
-                <Star className="w-6 h-6 text-orange-500" />
+              <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center">
+                <Star className="w-6 h-6 text-orange-500 dark:text-orange-400" />
               </div>
             </div>
-            <div className="text-3xl text-gray-900 dark:text-white mb-1">{noteMoyenne}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Note moyenne</div>
+            <div className="text-2xl sm:text-3xl text-gray-900 dark:text-white mb-1">{noteMoyenne}</div>
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Note moyenne</div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-blue-200 dark:border-blue-800 shadow-sm">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
-            <div className="text-3xl text-gray-900 dark:text-white mb-1">{totalCapacite}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Capacité totale</div>
+            <div className="text-2xl sm:text-3xl text-gray-900 dark:text-white mb-1">{totalCapacite}</div>
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Capacité totale</div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-green-200 dark:border-green-800 shadow-sm">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
-            <div className="text-3xl text-gray-900 dark:text-white mb-1">{totalMatchs}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Matchs organisés</div>
+            <div className="text-2xl sm:text-3xl text-gray-900 dark:text-white mb-1">{totalMatchs}</div>
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Matchs organisés</div>
           </div>
         </div>
 
         {/* Restaurants Grid */}
         {restaurants.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 p-16">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 border-dashed p-8 sm:p-16">
             <div className="text-center max-w-md mx-auto">
               <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <Building2 className="w-10 h-10 text-gray-400 dark:text-gray-500" />
@@ -425,7 +454,7 @@ export function MesRestaurants({ onNavigate }: MesRestaurantsProps) {
             {/* Add Card */}
             <button 
               onClick={handleAddRestaurant}
-              className="group bg-white dark:bg-gray-900 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl hover:border-[#5a03cf] hover:shadow-xl hover:shadow-[#5a03cf]/10 transition-all duration-300 min-h-[400px] flex flex-col items-center justify-center p-8"
+              className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 border-dashed rounded-2xl hover:border-[#5a03cf]/40 hover:shadow-xl hover:shadow-[#5a03cf]/10 transition-all duration-300 min-h-[400px] flex flex-col items-center justify-center p-8"
             >
               <div className="w-16 h-16 bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Plus className="w-8 h-8 text-white" />
