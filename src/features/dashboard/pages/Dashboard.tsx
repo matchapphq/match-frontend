@@ -71,8 +71,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     },
   });
 
-  // totalGuests = sum of party_size (actual number of people, not just reservations)
-  const totalClients = customerStatsData?.totalGuests || 0;
+  // Total guests reflects actual people volume, even when a single reservation has multiple guests
+  const totalClients = customerStatsData?.totalGuests ?? 0;
   
   // Sport emoji mapping
   const getSportEmoji = (league: string): string => {
@@ -150,7 +150,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   const stats = [
     {
-      id: 'clients-detail' as PageType,
+      id: 'reservations' as PageType,
       title: 'Total clients',
       value: String(analyticsSummary?.total_clients ?? totalClients ?? 0),
       trend: analyticsSummary?.trends?.clients,
@@ -182,6 +182,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       trend: analyticsSummary?.trends?.views,
       icon: Eye,
       color: 'orange' as const,
+      clickable: false,
     },
   ];
 
@@ -189,9 +190,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
-      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8 space-y-6">
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
+        <div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl mb-1 text-gray-900 dark:text-white">
             Bonjour, <span className="text-[#5a03cf]">{currentUser?.prenom}</span> 👋
           </h1>
@@ -199,10 +200,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </div>
 
         {/* Quick Actions Bar */}
-        <div className="grid sm:grid-cols-2 gap-4 mb-8">
+        <div className="grid sm:grid-cols-2 gap-4">
           <button
             onClick={() => onNavigate('programmer-match')}
-            className="group relative overflow-hidden bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white rounded-2xl p-6 hover:shadow-2xl hover:shadow-[#5a03cf]/30 transition-all duration-300"
+            className="group relative overflow-hidden bg-gradient-to-br from-[#5a03cf] to-[#7a23ef] text-white rounded-2xl p-5 sm:p-6 hover:shadow-2xl hover:shadow-[#5a03cf]/30 transition-all duration-300"
           >
             <div className="relative z-10 flex items-center justify-between">
               <div className="text-left">
@@ -218,7 +219,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
           <button
             onClick={() => onNavigate('booster')}
-            className="group relative overflow-hidden bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-2xl p-6 hover:shadow-2xl hover:shadow-[#9cff02]/30 transition-all duration-300"
+            className="group relative overflow-hidden bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-2xl p-5 sm:p-6 hover:shadow-2xl hover:shadow-[#9cff02]/30 transition-all duration-300"
           >
             <div className="relative z-10 flex items-center justify-between">
               <div className="text-left">
@@ -233,10 +234,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </button>
         </div>
 
-        {/* Period Filter */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg text-gray-900 dark:text-white">Statistiques</h2>
-          <div className="flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-1 shadow-sm">
+        {/* Toolbar */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Statistiques</div>
+            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
             {(['7j', '30j', '90j'] as const).map((period) => (
               <button
                 key={period}
@@ -244,31 +246,40 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 className={`px-4 py-1.5 rounded-md text-sm transition-all duration-200 ${
                   periodFilter === period
                     ? 'bg-[#5a03cf] text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700'
                 }`}
               >
                 {period}
               </button>
             ))}
+            </div>
           </div>
         </div>
         {analyticsError && (
-          <div className="mb-6 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
+          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
             <AlertCircle className="h-4 w-4" />
             Certaines statistiques ne sont pas disponibles depuis le back pour le moment.
           </div>
         )}
 
         {/* Stats Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {stats.map((stat, index) => (
             <button
               key={index}
-              onClick={() => onNavigate(stat.id, undefined, undefined, stat.filter)}
-              className="group relative bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:border-[#5a03cf]/30 hover:shadow-xl hover:shadow-[#5a03cf]/5 transition-all duration-300 text-left"
+              onClick={() => stat.clickable !== false && onNavigate(stat.id, undefined, undefined, stat.filter)}
+              className={`group relative rounded-xl sm:rounded-2xl p-4 sm:p-6 border transition-all duration-300 text-left ${
+                stat.color === 'purple'
+                  ? 'bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 border-gray-200 dark:border-gray-700 hover:border-[#5a03cf]/30'
+                  : stat.color === 'blue'
+                    ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 border-blue-200 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-700'
+                    : stat.color === 'green'
+                      ? 'bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/10 border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700'
+                      : 'bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-800/10 border-orange-200 dark:border-orange-800 hover:border-orange-300 dark:hover:border-orange-700'
+              }`}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+              <div className="flex items-start justify-between mb-3 sm:mb-4">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
                   stat.color === 'purple' ? 'bg-[#5a03cf]/10' :
                   stat.color === 'blue' ? 'bg-blue-50 dark:bg-blue-900/20' :
                   stat.color === 'green' ? 'bg-green-50 dark:bg-green-900/20' :
@@ -281,12 +292,14 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                     'text-orange-600'
                   }`} />
                 </div>
-                <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-[#5a03cf] transition-colors" />
+                {stat.clickable !== false && (
+                  <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-[#5a03cf] transition-colors" />
+                )}
               </div>
               
               <div className="space-y-2">
-                <div className="text-3xl text-gray-900 dark:text-white">{stat.value}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">{stat.title}</div>
+                <div className="text-2xl sm:text-3xl text-gray-900 dark:text-white">{stat.value}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{stat.title}</div>
                 <div className="flex items-center gap-2">
                   {typeof stat.trend === 'number' ? (
                     stat.trend >= 0 ? (
@@ -318,7 +331,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Upcoming Matches - 2/3 width */}
           <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+            <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg text-gray-900 dark:text-white">Matchs à venir</h2>
                 <button
@@ -330,7 +343,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {upcomingMatches.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -350,7 +363,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                     <button
                       key={match.id}
                       onClick={() => onNavigate('match-detail', match.id)}
-                      className="w-full group bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl p-4 transition-all duration-200 text-left border border-transparent hover:border-[#5a03cf]/20"
+                      className="w-full group bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl p-4 transition-all duration-200 text-left border border-gray-200 dark:border-gray-700 hover:border-[#5a03cf]/20"
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex-1">
@@ -388,10 +401,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
           {/* Recent Activity - 1/3 width */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+            <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-800">
               <h2 className="text-lg text-gray-900 dark:text-white">Activité récente</h2>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {recentActivityError && (
                 <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
                   Impossible de charger l'activité récente depuis le back.
