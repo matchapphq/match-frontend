@@ -19,10 +19,10 @@ import { Login as RawLogin } from '../../features/authentication/pages/Login';
 import { Register as RawRegister } from '../../features/authentication/pages/Register';
 import { ForgotPassword as RawForgotPassword } from '../../features/authentication/pages/ForgotPassword';
 import { ReferralPage as RawReferralPage } from '../../features/parrainage/pages/ReferralPage';
-import { AppPresentation as RawAppPresentation } from '../../pages/app-presentation/AppPresentation';
-import { Terms as RawTerms } from '../../pages/terms/Terms';
-import { Privacy as RawPrivacy } from '../../pages/privacy/Privacy';
-import { Cgv as RawCgv } from '../../pages/cgv/Cgv';
+import { AppPresentation as RawAppPresentation } from '../../features/presentation/pages/AppPresentation';
+import { Terms as RawTerms } from '../../features/legal/pages/Terms';
+import { Privacy as RawPrivacy } from '../../features/legal/pages/Privacy';
+import { Cgv as RawCgv } from '../../features/legal/pages/Cgv';
 
 // ─── Onboarding pages ─────────────────────────────────────────
 import { OnboardingWelcome as RawOnboardingWelcome } from '../../features/onboarding/pages/OnboardingWelcome';
@@ -48,7 +48,7 @@ import { ModifierRestaurant as RawModifierRestaurant } from '../../features/rest
 
 // ─── Other pages ──────────────────────────────────────────────
 import { Booster as RawBooster } from '../../features/booster/pages/Booster';
-import { AcheterBoosts as RawAcheterBoosts } from '../../pages/acheter-boosts/AcheterBoosts';
+import { AcheterBoosts as RawAcheterBoosts } from '../../features/booster/pages/AcheterBoosts';
 import { Parrainage as RawParrainage } from '../../features/parrainage/pages/Parrainage';
 import { MesAvis as RawMesAvis } from '../../features/avis/pages/MesAvis';
 import { Compte as RawCompte } from '../../features/compte/pages/MonCompte';
@@ -59,7 +59,7 @@ import { CompteSecurite as RawCompteSecurite } from '../compte/CompteSecurite';
 import { CompteDonnees as RawCompteDonnees } from '../compte/CompteDonnees';
 import { CompteAide as RawCompteAide } from '../compte/CompteAide';
 import { Reservations as RawReservations } from '../../features/reservations/pages/Reservations';
-import { NotificationCenter as RawNotificationCenter } from '../../pages/notification-center/NotificationCenter';
+import { NotificationCenter as RawNotificationCenter } from '../../features/notifications/pages/NotificationCenter';
 import { QRScanner as RawQRScanner } from '../../features/reservations/pages/QRScanner';
 
 // ─── Helpers ──────────────────────────────────────────────────
