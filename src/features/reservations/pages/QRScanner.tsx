@@ -25,6 +25,8 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
   const [success, setSuccess] = useState(false);
   const [scannedData, setScannedData] = useState<string>('');
   const [scannedAt, setScannedAt] = useState<Date | null>(null);
+  const [isManualInput, setIsManualInput] = useState(false);
+  const [manualCode, setManualCode] = useState('');
   const [verifiedReservation, setVerifiedReservation] = useState<VerifiedReservation | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
@@ -109,6 +111,8 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
 
     setScannedData(code);
     setIsVerifying(true);
+    setIsManualInput(false);
+    setManualCode('');
     setError(null);
     
     // Stop camera as soon as we have a code
@@ -182,7 +186,45 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
       {/* Scanner Area */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
         <div className="w-full max-w-md">
-          {!scanning && !error && !success && (
+          {isManualInput && !success && !isVerifying && (
+            <div className="glass-card rounded-2xl p-8 text-center flex flex-col items-center animate-scale-in">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                <Scan className="w-10 h-10 text-primary" />
+              </div>
+              <h3 className="text-foreground text-2xl font-bold mb-3">Saisie manuelle</h3>
+              <p className="text-muted-foreground text-sm mb-8 px-4">
+                Entrez le code de réservation à 6 ou 8 caractères présent sur le billet du client.
+              </p>
+              
+              <div className="w-full space-y-4">
+                <input
+                  type="text"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+                  placeholder="CODE-RESERVATION"
+                  className="w-full bg-muted border border-border rounded-xl py-4 px-6 text-center text-xl font-mono font-bold tracking-widest focus:border-primary focus:ring-1 focus:ring-primary transition-all uppercase"
+                  autoFocus
+                />
+                
+                <button
+                  onClick={() => handleManualInput(manualCode)}
+                  disabled={!manualCode || manualCode.length < 3}
+                  className="w-full py-4 bg-gradient-to-r from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-xl font-bold hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+                >
+                  Vérifier le code
+                </button>
+                
+                <button
+                  onClick={() => setIsManualInput(false)}
+                  className="w-full py-3 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-xl transition-colors"
+                >
+                  Retour au scanner
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!scanning && !error && !success && !isManualInput && !isVerifying && (
             <div className="glass-card rounded-2xl p-8 text-center flex flex-col items-center">
               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                 <Camera className="w-10 h-10 text-primary" />
@@ -210,10 +252,7 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
               </div>
 
               <button
-                onClick={() => {
-                  const code = prompt('Entrez le code de réservation:');
-                  if (code) handleManualInput(code);
-                }}
+                onClick={() => setIsManualInput(true)}
                 className="w-full py-3 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-xl transition-colors"
               >
                 Saisir manuellement
@@ -221,7 +260,7 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
             </div>
           )}
 
-          {error && (
+          {error && !isManualInput && (
             <div className="glass-card rounded-2xl p-8 text-center flex flex-col items-center border-destructive/20">
               <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mb-6">
                 <AlertCircle className="w-10 h-10 text-destructive" />
@@ -229,10 +268,7 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
               <h3 className="text-foreground text-xl font-bold mb-3">Erreur de caméra</h3>
               <p className="text-muted-foreground mb-8">{error}</p>
               <button
-                onClick={() => {
-                  const code = prompt('Entrez le code de réservation:');
-                  if (code) handleManualInput(code);
-                }}
+                onClick={() => setIsManualInput(true)}
                 className="w-full py-3 bg-primary text-primary-foreground font-medium rounded-xl hover:bg-primary/90 transition-colors mb-3"
               >
                 Saisir manuellement
@@ -246,7 +282,7 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
             </div>
           )}
 
-          {scanning && (
+          {scanning && !isManualInput && (
             <div className="w-full flex flex-col items-center">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black w-full aspect-[3/4] max-h-[60vh]">
                 <div 
@@ -285,11 +321,8 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
                   </button>
                   <button
                     onClick={() => {
-                      const code = prompt('Entrez le code de réservation:');
-                      if (code) {
-                        stopCamera();
-                        handleManualInput(code);
-                      }
+                      stopCamera();
+                      setIsManualInput(true);
                     }}
                     className="flex-1 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
                   >
