@@ -268,6 +268,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <button
               key={index}
               onClick={() => stat.clickable !== false && onNavigate(stat.id, undefined, undefined, stat.filter)}
+              style={stat.clickable === false ? { cursor: 'default' } : undefined}
               className={`group relative rounded-xl sm:rounded-2xl p-4 sm:p-6 border transition-all duration-300 text-left ${
                 stat.color === 'purple'
                   ? 'bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 border-gray-200 dark:border-gray-700 hover:border-[#5a03cf]/30'
@@ -319,7 +320,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                     </span>
                   )}
                   {typeof stat.trend === 'number' && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">vs période précédente</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">({periodFilter})</span>
                   )}
                 </div>
               </div>
