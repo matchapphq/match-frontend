@@ -19,15 +19,16 @@ import { Login as RawLogin } from '../../features/authentication/pages/Login';
 import { Register as RawRegister } from '../../features/authentication/pages/Register';
 import { ForgotPassword as RawForgotPassword } from '../../features/authentication/pages/ForgotPassword';
 import { ReferralPage as RawReferralPage } from '../../features/parrainage/pages/ReferralPage';
-import { AppPresentation as RawAppPresentation } from '../../pages/app-presentation/AppPresentation';
-import { Terms as RawTerms } from '../../pages/terms/Terms';
-import { Privacy as RawPrivacy } from '../../pages/privacy/Privacy';
-import { Cgv as RawCgv } from '../../pages/cgv/Cgv';
+import { AppPresentation as RawAppPresentation } from '../../features/presentation/pages/AppPresentation';
+import { Terms as RawTerms } from '../../features/legal/pages/Terms';
+import { Privacy as RawPrivacy } from '../../features/legal/pages/Privacy';
+import { Cgv as RawCgv } from '../../features/legal/pages/Cgv';
 
 // ─── Onboarding pages ─────────────────────────────────────────
 import { OnboardingWelcome as RawOnboardingWelcome } from '../../features/onboarding/pages/OnboardingWelcome';
 import { AjouterRestaurant as RawAjouterRestaurant } from '../../features/restaurants/pages/AjouterRestaurant';
 import { InfosEtablissement as RawInfosEtablissement } from '../../features/onboarding/pages/InfosEtablissement';
+import { ConfigurerHorairesLieu as RawConfigurerHorairesLieu } from '../../features/onboarding/pages/ConfigurerHorairesLieu';
 import { Facturation as RawFacturation } from '../../features/onboarding/pages/Facturation';
 import { ConfirmationOnboarding as RawConfirmationOnboarding } from '../../features/onboarding/pages/ConfirmationOnboarding';
 import { PaymentRequired as RawPaymentRequired } from '../../features/onboarding/pages/PaymentRequired';
@@ -46,9 +47,8 @@ import { RestaurantDetail as RawRestaurantDetail } from '../../features/restaura
 import { ModifierRestaurant as RawModifierRestaurant } from '../../features/restaurants/pages/ModifierRestaurant';
 
 // ─── Other pages ──────────────────────────────────────────────
-import { Booster as RawBooster } from '../../features/booster/pages/Booster';
-import { AcheterBoosts as RawAcheterBoosts } from '../../pages/acheter-boosts/AcheterBoosts';
-import { Parrainage as RawParrainage } from '../../features/parrainage/pages/Parrainage';
+import { BoostMaintenance as RawBoostMaintenance } from '../../features/booster/pages/BoostMaintenance';
+import { ReferralMaintenance as RawReferralMaintenance } from '../../features/parrainage/pages/ReferralMaintenance';
 import { MesAvis as RawMesAvis } from '../../features/avis/pages/MesAvis';
 import { Compte as RawCompte } from '../../features/compte/pages/MonCompte';
 import { CompteInfos as RawCompteInfos } from '../compte/CompteInfos';
@@ -58,7 +58,7 @@ import { CompteSecurite as RawCompteSecurite } from '../compte/CompteSecurite';
 import { CompteDonnees as RawCompteDonnees } from '../compte/CompteDonnees';
 import { CompteAide as RawCompteAide } from '../compte/CompteAide';
 import { Reservations as RawReservations } from '../../features/reservations/pages/Reservations';
-import { NotificationCenter as RawNotificationCenter } from '../../pages/notification-center/NotificationCenter';
+import { NotificationCenter as RawNotificationCenter } from '../../features/notifications/pages/NotificationCenter';
 import { QRScanner as RawQRScanner } from '../../features/reservations/pages/QRScanner';
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -211,6 +211,10 @@ export function OnboardingInfosEtablissement() {
   );
 }
 
+export function OnboardingConfigurerHorairesLieu() {
+  return <RawConfigurerHorairesLieu isOnboarding={true} />;
+}
+
 export function OnboardingFacturation() {
   const navigate = useNavigate();
   return (
@@ -326,10 +330,14 @@ export function InfosEtablissement() {
   const navigate = useNavigate();
   return (
     <RawInfosEtablissement
-      onBack={() => navigate('/my-venues/add')}
+      onBack={() => navigate('/my-venues')}
       isAddingVenue={true}
     />
   );
+}
+
+export function ConfigurerHorairesLieu() {
+  return <RawConfigurerHorairesLieu />;
 }
 
 export function Facturation() {
@@ -392,21 +400,17 @@ export function ModifierRestaurant() {
 
 export function Booster() {
   const goBack = useGoBack('/dashboard');
-  const onNavigate = useOnNavigate();
-  const [searchParams] = useSearchParams();
-  const purchaseSuccess = searchParams.get('success') === 'true';
-  const purchasedCount = Number(searchParams.get('count')) || 0;
-  return <RawBooster onBack={goBack} onNavigate={onNavigate} purchaseSuccess={purchaseSuccess} purchasedCount={purchasedCount} />;
+  return <RawBoostMaintenance onBack={goBack} />;
 }
 
 export function AcheterBoosts() {
   const goBack = useGoBack('/boost');
-  return <RawAcheterBoosts onBack={goBack} />;
+  return <RawBoostMaintenance onBack={goBack} />;
 }
 
 export function Parrainage() {
   const goBack = useGoBack('/dashboard');
-  return <RawParrainage onBack={goBack} />;
+  return <RawReferralMaintenance onBack={goBack} />;
 }
 
 export function MesAvis() {

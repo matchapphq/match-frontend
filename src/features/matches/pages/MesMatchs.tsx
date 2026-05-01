@@ -1,7 +1,6 @@
 import { Calendar, Eye, Plus, Zap, Edit, TrendingUp, Users, Clock, ChevronRight, Filter, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { PageType } from '../../../types';
-import { useAuth } from '../../authentication/context/AuthContext';
 import { usePartnerMatches } from '../../../hooks/api/useMatches';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -12,11 +11,10 @@ interface MesMatchsProps {
 }
 
 export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsProps) {
-  const { currentUser } = useAuth();
   const [filtre, setFiltre] = useState<'tous' | 'à venir' | 'terminé'>(defaultFilter);
   
   // Fetch matches from API
-  const { data: matchesData, isLoading } = usePartnerMatches();
+  const { data: matchesData } = usePartnerMatches();
   
   // Sport emoji mapping based on league name
   const getSportEmoji = (league: string): string => {
@@ -170,7 +168,7 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
-      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 lg:pb-8 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
@@ -187,8 +185,8 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
-          <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div className="bg-gradient-to-br from-[#5a03cf]/10 to-[#9cff02]/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
             <div className="flex items-start justify-between mb-3 sm:mb-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#5a03cf]/10 rounded-xl flex items-center justify-center">
                 <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-[#5a03cf]" />
@@ -198,7 +196,7 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
             <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total matchs</div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-green-200 dark:border-green-800 shadow-sm">
             <div className="flex items-start justify-between mb-3 sm:mb-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
                 <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
@@ -208,7 +206,7 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
             <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">À venir</div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-blue-200 dark:border-blue-800 shadow-sm">
             <div className="flex items-start justify-between mb-3 sm:mb-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
                 <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
@@ -218,7 +216,7 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
             <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Terminés</div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-800/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-orange-200 dark:border-orange-800 shadow-sm">
             <div className="flex items-start justify-between mb-3 sm:mb-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" />
@@ -230,34 +228,36 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-            <Filter className="w-4 h-4" />
-            Filtrer :
-          </div>
-          <div className="flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-1 shadow-sm">
-            {(['tous', 'à venir', 'terminé'] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setFiltre(filter)}
-                className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm transition-all duration-200 capitalize ${
-                  filtre === filter
-                    ? 'bg-[#5a03cf] text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-          <div className="sm:ml-auto text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-right">
-            {matchsFiltres.length} match{matchsFiltres.length > 1 ? 's' : ''}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+              <Filter className="w-4 h-4" />
+              Filtrer :
+            </div>
+            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
+              {(['tous', 'à venir', 'terminé'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setFiltre(filter)}
+                  className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm transition-all duration-200 capitalize ${
+                    filtre === filter
+                      ? 'bg-[#5a03cf] text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+            <div className="sm:ml-auto text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-right">
+              {matchsFiltres.length} match{matchsFiltres.length > 1 ? 's' : ''}
+            </div>
           </div>
         </div>
 
         {/* Matches List */}
         {matchsFiltres.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 p-8 sm:p-16">
+          <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-gray-700 border-dashed p-8 sm:p-16">
             <div className="text-center max-w-md mx-auto">
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
                 <Calendar className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 dark:text-gray-500" />
@@ -280,7 +280,7 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {matchsFiltres.map((match) => {
               const percentage = getPercentage(match.reservees, match.total);
               const placesRestantes = match.total - match.reservees;
@@ -413,7 +413,7 @@ export function MesMatchs({ onNavigate, defaultFilter = 'à venir' }: MesMatchsP
                           </button>
                           <button
                             onClick={(e) => handleBoostClick(e, match.id)}
-                            className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-br from-[#9cff02] to-[#7cdf00] text-[#5a03cf] rounded-lg hover:shadow-lg transition-all flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                            className="px-3 sm:px-4 py-2 sm:py-2.5 bg-[#9cff02] text-[#5a03cf] rounded-lg hover:shadow-lg hover:shadow-[#9cff02]/30 transition-all flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
                           >
                             <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             <span className="hidden sm:inline">Boost</span>

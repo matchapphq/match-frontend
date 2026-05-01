@@ -37,6 +37,7 @@ import {
   Cgv,
   OnboardingWelcome,
   OnboardingInfosEtablissement,
+  OnboardingConfigurerHorairesLieu,
   OnboardingFacturation,
   OnboardingConfirmationOnboarding,
   OnboardingPaymentRequired,
@@ -49,6 +50,7 @@ import {
   MesRestaurants,
   AjouterRestaurant,
   InfosEtablissement,
+  ConfigurerHorairesLieu,
   Facturation,
   ConfirmationOnboarding,
   RestaurantDetail,
@@ -239,6 +241,7 @@ function AppRoutes() {
       <Route path="/onboarding" element={<RequireAuth><OnboardingWelcome /></RequireAuth>} />
       <Route path="/onboarding/add-venue" element={<RequireAuth><Navigate to="/onboarding/info" replace /></RequireAuth>} />
       <Route path="/onboarding/info" element={<RequireAuth><OnboardingInfosEtablissement /></RequireAuth>} />
+      <Route path="/onboarding/hours" element={<RequireAuth><OnboardingConfigurerHorairesLieu /></RequireAuth>} />
       <Route path="/onboarding/billing" element={<RequireAuth><OnboardingFacturation /></RequireAuth>} />
       <Route path="/onboarding/confirmation" element={<RequireAuth><OnboardingConfirmationOnboarding /></RequireAuth>} />
       <Route path="/onboarding/payment-required" element={<RequireAuth><OnboardingPaymentRequired /></RequireAuth>} />
@@ -252,8 +255,9 @@ function AppRoutes() {
         <Route path="/my-matches/:id" element={<MatchDetail />} />
         <Route path="/my-matches/:id/edit" element={<ModifierMatch />} />
         <Route path="/my-venues" element={<MesRestaurants />} />
-        <Route path="/my-venues/add" element={<AjouterRestaurant />} />
+        <Route path="/my-venues/add" element={<Navigate to="/my-venues/add/info" replace />} />
         <Route path="/my-venues/add/info" element={<InfosEtablissement />} />
+        <Route path="/my-venues/add/hours" element={<ConfigurerHorairesLieu />} />
         <Route path="/my-venues/add/billing" element={<Facturation />} />
         <Route path="/my-venues/add/confirmation" element={<ConfirmationOnboarding />} />
         <Route path="/my-venues/:id" element={<RestaurantDetail />} />

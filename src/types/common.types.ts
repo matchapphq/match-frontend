@@ -31,7 +31,6 @@ export type PageType =
   | 'facturation'
   | 'onboarding-welcome'
   | 'confirmation-onboarding'
-  | 'paiement-validation'
   | 'app-presentation'
   | 'referral'
   | 'qr-scanner'
