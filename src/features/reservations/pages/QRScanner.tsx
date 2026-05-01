@@ -24,6 +24,7 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [scannedData, setScannedData] = useState<string>('');
+  const [scannedAt, setScannedAt] = useState<Date | null>(null);
   const [verifiedReservation, setVerifiedReservation] = useState<VerifiedReservation | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
@@ -128,6 +129,7 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
       });
       
       setSuccess(true);
+      setScannedAt(new Date());
       toast.success('QR Code vérifié avec succès!');
     } catch (err: any) {
       setError(err.message || 'QR Code invalide ou expiré');
@@ -303,10 +305,16 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
               <div className="w-20 h-20 bg-[#9cff02]/10 rounded-full flex items-center justify-center mb-6 animate-scale-in">
                 <CheckCircle2 className="w-12 h-12 text-[#9cff02]" />
               </div>
-              <h3 className="text-foreground text-2xl font-bold mb-2">Réservation vérifiée !</h3>
+              <h3 className="text-foreground text-2xl font-bold mb-1">Réservation vérifiée !</h3>
+              
+              {scannedAt && (
+                <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest bg-muted px-2 py-0.5 rounded-md mb-4">
+                  Scanné à {scannedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </div>
+              )}
               
               {/* Reservation Details */}
-              <div className="bg-muted/50 rounded-2xl p-6 mt-6 w-full text-left border border-border">
+              <div className="bg-muted/50 rounded-2xl p-6 w-full text-left border border-border">
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-primary to-[#7a23ef] rounded-full flex items-center justify-center shadow-md">
@@ -314,30 +322,29 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
                         {verifiedReservation.user_name.charAt(0)}
                       </span>
                     </div>
-                    <div>
-                      <div className="text-foreground font-bold text-lg">{verifiedReservation.user_name}</div>
-                      <div className="text-muted-foreground text-sm font-medium">{verifiedReservation.match_name}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-foreground font-bold text-lg truncate">{verifiedReservation.user_name}</div>
+                      <div className="text-muted-foreground text-sm font-medium truncate">{verifiedReservation.match_name}</div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 text-foreground font-medium bg-background p-3 rounded-lg border border-border">
-                    <Users className="w-5 h-5 text-primary" />
-                    <span>{verifiedReservation.party_size} personne(s)</span>
-                  </div>
-                  
-                  <div className="pt-4 border-t border-border flex items-center justify-between">
-                    <div className="text-sm font-medium text-muted-foreground">Statut actuel</div>
-                    <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${
-                      verifiedReservation.status === 'confirmed' 
-                        ? 'bg-[#9cff02]/20 text-green-700 dark:text-[#9cff02] border border-[#9cff02]/30' 
-                        : verifiedReservation.status === 'checked_in'
-                        ? 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/30'
-                        : 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30'
-                    }`}>
-                      {verifiedReservation.status === 'confirmed' ? 'Confirmé' : 
-                       verifiedReservation.status === 'checked_in' ? 'Déjà enregistré' : 
-                       'En attente'}
-                    </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-background p-3 rounded-xl border border-border flex flex-col items-center justify-center text-center">
+                      <Users className="w-5 h-5 text-primary mb-1" />
+                      <span className="text-foreground font-bold text-lg leading-none">{verifiedReservation.party_size}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase font-medium mt-1">Personnes</span>
+                    </div>
+                    <div className="bg-background p-3 rounded-xl border border-border flex flex-col items-center justify-center text-center">
+                      <AlertCircle className="w-5 h-5 text-primary mb-1" />
+                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                        verifiedReservation.status === 'confirmed' 
+                          ? 'bg-[#9cff02]/20 text-[#5a03cf] dark:text-[#9cff02]' 
+                          : 'bg-blue-500/20 text-blue-700 dark:text-blue-400'
+                      }`}>
+                        {verifiedReservation.status === 'confirmed' ? 'Confirmé' : 'Check-in'}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground uppercase font-medium mt-1">Statut</span>
+                    </div>
                   </div>
                 </div>
               </div>
