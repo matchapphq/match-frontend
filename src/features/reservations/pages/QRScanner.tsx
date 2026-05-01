@@ -87,10 +87,13 @@ export function QRScanner({ onBack, onNavigate }: QRScannerProps) {
       setHasPermission(false);
       setScanning(false);
       
-      if (err?.toString().includes("NotFoundError")) {
+      const errorStr = err?.toString() || '';
+      if (errorStr.includes("NotFoundError")) {
         setError('Aucune caméra trouvée sur cet appareil.');
-      } else if (err?.toString().includes("NotAllowedError")) {
+      } else if (errorStr.includes("NotAllowedError")) {
         setError('Accès à la caméra refusé. Veuillez autoriser l\'accès dans vos paramètres.');
+      } else if (errorStr.includes("SecurityError") || errorStr.includes("secure context")) {
+        setError('Accès bloqué par la politique de sécurité. Vérifiez que vous êtes bien sur matchapp.fr avec HTTPS.');
       } else {
         setError('Impossible d\'accéder à la caméra. Vérifiez les permissions et assurez-vous d\'être en HTTPS.');
       }
