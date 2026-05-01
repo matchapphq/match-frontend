@@ -910,13 +910,14 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
   };
 
   return (
-    <div className="p-6 space-y-6 pb-24 lg:pb-6">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-gray-950">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6 pb-24 lg:pb-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl text-gray-900 dark:text-white mb-1">
             Réservations
           </h1>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Gérez les demandes de réservation pour vos matchs
           </p>
         </div>
@@ -999,7 +1000,7 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
       </div>
 
       {/* Action Toolbar */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
           {/* Filters Section */}
           <div className="flex items-center gap-3 flex-wrap">
@@ -1137,7 +1138,7 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
       {/* Reservations List / Groups */}
       <div className="space-y-6">
         {filteredReservations.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 border-dashed">
+          <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 border-dashed">
             <Calendar className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Aucune réservation</h3>
             <p className="text-gray-500 dark:text-gray-400">
@@ -1223,6 +1224,7 @@ export function Reservations({ onNavigate, matchId }: ReservationsProps) {
           matchs={matchs} 
         />
       )}
+      </div>
     </div>
   );
 }

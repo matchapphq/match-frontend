@@ -34,6 +34,7 @@ interface VenueDetailView {
   image: string;
   images: string[];
   statut: 'actif' | 'inactif' | 'en_attente';
+  statutLabel: string;
   matchsDiffuses: number;
   clientsAccueillis: number;
   reviews: Array<{
@@ -94,6 +95,31 @@ function mapVenueStatusToUi(
     default:
       return active ? 'actif' : 'en_attente';
   }
+}
+
+function hasConfiguredOpeningHours(openingHours: unknown): boolean {
+  if (Array.isArray(openingHours)) {
+    return openingHours.some((day) => Array.isArray((day as Record<string, unknown>)?.periods) && ((day as Record<string, unknown>).periods as unknown[]).length > 0);
+  }
+
+  return typeof openingHours === 'object' && openingHours !== null && Object.keys(openingHours as Record<string, unknown>).length > 0;
+}
+
+function getVenueStatusLabel(options: {
+  statut: 'actif' | 'inactif' | 'en_attente';
+  hasPaymentMethod: boolean;
+  hasOpeningHours: boolean;
+}): string {
+  if (!options.hasOpeningHours) return 'Aucun horaire renseigné';
+  if (!options.hasPaymentMethod) return 'Aucun moyen de paiement renseigné';
+
+  const statusLabels: Record<typeof options.statut, string> = {
+    actif: 'Actif',
+    inactif: 'Inactif',
+    en_attente: 'En attente de validation',
+  };
+
+  return statusLabels[options.statut];
 }
 
 export function RestaurantDetail({ restaurantId, onBack, onNavigate }: RestaurantDetailProps) {
@@ -194,6 +220,19 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
         };
       }).filter((review: { title: string; content: string }) => review.title || review.content);
 
+      const hasOpeningHours = hasConfiguredOpeningHours(v.opening_hours);
+      const statut = mapVenueStatusToUi(
+        v.status,
+        v.is_active,
+        hasPaymentMethod,
+        hasCompletedOnboarding,
+      );
+      const statutLabel = getVenueStatusLabel({
+        statut,
+        hasPaymentMethod,
+        hasOpeningHours,
+      });
+
       return {
         nom: v.name || 'Établissement',
         adresse: address || 'Adresse non renseignée',
@@ -204,12 +243,8 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
         totalAvis: Number.isFinite(ratingCount) ? ratingCount : 0,
         image: images[0] || FALLBACK_VENUE_IMAGE,
         images,
-        statut: mapVenueStatusToUi(
-          v.status,
-          v.is_active,
-          hasPaymentMethod,
-          hasCompletedOnboarding,
-        ),
+        statut,
+        statutLabel,
         matchsDiffuses: venueMatches.length > 0 ? matchsDiffuses : fallbackMatchCount,
         clientsAccueillis,
         reviews,
@@ -258,12 +293,13 @@ export function RestaurantDetail({ restaurantId, onBack, onNavigate }: Restauran
 
   const isActive = venue.statut === 'actif';
   const isInactive = venue.statut === 'inactif';
-  const statusLabel = isActive ? 'Actif' : isInactive ? 'Inactif' : 'En attente de validation';
-  const statusClass = isActive
+  const statusLabel = venue.statutLabel || (isActive ? 'Actif' : isInactive ? 'Inactif' : 'En attente de validation');
+  const isExplicitlyActive = statusLabel === 'Actif';
+  const statusClass = isExplicitlyActive
     ? 'bg-green-100 text-green-800 border border-green-300 shadow-sm'
-    : isInactive
-      ? 'bg-red-100 text-red-800 border border-red-300 shadow-sm'
-      : 'bg-orange-50 text-orange-700 border border-orange-200';
+    : statusLabel === 'En attente de validation'
+      ? 'bg-orange-50 text-orange-700 border border-orange-200'
+      : 'bg-red-100 text-red-800 border border-red-300 shadow-sm';
   const clientsAccueillis = Number.isFinite(Number(venue.clientsAccueillis))
     ? Number(venue.clientsAccueillis)
     : 0;
