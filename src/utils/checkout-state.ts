@@ -9,6 +9,32 @@ export interface CheckoutState {
   type: 'onboarding' | 'add-venue' | 'boost-purchase' | 'payment-setup';
   venueId?: string;
   venueName?: string;
+  venueSummary?: {
+    typeLabel?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    capacity?: string;
+    openingConfigured?: boolean;
+    happyHourConfigured?: boolean;
+  };
+  venueInfoDraft?: {
+    nomBar?: string;
+    adresse?: string;
+    ville?: string;
+    codePostal?: string;
+    telephone?: string;
+    email?: string;
+    website?: string;
+    capacite?: string;
+    typeEtablissement?: string;
+    phoneCountry?: 'FR' | 'US';
+    useAccountContact?: boolean;
+    existingVenueId?: string;
+  };
   sessionId?: string;
   checkoutUrl?: string;
   returnPage?: string;

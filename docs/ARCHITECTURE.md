@@ -17,10 +17,16 @@ Routes publiques:
 - `/presentation`, `/terms`, `/privacy`, `/terms-of-sale`
 
 Routes authentifiées (layout partenaire):
+- Onboarding:
+  - `/onboarding`, `/onboarding/add-venue` (redirect `/onboarding/info`)
+  - `/onboarding/info`, `/onboarding/hours`, `/onboarding/billing`
+  - `/onboarding/confirmation`, `/onboarding/payment-required`
 - `/dashboard`
 - `/matches`, `/matches/schedule`
 - `/my-matches`, `/my-matches/:id`, `/my-matches/:id/edit`
-- `/my-venues`, `/my-venues/add`, `/my-venues/:id`, `/my-venues/:id/edit`
+- `/my-venues`, `/my-venues/add` (redirect `/my-venues/add/info`)
+- `/my-venues/add/info`, `/my-venues/add/hours`, `/my-venues/add/billing`, `/my-venues/add/confirmation`
+- `/my-venues/:id`, `/my-venues/:id/edit`
 - `/boost`, `/boost/purchase`
 - `/referral`, `/my-reviews`
 - `/account/*`

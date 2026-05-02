@@ -10,10 +10,24 @@ interface ConfirmationOnboardingProps {
   isAddingVenue?: boolean;
 }
 
+interface VenueSummary {
+  typeLabel?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  capacity?: string;
+  openingConfigured?: boolean;
+  happyHourConfigured?: boolean;
+}
+
 export function ConfirmationOnboarding({ onNavigate, nomBar, isAddingVenue = false }: ConfirmationOnboardingProps) {
   const location = useLocation();
-  const locationState = (location.state as { venueName?: string } | null) ?? null;
+  const locationState = (location.state as { venueName?: string; venueSummary?: VenueSummary } | null) ?? null;
   const [resolvedVenueName, setResolvedVenueName] = useState(nomBar || locationState?.venueName || '');
+  const [venueSummary, setVenueSummary] = useState<VenueSummary | null>(locationState?.venueSummary || null);
 
   useEffect(() => {
     if (resolvedVenueName.trim()) return;
@@ -22,7 +36,10 @@ export function ConfirmationOnboarding({ onNavigate, nomBar, isAddingVenue = fal
     if (savedState?.venueName) {
       setResolvedVenueName(savedState.venueName);
     }
-  }, [resolvedVenueName]);
+    if (savedState?.venueSummary && !venueSummary) {
+      setVenueSummary(savedState.venueSummary);
+    }
+  }, [resolvedVenueName, venueSummary]);
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] p-4 sm:p-8 relative overflow-hidden">
@@ -64,6 +81,23 @@ export function ConfirmationOnboarding({ onNavigate, nomBar, isAddingVenue = fal
                     Merci de contribuer à l&apos;aventure Match.
                   </p>
                 </div>
+
+                {isAddingVenue && venueSummary ? (
+                  <div className="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-gray-50/70 dark:bg-gray-900/40 p-4">
+                    <h3 className="text-sm text-gray-900 dark:text-white mb-3">Résumé du lieu</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                      <p><span className="text-gray-900 dark:text-white">Type:</span> {venueSummary.typeLabel || '-'}</p>
+                      <p><span className="text-gray-900 dark:text-white">Capacité:</span> {venueSummary.capacity || '-'}</p>
+                      <p><span className="text-gray-900 dark:text-white">Adresse:</span> {venueSummary.address || '-'}</p>
+                      <p><span className="text-gray-900 dark:text-white">Ville:</span> {venueSummary.city || '-'} {venueSummary.postalCode || ''}</p>
+                      <p><span className="text-gray-900 dark:text-white">Téléphone:</span> {venueSummary.phone || '-'}</p>
+                      <p><span className="text-gray-900 dark:text-white">Email:</span> {venueSummary.email || '-'}</p>
+                      <p className="sm:col-span-2"><span className="text-gray-900 dark:text-white">Site web:</span> {venueSummary.website || '-'}</p>
+                      <p><span className="text-gray-900 dark:text-white">Horaires:</span> {venueSummary.openingConfigured ? 'Configurés' : 'À configurer'}</p>
+                      <p><span className="text-gray-900 dark:text-white">Happy hour:</span> {venueSummary.happyHourConfigured ? 'Configuré' : 'Non configuré'}</p>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button

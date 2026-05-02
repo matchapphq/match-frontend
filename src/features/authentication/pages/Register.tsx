@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
-// import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logo from '../../../assets/logo.png';
+import { BrandLogo } from '../../../components/BrandLogo';
 import { PhoneInputField } from '../../../components/common/PhoneInputField';
 import { ReferralCodeInput } from '../../../components/ReferralCodeInput';
 import { getPhoneErrorMessage, normalizePhone, type PhoneCountry } from '../../../utils/phone';
@@ -129,12 +128,7 @@ export function Register({ onRegister, onSwitchToLogin, onBackToLanding }: Regis
               <span className="text-sm">Retour</span>
             </button>
           )}
-          <img 
-            src={logo} 
-            alt="Match" 
-            className="h-12 mx-auto mb-6 dark:brightness-150" 
-            style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-          />
+          <BrandLogo className="h-12 mx-auto mb-6" />
           <h1 className="text-3xl mb-2 dark:text-white">Créer un compte</h1>
           <p className="text-gray-600 dark:text-gray-400">Rejoignez Match et développez votre activité</p>
           <div className="mt-4 p-4 rounded-xl border border-[#5a03cf]/20 bg-[#5a03cf]/5 dark:border-[#c9a7ff]/25 dark:bg-[#5a03cf]/15 text-left">

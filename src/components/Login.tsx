@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
-// import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logo from '../assets/logo.png';
+import { BrandLogo } from './BrandLogo';
 
 declare global {
   interface Window {
@@ -164,12 +163,7 @@ export function Login({ onLogin, onGoogleLogin, onSwitchToRegister, onForgotPass
               <span className="text-sm">Retour</span>
             </button>
           )}
-          <img 
-            src={logo} 
-            alt="Match" 
-            className="h-12 mx-auto mb-6 dark:brightness-150" 
-            style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-          />
+          <BrandLogo className="h-12 mx-auto mb-6" />
           <h1 className="text-3xl mb-2 dark:text-white">Connexion</h1>
           <p className="text-gray-600 dark:text-gray-400">Accédez à votre espace restaurateur</p>
         </div>

@@ -16,8 +16,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-// import logo from 'figma:asset/c263754cf7a254d8319da5c6945751d81a6f5a94.png';
-import logo from '../../assets/logo.png';
+import { BrandLogo } from '../BrandLogo';
 import { useAuth } from '../../features/authentication/context/AuthContext';
 import { useUserProfile } from '../../hooks/api/useAccount';
 import { useTheme } from '../../features/theme/context/ThemeContext';
@@ -97,12 +96,7 @@ export function Sidebar() {
         {/* Header */}
         <div className="h-16 flex items-center justify-center px-4 border-b border-gray-200 dark:border-gray-800">
           {!isCollapsed && (
-            <img 
-              src={logo} 
-              alt="Match" 
-              className="h-8" 
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(91%) saturate(6297%) hue-rotate(268deg) brightness(83%) contrast(122%)' }}
-            />
+            <BrandLogo className="h-8" />
           )}
           {/* <button
             onClick={() => setIsCollapsed(!isCollapsed)}
