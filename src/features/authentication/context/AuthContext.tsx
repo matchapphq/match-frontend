@@ -197,29 +197,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hasInitialized) return;
     
     const initAuth = async () => {
-      setIsLoading(true);
       setHasInitialized(true);
-      
-      // First check API health
-      const isApiOnline = await checkApiHealth();
-      
-      if (isApiOnline) {
-        try {
-          // Try to get current user (will work if cookies are valid)
-          const response = await api.getUserProfile();
-          if (response.user) {
-            const user = apiUserToUser(response.user);
-            setCurrentUser(user);
-            setIsAuthenticated(true);
-          }
-        } catch {
-          // Not authenticated or session expired
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-        }
+
+      const hasSessionHint = Boolean(
+        localStorage.getItem('authToken') ||
+        sessionStorage.getItem('authToken') ||
+        localStorage.getItem('refresh_token') ||
+        sessionStorage.getItem('refresh_token')
+      );
+
+      if (!hasSessionHint) {
+        setIsLoading(false);
+        void checkApiHealth();
+        return;
       }
-      
-      setIsLoading(false);
+
+      setIsLoading(true);
+
+      const isApiOnline = await checkApiHealth();
+
+      if (!isApiOnline) {
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Try to get current user (will work if cookies are valid)
+        const response = await api.getUserProfile();
+        if (response.user) {
+          const user = apiUserToUser(response.user);
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        }
+      } catch {
+        // Not authenticated or session expired
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     initAuth();

@@ -140,10 +140,13 @@ class ApiService {
   // ============================================
 
   async healthCheck(): Promise<{ status: 'ok' | 'error'; message?: string }> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     try {
       const response = await fetch(`${this.baseUrl}/health`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
       });
       if (response.ok) {
         const text = await response.text();
@@ -152,6 +155,8 @@ class ApiService {
       return { status: 'error', message: 'API not responding' };
     } catch (error: any) {
       return { status: 'error', message: error.message || 'Connection failed' };
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

@@ -8,6 +8,7 @@
  * These are used in App.tsx route definitions instead of the raw pages.
  */
 
+import { lazy, Suspense } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/authentication/context/AuthContext';
 import { useAppNavigate, resolvePagePath } from '../../hooks/useAppNavigate';
@@ -33,33 +34,33 @@ import { Facturation as RawFacturation } from '../../features/onboarding/pages/F
 import { ConfirmationOnboarding as RawConfirmationOnboarding } from '../../features/onboarding/pages/ConfirmationOnboarding';
 import { PaymentRequired as RawPaymentRequired } from '../../features/onboarding/pages/PaymentRequired';
 
-// ─── Dashboard & Matches ──────────────────────────────────────
-import { Dashboard as RawDashboard } from '../../features/dashboard/pages/Dashboard';
-import { ListeMatchs as RawListeMatchs } from '../../features/matches/pages/ListeMatchs';
-import { MesMatchs as RawMesMatchs } from '../../features/matches/pages/MesMatchs';
-import { MatchDetail as RawMatchDetail } from '../../features/matches/pages/MatchDetail';
-import { ModifierMatch as RawModifierMatch } from '../../features/matches/pages/ModifierMatch';
-import { ProgrammerMatch as RawProgrammerMatch } from '../../features/matches/pages/ProgrammerMatch';
+// ─── Dashboard & Matches (lazy) ───────────────────────────────
+const RawDashboard = lazy(() => import('../../features/dashboard/pages/Dashboard').then((m) => ({ default: m.Dashboard })));
+const RawListeMatchs = lazy(() => import('../../features/matches/pages/ListeMatchs').then((m) => ({ default: m.ListeMatchs })));
+const RawMesMatchs = lazy(() => import('../../features/matches/pages/MesMatchs').then((m) => ({ default: m.MesMatchs })));
+const RawMatchDetail = lazy(() => import('../../features/matches/pages/MatchDetail').then((m) => ({ default: m.MatchDetail })));
+const RawModifierMatch = lazy(() => import('../../features/matches/pages/ModifierMatch').then((m) => ({ default: m.ModifierMatch })));
+const RawProgrammerMatch = lazy(() => import('../../features/matches/pages/ProgrammerMatch').then((m) => ({ default: m.ProgrammerMatch })));
 
-// ─── Restaurants ──────────────────────────────────────────────
-import { MesRestaurants as RawMesRestaurants } from '../../features/restaurants/pages/MesRestaurants';
-import { RestaurantDetail as RawRestaurantDetail } from '../../features/restaurants/pages/RestaurantDetail';
-import { ModifierRestaurant as RawModifierRestaurant } from '../../features/restaurants/pages/ModifierRestaurant';
+// ─── Restaurants (lazy) ───────────────────────────────────────
+const RawMesRestaurants = lazy(() => import('../../features/restaurants/pages/MesRestaurants').then((m) => ({ default: m.MesRestaurants })));
+const RawRestaurantDetail = lazy(() => import('../../features/restaurants/pages/RestaurantDetail').then((m) => ({ default: m.RestaurantDetail })));
+const RawModifierRestaurant = lazy(() => import('../../features/restaurants/pages/ModifierRestaurant').then((m) => ({ default: m.ModifierRestaurant })));
 
-// ─── Other pages ──────────────────────────────────────────────
-import { BoostMaintenance as RawBoostMaintenance } from '../../features/booster/pages/BoostMaintenance';
-import { ReferralMaintenance as RawReferralMaintenance } from '../../features/parrainage/pages/ReferralMaintenance';
-import { MesAvis as RawMesAvis } from '../../features/avis/pages/MesAvis';
-import { Compte as RawCompte } from '../../features/compte/pages/MonCompte';
-import { CompteInfos as RawCompteInfos } from '../compte/CompteInfos';
-import { CompteFacturation as RawCompteFacturation } from '../compte/CompteFacturation';
-import { CompteNotifications as RawCompteNotifications } from '../compte/CompteNotifications';
-import { CompteSecurite as RawCompteSecurite } from '../compte/CompteSecurite';
-import { CompteDonnees as RawCompteDonnees } from '../compte/CompteDonnees';
-import { CompteAide as RawCompteAide } from '../compte/CompteAide';
-import { Reservations as RawReservations } from '../../features/reservations/pages/Reservations';
-import { NotificationCenter as RawNotificationCenter } from '../../features/notifications/pages/NotificationCenter';
-import { QRScanner as RawQRScanner } from '../../features/reservations/pages/QRScanner';
+// ─── Other pages (lazy) ───────────────────────────────────────
+const RawBoostMaintenance = lazy(() => import('../../features/booster/pages/BoostMaintenance').then((m) => ({ default: m.BoostMaintenance })));
+const RawReferralMaintenance = lazy(() => import('../../features/parrainage/pages/ReferralMaintenance').then((m) => ({ default: m.ReferralMaintenance })));
+const RawMesAvis = lazy(() => import('../../features/avis/pages/MesAvis').then((m) => ({ default: m.MesAvis })));
+const RawCompte = lazy(() => import('../../features/compte/pages/MonCompte').then((m) => ({ default: m.Compte })));
+const RawCompteInfos = lazy(() => import('../compte/CompteInfos').then((m) => ({ default: m.CompteInfos })));
+const RawCompteFacturation = lazy(() => import('../compte/CompteFacturation').then((m) => ({ default: m.CompteFacturation })));
+const RawCompteNotifications = lazy(() => import('../compte/CompteNotifications').then((m) => ({ default: m.CompteNotifications })));
+const RawCompteSecurite = lazy(() => import('../compte/CompteSecurite').then((m) => ({ default: m.CompteSecurite })));
+const RawCompteDonnees = lazy(() => import('../compte/CompteDonnees').then((m) => ({ default: m.CompteDonnees })));
+const RawCompteAide = lazy(() => import('../compte/CompteAide').then((m) => ({ default: m.CompteAide })));
+const RawReservations = lazy(() => import('../../features/reservations/pages/Reservations').then((m) => ({ default: m.Reservations })));
+const RawNotificationCenter = lazy(() => import('../../features/notifications/pages/NotificationCenter').then((m) => ({ default: m.NotificationCenter })));
+const RawQRScanner = lazy(() => import('../../features/reservations/pages/QRScanner').then((m) => ({ default: m.QRScanner })));
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -74,6 +75,20 @@ function useOnNavigate() {
 function useGoBack(fallback?: string) {
   const navigate = useNavigate();
   return () => navigate(fallback ?? -1 as any);
+}
+
+function RouteChunk({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-[#5a03cf] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -257,17 +272,17 @@ export function Dashboard() {
       navigate(path);
     }
   };
-  return <RawDashboard onNavigate={onNavigate} />;
+  return <RouteChunk><RawDashboard onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function ListeMatchs() {
   const goBack = useGoBack('/dashboard');
-  return <RawListeMatchs onBack={goBack} />;
+  return <RouteChunk><RawListeMatchs onBack={goBack} /></RouteChunk>;
 }
 
 export function MesMatchs() {
   const onNavigate = useOnNavigate();
-  return <RawMesMatchs onNavigate={onNavigate} />;
+  return <RouteChunk><RawMesMatchs onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function MatchDetail() {
@@ -276,19 +291,19 @@ export function MatchDetail() {
   const navigate = useNavigate();
   const onNavigate = useOnNavigate();
   return (
-    <RawMatchDetail
+    <RouteChunk><RawMatchDetail
       matchId={id ? Number(id) : null}
       onBack={goBack}
       onEditMatch={() => navigate(`/my-matches/${id}/edit`)}
       onNavigate={onNavigate}
-    />
+    /></RouteChunk>
   );
 }
 
 export function ModifierMatch() {
   const { id } = useParams<{ id: string }>();
   const goBack = useGoBack('/my-matches');
-  return <RawModifierMatch matchId={id ?? null} onBack={goBack} />;
+  return <RouteChunk><RawModifierMatch matchId={id ?? null} onBack={goBack} /></RouteChunk>;
 }
 
 export function ProgrammerMatch() {
@@ -301,7 +316,7 @@ export function ProgrammerMatch() {
     }
     navigate('/dashboard');
   };
-  return <RawProgrammerMatch onBack={goBack} />;
+  return <RouteChunk><RawProgrammerMatch onBack={goBack} /></RouteChunk>;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -310,7 +325,7 @@ export function ProgrammerMatch() {
 
 export function MesRestaurants() {
   const onNavigate = useOnNavigate();
-  return <RawMesRestaurants onNavigate={onNavigate} />;
+  return <RouteChunk><RawMesRestaurants onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function AjouterRestaurant() {
@@ -385,13 +400,13 @@ export function RestaurantDetail() {
     }
   };
 
-  return <RawRestaurantDetail restaurantId={id ?? null} onBack={goBack} onNavigate={onNavigate} />;
+  return <RouteChunk><RawRestaurantDetail restaurantId={id ?? null} onBack={goBack} onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function ModifierRestaurant() {
   const { id } = useParams<{ id: string }>();
   const goBack = useGoBack(id ? `/my-venues/${id}` : '/my-venues');
-  return <RawModifierRestaurant restaurantId={id ?? null} onBack={goBack} />;
+  return <RouteChunk><RawModifierRestaurant restaurantId={id ?? null} onBack={goBack} /></RouteChunk>;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -400,78 +415,78 @@ export function ModifierRestaurant() {
 
 export function Booster() {
   const goBack = useGoBack('/dashboard');
-  return <RawBoostMaintenance onBack={goBack} />;
+  return <RouteChunk><RawBoostMaintenance onBack={goBack} /></RouteChunk>;
 }
 
 export function AcheterBoosts() {
   const goBack = useGoBack('/boost');
-  return <RawBoostMaintenance onBack={goBack} />;
+  return <RouteChunk><RawBoostMaintenance onBack={goBack} /></RouteChunk>;
 }
 
 export function Parrainage() {
   const goBack = useGoBack('/dashboard');
-  return <RawReferralMaintenance onBack={goBack} />;
+  return <RouteChunk><RawReferralMaintenance onBack={goBack} /></RouteChunk>;
 }
 
 export function MesAvis() {
   const goBack = useGoBack('/dashboard');
-  return <RawMesAvis onBack={goBack} />;
+  return <RouteChunk><RawMesAvis onBack={goBack} /></RouteChunk>;
 }
 
 export function Compte() {
   const onNavigate = useOnNavigate();
-  return <RawCompte onNavigate={onNavigate} />;
+  return <RouteChunk><RawCompte onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function CompteInfos() {
   const goBack = useGoBack('/account');
-  return <RawCompteInfos onBack={goBack} />;
+  return <RouteChunk><RawCompteInfos onBack={goBack} /></RouteChunk>;
 }
 
 export function CompteFacturation() {
   const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
-  return <RawCompteFacturation onBack={goBack} onNavigate={onNavigate} />;
+  return <RouteChunk><RawCompteFacturation onBack={goBack} onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function CompteNotifications() {
   const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
-  return <RawCompteNotifications onBack={goBack} onNavigate={onNavigate} />;
+  return <RouteChunk><RawCompteNotifications onBack={goBack} onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function CompteSecurite() {
   const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
-  return <RawCompteSecurite onBack={goBack} onNavigate={onNavigate} />;
+  return <RouteChunk><RawCompteSecurite onBack={goBack} onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function CompteDonnees() {
   const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
-  return <RawCompteDonnees onBack={goBack} onNavigate={onNavigate} />;
+  return <RouteChunk><RawCompteDonnees onBack={goBack} onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function CompteAide() {
   const goBack = useGoBack('/account');
   const onNavigate = useOnNavigate();
-  return <RawCompteAide onBack={goBack} onNavigate={onNavigate} />;
+  return <RouteChunk><RawCompteAide onBack={goBack} onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function Reservations() {
   const onNavigate = useOnNavigate();
   const [searchParams] = useSearchParams();
   const matchId = searchParams.get('matchId') || undefined;
-  return <RawReservations onNavigate={onNavigate} matchId={matchId} />;
+  return <RouteChunk><RawReservations onNavigate={onNavigate} matchId={matchId} /></RouteChunk>;
 }
 
 export function NotificationCenter() {
   const onNavigate = useOnNavigate();
-  return <RawNotificationCenter onNavigate={onNavigate} />;
+  return <RouteChunk><RawNotificationCenter onNavigate={onNavigate} /></RouteChunk>;
 }
 
 export function QRScanner() {
   const goBack = useGoBack('/dashboard');
   const onNavigate = useOnNavigate();
-  return <RawQRScanner onBack={goBack} onNavigate={onNavigate} />;
+  return <RouteChunk><RawQRScanner onBack={goBack} onNavigate={onNavigate} /></RouteChunk>;
 }
